@@ -10,11 +10,9 @@ class Decoder(ABC):
         # if python dictionary no need for loading, otherwise load json file
         if isinstance(covjson, dict):
             self.covjson = covjson
-            print("Dictionary")
         elif isinstance(covjson, str):
             with open(covjson) as json_file:
                 self.covjson = json.load(json_file)
-            print("Not dictionary")
         else:
             raise TypeError("Covjson must be dictionary or covjson file")
 
@@ -43,16 +41,20 @@ class Decoder(ABC):
             coordinates.append(coords["coordinates"])
         return [coord for sublist in coordinates for coord in sublist]
 
-    @abstractmethod
-    def get_ranges(self):
-        pass
-
-    @abstractmethod
-    def get_domain(self):
-        pass
-
     def get_mars_metadata(self):
         mars_metadata = []
         for coverage in self.coverage.coverages:
             mars_metadata.append(coverage["mars:metadata"])
         return mars_metadata
+
+    @abstractmethod
+    def get_ranges(self):
+        pass
+
+    @abstractmethod
+    def get_domains(self):
+        pass
+
+    @abstractmethod
+    def get_values(self):
+        pass

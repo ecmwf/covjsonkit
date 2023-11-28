@@ -36,7 +36,14 @@ class TestDecoder:
                             "axisNames": ["z"],
                             "shape": [2],
                             "values": [57517.77734375, 14814.95703125],
-                        }
+                        },
+                        "p": {
+                            "type": "NdArray",
+                            "dataType": "float",
+                            "axisNames": ["z"],
+                            "shape": [2],
+                            "values": [16452.35546875, 44122.98046875],
+                        },
                     },
                 },
                 {
@@ -63,7 +70,14 @@ class TestDecoder:
                             "axisNames": ["z"],
                             "shape": [2],
                             "values": [57452.35546875, 14822.98046875],
-                        }
+                        },
+                        "p": {
+                            "type": "NdArray",
+                            "dataType": "float",
+                            "axisNames": ["z"],
+                            "shape": [2],
+                            "values": [56452.35546875, 14122.98046875],
+                        },
                     },
                 },
             ],
@@ -131,3 +145,71 @@ class TestDecoder:
             "stream": "enda",
         }
         assert decoder.mars_metadata[1] == metadata2
+
+    def test_coveragecollection_domain(self):
+        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        domain1 = {
+            "type": "Domain",
+            "domainType": "VerticalProfile",
+            "axes": {
+                "x": {"values": ["0.0"]},
+                "y": {"values": ["0.0"]},
+                "z": {"values": ["500", "850"]},
+            },
+        }
+        assert decoder.domains[0] == domain1
+        domain2 = {
+            "type": "Domain",
+            "domainType": "VerticalProfile",
+            "axes": {
+                "x": {"values": ["0.0"]},
+                "y": {"values": ["0.0"]},
+                "z": {"values": ["500", "850"]},
+            },
+        }
+        assert decoder.domains[1] == domain2
+
+    def test_coveragecollection_range(self):
+        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        range1 = {
+            "t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "axisNames": ["z"],
+                "shape": [2],
+                "values": [57517.77734375, 14814.95703125],
+            },
+            "p": {
+                "type": "NdArray",
+                "dataType": "float",
+                "axisNames": ["z"],
+                "shape": [2],
+                "values": [16452.35546875, 44122.98046875],
+            },
+        }
+        assert decoder.ranges[0] == range1
+        range2 = {
+            "t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "axisNames": ["z"],
+                "shape": [2],
+                "values": [57452.35546875, 14822.98046875],
+            },
+            "p": {
+                "type": "NdArray",
+                "dataType": "float",
+                "axisNames": ["z"],
+                "shape": [2],
+                "values": [56452.35546875, 14122.98046875],
+            },
+        }
+        assert decoder.ranges[1] == range2
+
+    def test_coveragecollection_values(self):
+        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        values = {
+            "t": [[57517.77734375, 14814.95703125], [57452.35546875, 14822.98046875]],
+            "p": [[16452.35546875, 44122.98046875], [56452.35546875, 14122.98046875]],
+        }
+        assert decoder.get_values() == values
