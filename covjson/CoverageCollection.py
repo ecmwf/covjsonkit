@@ -15,3 +15,5 @@ class CoverageCollection:
             raise TypeError(
                 "CoverageCollection class takes CoverageCollection not Coverage"
             )
+
+        self.coverages = self.coverage.pop("coverages")
