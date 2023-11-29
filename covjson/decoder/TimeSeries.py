@@ -4,6 +4,8 @@ from .Decoder import Decoder
 class TimeSeries(Decoder):
     def __init__(self, covjson):
         super().__init__(covjson)
+        self.domains = self.get_domains()
+        self.ranges = self.get_ranges()
 
     def get_domains(self):
         domains = []
@@ -18,7 +20,29 @@ class TimeSeries(Decoder):
         return ranges
 
     def get_values(self):
-        pass
+        values = {}
+        for parameter in self.parameters:
+            values[parameter] = []
+            for range in self.ranges:
+                values[parameter].append(range[parameter]["values"])
+        return values
 
     def get_coordinates(self):
+        coordinates = []
+        # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
+        for domain in self.domains:
+            x = domain["axes"]["x"]["values"][0]
+            y = domain["axes"]["y"]["values"][0]
+            z = domain["axes"]["z"]["values"][0]
+            ts = domain["axes"]["t"]["values"]
+            for t in ts:
+                # Have to replicate these coords for each parameter
+                for _ in self.parameters:
+                    coordinates.append([x, y, z, t])
+        return coordinates
+
+    def to_geopandas(self):
+        pass
+
+    def to_xarray(self):
         pass

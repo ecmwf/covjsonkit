@@ -19,6 +19,7 @@ class TestDecoder:
                         "levtype": "pl",
                         "step": "0",
                         "stream": "enda",
+                        "number": "0",
                     },
                     "domain": {
                         "type": "Domain",
@@ -27,6 +28,7 @@ class TestDecoder:
                             "x": {"values": ["0.0"]},
                             "y": {"values": ["0.0"]},
                             "z": {"values": ["500", "850"]},
+                            "t": {"values": ["2017-01-01 12:00:00"]},
                         },
                     },
                     "ranges": {
@@ -49,10 +51,11 @@ class TestDecoder:
                 {
                     "mars:metadata": {
                         "class": "ea",
-                        "date": "2017-01-02 12:00:00",
+                        "date": "2017-01-01 12:00:00",
                         "levtype": "pl",
                         "step": "0",
                         "stream": "enda",
+                        "number": "1",
                     },
                     "domain": {
                         "type": "Domain",
@@ -61,6 +64,7 @@ class TestDecoder:
                             "x": {"values": ["0.0"]},
                             "y": {"values": ["0.0"]},
                             "z": {"values": ["500", "850"]},
+                            "t": {"values": ["2017-01-01 12:00:00"]},
                         },
                     },
                     "ranges": {
@@ -115,19 +119,19 @@ class TestDecoder:
             },
         }
 
-    def test_coveragecollection_type(self):
+    def test_verticalprofile_type(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         assert decoder.type == "CoverageCollection"
 
-    def test_coveragecollection_parameters(self):
+    def test_verticalprofile_parameters(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         assert decoder.parameters == ["t", "p"]
 
-    def test_coveragecollection_referencing(self):
+    def test_verticalprofile_referencing(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         assert decoder.get_referencing() == ["x", "y", "z"]
 
-    def test_coveragecollection_mars_metadata(self):
+    def test_verticalprofile_mars_metadata(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         metadata1 = {
             "class": "ea",
@@ -135,18 +139,20 @@ class TestDecoder:
             "levtype": "pl",
             "step": "0",
             "stream": "enda",
+            "number": "0",
         }
         assert decoder.mars_metadata[0] == metadata1
         metadata2 = {
             "class": "ea",
-            "date": "2017-01-02 12:00:00",
+            "date": "2017-01-01 12:00:00",
             "levtype": "pl",
             "step": "0",
             "stream": "enda",
+            "number": "1",
         }
         assert decoder.mars_metadata[1] == metadata2
 
-    def test_coveragecollection_domain(self):
+    def test_verticalprofile_domains(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         domain1 = {
             "type": "Domain",
@@ -155,6 +161,7 @@ class TestDecoder:
                 "x": {"values": ["0.0"]},
                 "y": {"values": ["0.0"]},
                 "z": {"values": ["500", "850"]},
+                "t": {"values": ["2017-01-01 12:00:00"]},
             },
         }
         assert decoder.domains[0] == domain1
@@ -165,11 +172,12 @@ class TestDecoder:
                 "x": {"values": ["0.0"]},
                 "y": {"values": ["0.0"]},
                 "z": {"values": ["500", "850"]},
+                "t": {"values": ["2017-01-01 12:00:00"]},
             },
         }
         assert decoder.domains[1] == domain2
 
-    def test_coveragecollection_range(self):
+    def test_verticalprofile_ranges(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         range1 = {
             "t": {
@@ -206,21 +214,21 @@ class TestDecoder:
         }
         assert decoder.ranges[1] == range2
 
-    def test_coveragecollection_coordinates(self):
+    def test_verticalprofile_coordinates(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         coordinates = [
-            ["0.0", "0.0", "500"],
-            ["0.0", "0.0", "500"],
-            ["0.0", "0.0", "850"],
-            ["0.0", "0.0", "850"],
-            ["0.0", "0.0", "500"],
-            ["0.0", "0.0", "500"],
-            ["0.0", "0.0", "850"],
-            ["0.0", "0.0", "850"],
+            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
+            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
         ]
         assert decoder.get_coordinates() == coordinates
 
-    def test_coveragecollection_values(self):
+    def test_verticalprofile_values(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         values = {
             "t": [[57517.77734375, 14814.95703125], [57452.35546875, 14822.98046875]],

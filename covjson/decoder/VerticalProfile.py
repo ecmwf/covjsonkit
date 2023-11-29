@@ -25,11 +25,12 @@ class VerticalProfile(Decoder):
         for domain in self.domains:
             x = domain["axes"]["x"]["values"][0]
             y = domain["axes"]["y"]["values"][0]
+            t = domain["axes"]["t"]["values"][0]
             zs = domain["axes"]["z"]["values"]
             for z in zs:
                 # Have to replicate these coords for each parameter
                 for _ in self.parameters:
-                    coordinates.append([x, y, z])
+                    coordinates.append([x, y, z, t])
         return coordinates
 
     def get_values(self):
@@ -41,4 +42,7 @@ class VerticalProfile(Decoder):
         return values
 
     def to_geopandas(self):
+        pass
+
+    def to_xarray(self):
         pass

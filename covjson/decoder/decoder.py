@@ -67,3 +67,7 @@ class Decoder(ABC):
     @abstractmethod
     def to_geopandas(self):
         pass
+
+    @abstractmethod
+    def to_xarray(self):
+        pass
