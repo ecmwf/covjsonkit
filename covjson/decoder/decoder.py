@@ -1,5 +1,6 @@
 import os
 import json
+import geopandas as gpd
 from abc import ABC, abstractmethod
 from ..Coverage import Coverage
 from ..CoverageCollection import CoverageCollection
@@ -56,5 +57,13 @@ class Decoder(ABC):
         pass
 
     @abstractmethod
+    def get_coordinates(self):
+        pass
+
+    @abstractmethod
     def get_values(self):
+        pass
+
+    @abstractmethod
+    def to_geopandas(self):
         pass

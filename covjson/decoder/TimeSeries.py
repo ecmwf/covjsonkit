@@ -19,3 +19,6 @@ class TimeSeries(Decoder):
 
     def get_values(self):
         pass
+
+    def get_coordinates(self):
+        pass

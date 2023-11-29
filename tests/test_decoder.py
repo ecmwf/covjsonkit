@@ -206,6 +206,20 @@ class TestDecoder:
         }
         assert decoder.ranges[1] == range2
 
+    def test_coveragecollection_coordinates(self):
+        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        coordinates = [
+            ["0.0", "0.0", "500"],
+            ["0.0", "0.0", "500"],
+            ["0.0", "0.0", "850"],
+            ["0.0", "0.0", "850"],
+            ["0.0", "0.0", "500"],
+            ["0.0", "0.0", "500"],
+            ["0.0", "0.0", "850"],
+            ["0.0", "0.0", "850"],
+        ]
+        assert decoder.get_coordinates() == coordinates
+
     def test_coveragecollection_values(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         values = {
