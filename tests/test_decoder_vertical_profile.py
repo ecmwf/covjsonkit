@@ -1,7 +1,7 @@
 import pytest
 import json
 
-from covjson.decoder import Decoder
+from covjson.decoder import decoder
 from covjson.decoder import VerticalProfile
 from covjson.decoder import TimeSeries
 
