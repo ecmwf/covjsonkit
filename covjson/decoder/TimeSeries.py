@@ -1,4 +1,6 @@
 from .decoder import Decoder
+import xarray as xr
+import datetime as dt
 
 
 class TimeSeries(Decoder):
@@ -25,24 +27,62 @@ class TimeSeries(Decoder):
             values[parameter] = []
             for range in self.ranges:
                 values[parameter].append(range[parameter]["values"])
+            values[parameter] = [
+                value for sublist in values[parameter] for value in sublist
+            ]
         return values
 
     def get_coordinates(self):
         coordinates = []
+        coord_dict = {}
+        for param in self.parameters:
+            coord_dict[param] = []
         # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
         for domain in self.domains:
             x = domain["axes"]["x"]["values"][0]
             y = domain["axes"]["y"]["values"][0]
             z = domain["axes"]["z"]["values"][0]
             ts = domain["axes"]["t"]["values"]
-            for t in ts:
-                # Have to replicate these coords for each parameter
-                for _ in self.parameters:
-                    coordinates.append([x, y, z, t])
-        return coordinates
+            for param in self.parameters:
+                for t in ts:
+                    # Have to replicate these coords for each parameter
+                    # coordinates.append([x, y, z, t])
+                    coord_dict[param].append([x, y, z, t])
+        return coord_dict
 
     def to_geopandas(self):
         pass
 
+    # function to convert covjson to xarray dataset
     def to_xarray(self):
-        pass
+        dims = ["x", "y", "z", "t"]
+        dataarrays = []
+
+        # Get coordinates
+        for parameter in self.parameters:
+            param_values = [[[self.get_values()[parameter]]]]
+
+            coords = self.get_coordinates()[parameter]
+            x = [coords[0][0]]
+            y = [coords[0][1]]
+            z = [coords[0][2]]
+            t = [
+                dt.datetime.strptime(coord[3], "%Y-%m-%d %H:%M:%S") for coord in coords
+            ]
+
+            param_coords = {"x": x, "y": y, "z": z, "t": t}
+            dataarray = xr.DataArray(
+                param_values,
+                dims=dims,
+                coords=param_coords,
+                name=parameter,
+            )
+            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"][
+                "symbol"
+            ]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
+                "description"
+            ]
+            dataarrays.append(dataarray)
+        return dataarrays

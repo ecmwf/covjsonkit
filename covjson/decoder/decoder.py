@@ -1,5 +1,7 @@
 import os
 import json
+import xarray as xr
+import datetime as dt
 import geopandas as gpd
 from abc import ABC, abstractmethod
 from ..Coverage import Coverage
@@ -35,6 +37,9 @@ class Decoder(ABC):
 
     def get_parameters(self):
         return list(self.covjson["parameters"].keys())
+
+    def get_parameter_metadata(self, parameter):
+        return self.covjson["parameters"][parameter]
 
     def get_referencing(self):
         coordinates = []
