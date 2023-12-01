@@ -4,6 +4,9 @@ import json
 from covjson.decoder import decoder
 from covjson.decoder import VerticalProfile
 from covjson.decoder import TimeSeries
+from earthkit import data
+import earthkit.data.readers.netcdf
+import xarray as xr
 
 
 class TestDecoder:
@@ -287,4 +290,10 @@ class TestDecoder:
     def test_timeseries_to_xarray(self):
         decoder = TimeSeries.TimeSeries(self.covjson)
         ds = decoder.to_xarray()
+        # print(type(ekds))
         print(ds)
+        xrds = xr.Dataset(ds)
+        print(xrds)
+        ekds = data.from_object(ds)
+        print(type(ekds))
+        print(ekds.ls())
