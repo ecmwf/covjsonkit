@@ -7,7 +7,7 @@ class CoverageCollection:
             print("Received Coverage")
             self.coverage = covjson
 
-        self.type = self.coverage.pop("type")
+        self.type = self.coverage["type"]
 
         if self.type == "CoverageCollection":
             print("Correct Type")
@@ -16,4 +16,4 @@ class CoverageCollection:
                 "CoverageCollection class takes CoverageCollection not Coverage"
             )
 
-        self.coverages = self.coverage.pop("coverages")
+        self.coverages = self.coverage["coverages"]
