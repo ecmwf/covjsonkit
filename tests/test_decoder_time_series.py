@@ -5,7 +5,6 @@ from covjson.decoder import decoder
 from covjson.decoder import VerticalProfile
 from covjson.decoder import TimeSeries
 from earthkit import data
-import earthkit.data.readers.netcdf
 import xarray as xr
 
 
@@ -22,6 +21,7 @@ class TestDecoder:
                         "levtype": "pl",
                         "date": "20170101",
                         "step": "0",
+                        "number": "0",
                     },
                     "type": "Coverage",
                     "domain": {
@@ -71,6 +71,7 @@ class TestDecoder:
                         "levtype": "pl",
                         "date": "20170102",
                         "step": "0",
+                        "number": "0",
                     },
                     "type": "Coverage",
                     "domain": {
@@ -159,6 +160,7 @@ class TestDecoder:
             "levtype": "pl",
             "date": "20170101",
             "step": "0",
+            "number": "0",
         }
         metadata2 = {
             "class": "od",
@@ -166,6 +168,7 @@ class TestDecoder:
             "levtype": "pl",
             "date": "20170102",
             "step": "0",
+            "number": "0",
         }
         assert decoder.mars_metadata == [metadata1, metadata2]
 
@@ -261,7 +264,6 @@ class TestDecoder:
                 7.93115234375,
             ],
         }
-        print(decoder.get_values())
         assert decoder.get_values() == values
 
     def test_timeseries_coordinates(self):
@@ -284,16 +286,15 @@ class TestDecoder:
                 [3, 7, 1, "2017-01-02 12:00:00"],
             ],
         }
-        print(decoder.get_coordinates())
         assert decoder.get_coordinates() == coordinates
 
     def test_timeseries_to_xarray(self):
         decoder = TimeSeries.TimeSeries(self.covjson)
         ds = decoder.to_xarray()
-        # print(type(ekds))
         print(ds)
-        xrds = xr.Dataset(ds)
-        print(xrds)
+        # xrds.to_netcdf("timeseries.nc")
+        # ds = xr.open_dataset("timeseries.nc")
         ekds = data.from_object(ds)
+        print(ekds)
         print(type(ekds))
-        print(ekds.ls())
+        # print(ekds.ls())

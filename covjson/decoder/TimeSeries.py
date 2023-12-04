@@ -56,7 +56,7 @@ class TimeSeries(Decoder):
     # function to convert covjson to xarray dataset
     def to_xarray(self):
         dims = ["x", "y", "z", "t"]
-        dataarrays = []
+        dataarraydict = {}
 
         # Get coordinates
         for parameter in self.parameters:
@@ -77,6 +77,7 @@ class TimeSeries(Decoder):
                 coords=param_coords,
                 name=parameter,
             )
+
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
             dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"][
                 "symbol"
@@ -84,5 +85,10 @@ class TimeSeries(Decoder):
             dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
                 "description"
             ]
-            dataarrays.append(dataarray)
-        return dataarrays
+            dataarraydict[dataarray.attrs["long_name"]] = dataarray
+
+        ds = xr.Dataset(dataarraydict)
+        for mars_metadata in self.mars_metadata[0]:
+            ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+
+        return ds
