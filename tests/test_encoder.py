@@ -137,5 +137,89 @@ class TestDecoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = encoder.Encoder("CoverageCollection")
+        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
         assert encoder_obj.type == "CoverageCollection"
+
+    def test_standard_Coverage(self):
+        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        covjson = {
+            "type": "CoverageCollection",
+            "domainType": "PointSeries",
+            "coverages": [],
+            "referencing": [],
+            "parameters": {},
+        }
+
+        assert encoder_obj.covjson == covjson
+
+    def test_add_parameter(self):
+        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        encoder_obj.add_parameter(
+            "t",
+            {
+                "type": "Parameter",
+                "description": "Temperature",
+                "unit": {"symbol": "K"},
+                "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+            },
+        )
+        encoder_obj.add_parameter(
+            "p",
+            {
+                "type": "Parameter",
+                "description": "Pressure",
+                "unit": {"symbol": "pa"},
+                "observedProperty": {"id": "p", "label": {"en": "Pressure"}},
+            },
+        )
+        covjson = {
+            "type": "CoverageCollection",
+            "domainType": "PointSeries",
+            "coverages": [],
+            "referencing": [],
+            "parameters": {
+                "t": {
+                    "type": "Parameter",
+                    "description": "Temperature",
+                    "unit": {"symbol": "K"},
+                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+                },
+                "p": {
+                    "type": "Parameter",
+                    "description": "Pressure",
+                    "unit": {"symbol": "pa"},
+                    "observedProperty": {"id": "p", "label": {"en": "Pressure"}},
+                },
+            },
+        }
+
+        assert encoder_obj.covjson == covjson
+
+    def test_add_reference(self):
+        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        encoder_obj.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+        covjson = {
+            "type": "CoverageCollection",
+            "domainType": "PointSeries",
+            "coverages": [],
+            "referencing": [
+                {
+                    "coordinates": ["x", "y", "z"],
+                    "system": {
+                        "type": "GeographicCRS",
+                        "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                    },
+                }
+            ],
+            "parameters": {},
+        }
+
+        assert encoder_obj.covjson == covjson
