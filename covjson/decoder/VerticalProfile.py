@@ -1,4 +1,4 @@
-from .Decoder import Decoder
+from .decoder import Decoder
 
 
 class VerticalProfile(Decoder):

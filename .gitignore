@@ -1,4 +1,5 @@
 *.py[cod]
+*.nc
 *.swp
 **/__pycache__
 .vscode

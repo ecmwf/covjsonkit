@@ -1,9 +1,11 @@
 import pytest
 import json
 
-from covjson.decoder import Decoder
+from covjson.decoder import decoder
 from covjson.decoder import VerticalProfile
 from covjson.decoder import TimeSeries
+from earthkit import data
+import xarray as xr
 
 
 class TestDecoder:
@@ -19,6 +21,7 @@ class TestDecoder:
                         "levtype": "pl",
                         "date": "20170101",
                         "step": "0",
+                        "number": "0",
                     },
                     "type": "Coverage",
                     "domain": {
@@ -68,6 +71,7 @@ class TestDecoder:
                         "levtype": "pl",
                         "date": "20170102",
                         "step": "0",
+                        "number": "0",
                     },
                     "type": "Coverage",
                     "domain": {
@@ -156,6 +160,7 @@ class TestDecoder:
             "levtype": "pl",
             "date": "20170101",
             "step": "0",
+            "number": "0",
         }
         metadata2 = {
             "class": "od",
@@ -163,6 +168,7 @@ class TestDecoder:
             "levtype": "pl",
             "date": "20170102",
             "step": "0",
+            "number": "0",
         }
         assert decoder.mars_metadata == [metadata1, metadata2]
 
@@ -242,30 +248,53 @@ class TestDecoder:
         decoder = TimeSeries.TimeSeries(self.covjson)
         values = {
             "t": [
-                [264.93115234375, 263.83115234375, 265.12313132266],
-                [263.83115234375, 265.12313132266, 264.93115234375],
+                264.93115234375,
+                263.83115234375,
+                265.12313132266,
+                263.83115234375,
+                265.12313132266,
+                264.93115234375,
             ],
             "p": [
-                [9.93115234375, 7.83115234375, 14.12313132266],
-                [13.83115234375, 14.12313132266, 7.93115234375],
+                9.93115234375,
+                7.83115234375,
+                14.12313132266,
+                13.83115234375,
+                14.12313132266,
+                7.93115234375,
             ],
         }
         assert decoder.get_values() == values
 
     def test_timeseries_coordinates(self):
         decoder = TimeSeries.TimeSeries(self.covjson)
-        coordinates = [
-            [3, 7, 1, "2017-01-01 00:00:00"],
-            [3, 7, 1, "2017-01-01 00:00:00"],
-            [3, 7, 1, "2017-01-01 06:00:00"],
-            [3, 7, 1, "2017-01-01 06:00:00"],
-            [3, 7, 1, "2017-01-01 12:00:00"],
-            [3, 7, 1, "2017-01-01 12:00:00"],
-            [3, 7, 1, "2017-01-02 00:00:00"],
-            [3, 7, 1, "2017-01-02 00:00:00"],
-            [3, 7, 1, "2017-01-02 06:00:00"],
-            [3, 7, 1, "2017-01-02 06:00:00"],
-            [3, 7, 1, "2017-01-02 12:00:00"],
-            [3, 7, 1, "2017-01-02 12:00:00"],
-        ]
+        coordinates = {
+            "t": [
+                [3, 7, 1, "2017-01-01 00:00:00"],
+                [3, 7, 1, "2017-01-01 06:00:00"],
+                [3, 7, 1, "2017-01-01 12:00:00"],
+                [3, 7, 1, "2017-01-02 00:00:00"],
+                [3, 7, 1, "2017-01-02 06:00:00"],
+                [3, 7, 1, "2017-01-02 12:00:00"],
+            ],
+            "p": [
+                [3, 7, 1, "2017-01-01 00:00:00"],
+                [3, 7, 1, "2017-01-01 06:00:00"],
+                [3, 7, 1, "2017-01-01 12:00:00"],
+                [3, 7, 1, "2017-01-02 00:00:00"],
+                [3, 7, 1, "2017-01-02 06:00:00"],
+                [3, 7, 1, "2017-01-02 12:00:00"],
+            ],
+        }
         assert decoder.get_coordinates() == coordinates
+
+    def test_timeseries_to_xarray(self):
+        decoder = TimeSeries.TimeSeries(self.covjson)
+        ds = decoder.to_xarray()
+        print(ds)
+        # xrds.to_netcdf("timeseries.nc")
+        # ds = xr.open_dataset("timeseries.nc")
+        ekds = data.from_object(ds)
+        print(ekds)
+        print(type(ekds))
+        # print(ekds.ls())
