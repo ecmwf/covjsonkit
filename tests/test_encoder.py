@@ -2,6 +2,7 @@ import pytest
 import json
 
 from covjson.encoder import encoder
+from covjson.encoder import TimeSeries
 
 
 class TestDecoder:
@@ -40,7 +41,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 264.93115234375,
                                 263.83115234375,
@@ -51,7 +52,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 9.93115234375,
                                 7.83115234375,
@@ -90,7 +91,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 263.83115234375,
                                 265.12313132266,
@@ -101,7 +102,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 13.83115234375,
                                 14.12313132266,
@@ -137,11 +138,11 @@ class TestDecoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
         assert encoder_obj.type == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
         covjson = {
             "type": "CoverageCollection",
             "domainType": "PointSeries",
@@ -153,7 +154,7 @@ class TestDecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_parameter(self):
-        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
         encoder_obj.add_parameter(
             "t",
             {
@@ -196,7 +197,7 @@ class TestDecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_reference(self):
-        encoder_obj = encoder.Encoder("CoverageCollection", "PointSeries")
+        encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -222,4 +223,50 @@ class TestDecoder:
             "parameters": {},
         }
 
+        assert encoder_obj.covjson == covjson
+
+    def test_add_coverage_marsmetadata(self):
+        encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
+        encoder_obj.add_coverage(
+            {
+                "class": "od",
+                "stream": "oper",
+                "levtype": "pl",
+                "date": "20170101",
+                "step": "0",
+                "number": "0",
+            },
+            {},
+            {},
+        )
+        covjson = {
+            "type": "CoverageCollection",
+            "domainType": "PointSeries",
+            "coverages": [
+                {
+                    "mars:metadata": {
+                        "class": "od",
+                        "stream": "oper",
+                        "levtype": "pl",
+                        "date": "20170101",
+                        "step": "0",
+                        "number": "0",
+                    },
+                    "type": "Coverage",
+                    "domain": {
+                        "type": "Domain",
+                        "axes": {
+                            "x": {"values": []},
+                            "y": {"values": []},
+                            "z": {"values": []},
+                            "t": {"values": []},
+                        },
+                    },
+                    "ranges": {},
+                }
+            ],
+            "referencing": [],
+            "parameters": {},
+        }
+        print(encoder_obj.covjson)
         assert encoder_obj.covjson == covjson

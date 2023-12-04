@@ -44,7 +44,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 264.93115234375,
                                 263.83115234375,
@@ -55,7 +55,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 9.93115234375,
                                 7.83115234375,
@@ -94,7 +94,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 263.83115234375,
                                 265.12313132266,
@@ -105,7 +105,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 13.83115234375,
                                 14.12313132266,
@@ -214,14 +214,14 @@ class TestDecoder:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [264.93115234375, 263.83115234375, 265.12313132266],
             },
             "p": {
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [9.93115234375, 7.83115234375, 14.12313132266],
             },
         }
@@ -231,14 +231,14 @@ class TestDecoder:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [263.83115234375, 265.12313132266, 264.93115234375],
             },
             "p": {
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [13.83115234375, 14.12313132266, 7.93115234375],
             },
         }
