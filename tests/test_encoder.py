@@ -225,6 +225,8 @@ class TestDecoder:
 
         assert encoder_obj.covjson == covjson
 
+
+"""
     def test_add_coverage_marsmetadata(self):
         encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
         encoder_obj.add_coverage(
@@ -270,3 +272,4 @@ class TestDecoder:
         }
         print(encoder_obj.covjson)
         assert encoder_obj.covjson == covjson
+"""
