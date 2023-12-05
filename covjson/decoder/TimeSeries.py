@@ -27,9 +27,9 @@ class TimeSeries(Decoder):
             values[parameter] = []
             for range in self.ranges:
                 values[parameter].append(range[parameter]["values"])
-            values[parameter] = [
-                value for sublist in values[parameter] for value in sublist
-            ]
+            # values[parameter] = [
+            #    value for sublist in values[parameter] for value in sublist
+            # ]
         return values
 
     def get_coordinates(self):
@@ -38,16 +38,19 @@ class TimeSeries(Decoder):
         for param in self.parameters:
             coord_dict[param] = []
         # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
-        for domain in self.domains:
+        for ind, domain in enumerate(self.domains):
             x = domain["axes"]["x"]["values"][0]
             y = domain["axes"]["y"]["values"][0]
             z = domain["axes"]["z"]["values"][0]
+            fct = self.mars_metadata[ind]["date"]
             ts = domain["axes"]["t"]["values"]
             for param in self.parameters:
+                coords = []
                 for t in ts:
                     # Have to replicate these coords for each parameter
                     # coordinates.append([x, y, z, t])
-                    coord_dict[param].append([x, y, z, t])
+                    coords.append([x, y, z, fct, t])
+                coord_dict[param].append(coords)
         return coord_dict
 
     def to_geopandas(self):
@@ -55,40 +58,47 @@ class TimeSeries(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
-        dims = ["x", "y", "z", "t"]
+        dims = ["x", "y", "z", "fct", "t"]
         dataarraydict = {}
 
         # Get coordinates
         for parameter in self.parameters:
             param_values = [[[self.get_values()[parameter]]]]
+            for ind, fc_time_vals in enumerate(self.get_values()[parameter]):
+                coords = self.get_coordinates()[parameter]
+                x = [coords[ind][0][0]]
+                y = [coords[ind][0][1]]
+                z = [coords[ind][0][2]]
 
-            coords = self.get_coordinates()[parameter]
-            x = [coords[0][0]]
-            y = [coords[0][1]]
-            z = [coords[0][2]]
-            t = [
-                dt.datetime.strptime(coord[3], "%Y-%m-%d %H:%M:%S") for coord in coords
-            ]
+                fct = [
+                    dt.datetime.strptime((coord[0][3]), "%Y%m%d") for coord in coords
+                ]
+                coords_fc = coords[ind]
+                t = [
+                    dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S")
+                    for coord in coords_fc
+                ]
 
-            param_coords = {"x": x, "y": y, "z": z, "t": t}
-            dataarray = xr.DataArray(
-                param_values,
-                dims=dims,
-                coords=param_coords,
-                name=parameter,
-            )
+                param_coords = {"x": x, "y": y, "z": z, "fct": fct, "t": t}
+                dataarray = xr.DataArray(
+                    param_values,
+                    dims=dims,
+                    coords=param_coords,
+                    name=parameter,
+                )
 
-            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"][
-                "symbol"
-            ]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                "description"
-            ]
-            dataarraydict[dataarray.attrs["long_name"]] = dataarray
+                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
+                    "unit"
+                ]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
+                    "description"
+                ]
+                dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(dataarraydict)
         for mars_metadata in self.mars_metadata[0]:
-            ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+            if mars_metadata != "date" and mars_metadata != "step":
+                ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
         return ds
