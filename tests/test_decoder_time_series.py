@@ -298,3 +298,30 @@ class TestDecoder:
         print(ekds)
         print(type(ekds))
         # print(ekds.ls())
+
+
+"""
+[<xarray.DataArray 't' (x: 1, y: 1, z: 1, t: 6)>
+array([[[[264.93115234, 263.83115234, 265.12313132, 263.83115234,
+          265.12313132, 264.93115234]]]])
+Coordinates:
+  * x        (x) int64 3
+  * y        (y) int64 7
+  * z        (z) int64 1
+  * t        (t) datetime64[ns] 2017-01-01 ... 2017-01-02T12:00:00
+Attributes:
+    type:       Parameter
+    units:      K
+    long_name:  Temperature, <xarray.DataArray 'p' (x: 1, y: 1, z: 1, t: 6)>
+array([[[[ 9.93115234,  7.83115234, 14.12313132, 13.83115234,
+          14.12313132,  7.93115234]]]])
+Coordinates:
+  * x        (x) int64 3
+  * y        (y) int64 7
+  * z        (z) int64 1
+  * t        (t) datetime64[ns] 2017-01-01 ... 2017-01-02T12:00:00
+Attributes:
+    type:       Parameter
+    units:      pa
+    long_name:  Pressure]
+    """
