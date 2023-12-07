@@ -56,3 +56,7 @@ class Encoder(ABC):
     @abstractmethod
     def from_xarray(self, dataset):
         pass
+
+    @abstractmethod
+    def from_polytope(self, result):
+        pass

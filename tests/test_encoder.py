@@ -3,6 +3,19 @@ import json
 
 from covjson.encoder import encoder
 from covjson.encoder import TimeSeries
+import covjson.decoder.TimeSeries
+import random
+from datetime import datetime, timedelta
+
+
+def get_timestamps(start_dt, end_dt, delta):
+    dates = []
+    while start_dt <= end_dt:
+        # add current date to list by converting  it to iso format
+        dates.append(start_dt.isoformat().replace("T", " "))
+        # increment start date by timedelta
+        start_dt += delta
+    return dates
 
 
 class TestDecoder:
@@ -224,6 +237,56 @@ class TestDecoder:
         }
 
         assert encoder_obj.covjson == covjson
+
+    def test_add_coverage(self):
+        encoder = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
+        encoder.add_parameter(
+            "t",
+            {
+                "type": "Parameter",
+                "description": "Temperature",
+                "unit": {"symbol": "K"},
+                "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+            },
+        )
+        encoder.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        metadatas = []
+        coords = []
+        values = []
+        for number in range(0, 50):
+            metadata = {
+                "class": "od",
+                "stream": "oper",
+                "levtype": "pl",
+                "date": "20170101",
+                "step": "0",
+                "number": str(number),
+            }
+            timestamps = get_timestamps(
+                datetime(2017, 1, 1, 0, 00),
+                datetime(2017, 1, 14, 0, 00),
+                timedelta(hours=6),
+            )
+            coord = {
+                "x": [3],
+                "y": [7],
+                "z": [1],
+                "t": timestamps,
+            }
+            coords.append(coord)
+            value = {"t": [random.uniform(230, 270) for _ in range(0, len(timestamps))]}
+            values.append(value)
+            encoder.add_coverage(metadata, coord, value)
+            print(encoder.covjson)
 
 
 """
