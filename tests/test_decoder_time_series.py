@@ -44,7 +44,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 264.93115234375,
                                 263.83115234375,
@@ -55,7 +55,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 9.93115234375,
                                 7.83115234375,
@@ -94,7 +94,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 263.83115234375,
                                 265.12313132266,
@@ -105,7 +105,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [3],
-                            "axisNames": ["z"],
+                            "axisNames": ["t"],
                             "values": [
                                 13.83115234375,
                                 14.12313132266,
@@ -214,14 +214,14 @@ class TestDecoder:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [264.93115234375, 263.83115234375, 265.12313132266],
             },
             "p": {
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [9.93115234375, 7.83115234375, 14.12313132266],
             },
         }
@@ -231,14 +231,14 @@ class TestDecoder:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [263.83115234375, 265.12313132266, 264.93115234375],
             },
             "p": {
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["z"],
+                "axisNames": ["t"],
                 "values": [13.83115234375, 14.12313132266, 7.93115234375],
             },
         }
@@ -248,20 +248,12 @@ class TestDecoder:
         decoder = TimeSeries.TimeSeries(self.covjson)
         values = {
             "t": [
-                264.93115234375,
-                263.83115234375,
-                265.12313132266,
-                263.83115234375,
-                265.12313132266,
-                264.93115234375,
+                [264.93115234375, 263.83115234375, 265.12313132266],
+                [263.83115234375, 265.12313132266, 264.93115234375],
             ],
             "p": [
-                9.93115234375,
-                7.83115234375,
-                14.12313132266,
-                13.83115234375,
-                14.12313132266,
-                7.93115234375,
+                [9.93115234375, 7.83115234375, 14.12313132266],
+                [13.83115234375, 14.12313132266, 7.93115234375],
             ],
         }
         assert decoder.get_values() == values
@@ -270,31 +262,68 @@ class TestDecoder:
         decoder = TimeSeries.TimeSeries(self.covjson)
         coordinates = {
             "t": [
-                [3, 7, 1, "2017-01-01 00:00:00"],
-                [3, 7, 1, "2017-01-01 06:00:00"],
-                [3, 7, 1, "2017-01-01 12:00:00"],
-                [3, 7, 1, "2017-01-02 00:00:00"],
-                [3, 7, 1, "2017-01-02 06:00:00"],
-                [3, 7, 1, "2017-01-02 12:00:00"],
+                [
+                    [3, 7, 1, "20170101", "2017-01-01 00:00:00", "0"],
+                    [3, 7, 1, "20170101", "2017-01-01 06:00:00", "0"],
+                    [3, 7, 1, "20170101", "2017-01-01 12:00:00", "0"],
+                ],
+                [
+                    [3, 7, 1, "20170102", "2017-01-02 00:00:00", "0"],
+                    [3, 7, 1, "20170102", "2017-01-02 06:00:00", "0"],
+                    [3, 7, 1, "20170102", "2017-01-02 12:00:00", "0"],
+                ],
             ],
             "p": [
-                [3, 7, 1, "2017-01-01 00:00:00"],
-                [3, 7, 1, "2017-01-01 06:00:00"],
-                [3, 7, 1, "2017-01-01 12:00:00"],
-                [3, 7, 1, "2017-01-02 00:00:00"],
-                [3, 7, 1, "2017-01-02 06:00:00"],
-                [3, 7, 1, "2017-01-02 12:00:00"],
+                [
+                    [3, 7, 1, "20170101", "2017-01-01 00:00:00", "0"],
+                    [3, 7, 1, "20170101", "2017-01-01 06:00:00", "0"],
+                    [3, 7, 1, "20170101", "2017-01-01 12:00:00", "0"],
+                ],
+                [
+                    [3, 7, 1, "20170102", "2017-01-02 00:00:00", "0"],
+                    [3, 7, 1, "20170102", "2017-01-02 06:00:00", "0"],
+                    [3, 7, 1, "20170102", "2017-01-02 12:00:00", "0"],
+                ],
             ],
         }
+        print(decoder.get_coordinates())
         assert decoder.get_coordinates() == coordinates
 
     def test_timeseries_to_xarray(self):
         decoder = TimeSeries.TimeSeries(self.covjson)
         ds = decoder.to_xarray()
         print(ds)
+        print(ds["Temperature"])
         # xrds.to_netcdf("timeseries.nc")
         # ds = xr.open_dataset("timeseries.nc")
         ekds = data.from_object(ds)
         print(ekds)
         print(type(ekds))
         # print(ekds.ls())
+
+
+"""
+[<xarray.DataArray 't' (x: 1, y: 1, z: 1, t: 6)>
+array([[[[264.93115234, 263.83115234, 265.12313132, 263.83115234,
+          265.12313132, 264.93115234]]]])
+Coordinates:
+  * x        (x) int64 3
+  * y        (y) int64 7
+  * z        (z) int64 1
+  * t        (t) datetime64[ns] 2017-01-01 ... 2017-01-02T12:00:00
+Attributes:
+    type:       Parameter
+    units:      K
+    long_name:  Temperature, <xarray.DataArray 'p' (x: 1, y: 1, z: 1, t: 6)>
+array([[[[ 9.93115234,  7.83115234, 14.12313132, 13.83115234,
+          14.12313132,  7.93115234]]]])
+Coordinates:
+  * x        (x) int64 3
+  * y        (y) int64 7
+  * z        (z) int64 1
+  * t        (t) datetime64[ns] 2017-01-01 ... 2017-01-02T12:00:00
+Attributes:
+    type:       Parameter
+    units:      pa
+    long_name:  Pressure]
+    """

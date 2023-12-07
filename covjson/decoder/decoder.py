@@ -4,8 +4,8 @@ import xarray as xr
 import datetime as dt
 import geopandas as gpd
 from abc import ABC, abstractmethod
-from ..Coverage import Coverage
-from ..CoverageCollection import CoverageCollection
+from covjson.Coverage import Coverage
+from covjson.CoverageCollection import CoverageCollection
 
 
 class Decoder(ABC):
