@@ -292,13 +292,13 @@ class TestDecoder:
     def test_timeseries_to_xarray(self):
         decoder = TimeSeries.TimeSeries(self.covjson)
         ds = decoder.to_xarray()
-        print(ds)
-        print(ds["Temperature"])
+        # print(ds)
+        # print(ds["Temperature"])
         # xrds.to_netcdf("timeseries.nc")
         # ds = xr.open_dataset("timeseries.nc")
         ekds = data.from_object(ds)
-        print(ekds)
-        print(type(ekds))
+        # print(ekds)
+        # print(type(ekds))
         # print(ekds.ls())
 
 

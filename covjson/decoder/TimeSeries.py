@@ -33,7 +33,6 @@ class TimeSeries(Decoder):
         return values
 
     def get_coordinates(self):
-        coordinates = []
         coord_dict = {}
         for param in self.parameters:
             coord_dict[param] = []

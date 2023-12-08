@@ -6,6 +6,7 @@ from covjson.encoder import TimeSeries
 import covjson.decoder.TimeSeries
 import random
 from datetime import datetime, timedelta
+import xarray as xr
 
 
 def get_timestamps(start_dt, end_dt, delta):
@@ -286,7 +287,12 @@ class TestDecoder:
             value = {"t": [random.uniform(230, 270) for _ in range(0, len(timestamps))]}
             values.append(value)
             encoder.add_coverage(metadata, coord, value)
-            print(encoder.covjson)
+            # print(encoder.covjson)
+
+    def test_from_xarray(self):
+        ds = xr.open_dataset("new_timeseries.nc")
+        encoder = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
+        encoder.from_xarray(ds)
 
 
 """
