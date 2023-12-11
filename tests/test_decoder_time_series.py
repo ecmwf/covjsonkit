@@ -1,9 +1,9 @@
 import pytest
 import json
 
-from covjson.decoder import decoder
-from covjson.decoder import VerticalProfile
-from covjson.decoder import TimeSeries
+from eccovjson.decoder import decoder
+from eccovjson.decoder import VerticalProfile
+from eccovjson.decoder import TimeSeries
 from earthkit import data
 import xarray as xr
 

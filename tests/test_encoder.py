@@ -1,9 +1,9 @@
 import pytest
 import json
 
-from covjson.encoder import encoder
-from covjson.encoder import TimeSeries
-import covjson.decoder.TimeSeries
+from eccovjson.encoder import encoder
+from eccovjson.encoder import TimeSeries
+import eccovjson.decoder.TimeSeries
 import random
 from datetime import datetime, timedelta
 import xarray as xr

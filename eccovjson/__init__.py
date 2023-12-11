@@ -1,4 +1,4 @@
-import covjson.encoder.VerticalProfile
-import covjson.encoder.TimeSeries
-import covjson.decoder.VerticalProfile
-import covjson.decoder.TimeSeries
+import eccovjson.encoder.VerticalProfile
+import eccovjson.encoder.TimeSeries
+import eccovjson.decoder.VerticalProfile
+import eccovjson.decoder.TimeSeries

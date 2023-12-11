@@ -1,10 +1,10 @@
 import pytest
 import json
 
-from covjson.decoder import decoder
-from covjson.decoder import VerticalProfile
-from covjson.decoder import TimeSeries
-import covjson.encoder.VerticalProfile
+from eccovjson.decoder import decoder
+from eccovjson.decoder import VerticalProfile
+from eccovjson.decoder import TimeSeries
+import eccovjson.encoder.VerticalProfile
 
 
 class TestDecoder:
@@ -252,7 +252,7 @@ class TestDecoder:
     def test_verticalprofile_to_xarray(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
         dataset = decoder.to_xarray()
-        encoder = covjson.encoder.VerticalProfile.VerticalProfile(
+        encoder = eccovjson.encoder.VerticalProfile.VerticalProfile(
             "CoverageCollection", "VerticalProfile"
         )
         cov = encoder.from_xarray(dataset)
