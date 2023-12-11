@@ -13,3 +13,4 @@ SOURCES.txt
 top_level.txt
 *.ipynb
 *.covjson
+*.egg-info
