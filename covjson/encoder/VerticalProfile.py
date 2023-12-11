@@ -4,7 +4,7 @@ from datetime import timedelta, datetime
 import datetime
 
 
-class TimeSeries(Encoder):
+class VerticalProfile(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
 
@@ -37,7 +37,7 @@ class TimeSeries(Encoder):
             coverage["ranges"][parameter]["type"] = "NdArray"
             coverage["ranges"][parameter]["dataType"] = "float"
             coverage["ranges"][parameter]["shape"] = [len(values[parameter])]
-            coverage["ranges"][parameter]["axisNames"] = ["t"]
+            coverage["ranges"][parameter]["axisNames"] = ["z"]
             coverage["ranges"][parameter]["values"] = values[
                 parameter
             ]  # [values[parameter]]
@@ -94,75 +94,10 @@ class TimeSeries(Encoder):
                 },
                 {
                     "t": list(dataset["Temperature"].sel(number=num).values[0][0][0]),
-                    # "p": dataset["Pressure"].sel(fct=fc_time).values[0][0][0],
+                    "p": dataset["Pressure"].sel(number=num).values[0][0][0],
                 },
             )
         return self.covjson
 
-    def from_polytope(self, result, request):
-        # ancestors = [val.get_ancestors() for val in result.leaves]
-        values = [val.result for val in result.leaves]
-
-        mars_metadata = {}
-        coords = {}
-        for key in request.keys():
-            if (
-                key != "latitude"
-                and key != "longitude"
-                and key != "param"
-                and key != "number"
-                and key != "step"
-            ):
-                mars_metadata[key] = request[key]
-            elif key == "latitude":
-                coords["x"] = [request[key]]
-            elif key == "longitude":
-                coords["y"] = [request[key]]
-
-        if request["param"] == "167":
-            self.add_parameter(
-                "t",
-                {
-                    "type": "Parameter",
-                    "description": "Temperature",
-                    "unit": {"symbol": "K"},
-                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-                },
-            )
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
-
-        coords["z"] = ["sfc"]
-        numbers = request["number"]
-        steps = request["step"]
-
-        times = []
-        date_format = "%Y%m%dT%H%M%S"
-        start_time = datetime.datetime.strptime(mars_metadata["date"], date_format)
-        for step in steps:
-            # add current date to list by converting  it to iso format
-            stamp = start_time + timedelta(hours=step)
-            times.append(stamp.isoformat())
-            # increment start date by timedelta
-
-        coords["t"] = times
-        vals = []
-        start = 0
-        end = len(times)
-        new_metadata = mars_metadata.copy()
-        for num in numbers:
-            mars_metadata["number"] = num
-            new_metadata = mars_metadata.copy()
-            self.add_coverage(new_metadata, coords, {"t": values[start:end]})
-            # vals.append(values[start:end])
-            start = end
-            end += len(times)
-
-        return self.covjson
+    def from_polytope(self, result):
+        pass

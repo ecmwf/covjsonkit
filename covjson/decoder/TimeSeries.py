@@ -33,7 +33,6 @@ class TimeSeries(Decoder):
         return values
 
     def get_coordinates(self):
-        coordinates = []
         coord_dict = {}
         for param in self.parameters:
             coord_dict[param] = []
@@ -75,10 +74,16 @@ class TimeSeries(Decoder):
                 # ]
                 num = [int(coord[0][5]) for coord in coords]
                 coords_fc = coords[ind]
-                t = [
-                    dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S")
-                    for coord in coords_fc
-                ]
+                try:
+                    t = [
+                        dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S")
+                        for coord in coords_fc
+                    ]
+                except ValueError:
+                    t = [
+                        dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%S")
+                        for coord in coords_fc
+                    ]
 
                 param_coords = {"x": x, "y": y, "z": z, "number": num, "t": t}
                 dataarray = xr.DataArray(

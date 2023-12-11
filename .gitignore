@@ -11,3 +11,5 @@ polytope_mars.egg-info
 PKG-info
 SOURCES.txt
 top_level.txt
+*.ipynb
+*.covjson

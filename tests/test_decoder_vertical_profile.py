@@ -4,6 +4,7 @@ import json
 from covjson.decoder import decoder
 from covjson.decoder import VerticalProfile
 from covjson.decoder import TimeSeries
+import covjson.encoder.VerticalProfile
 
 
 class TestDecoder:
@@ -216,16 +217,28 @@ class TestDecoder:
 
     def test_verticalprofile_coordinates(self):
         decoder = VerticalProfile.VerticalProfile(self.covjson)
-        coordinates = [
-            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "500", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
-            ["0.0", "0.0", "850", "2017-01-01 12:00:00"],
-        ]
+        coordinates = {
+            "t": [
+                [
+                    ["0.0", "0.0", "500", "0", "2017-01-01 12:00:00"],
+                    ["0.0", "0.0", "850", "0", "2017-01-01 12:00:00"],
+                ],
+                [
+                    ["0.0", "0.0", "500", "1", "2017-01-01 12:00:00"],
+                    ["0.0", "0.0", "850", "1", "2017-01-01 12:00:00"],
+                ],
+            ],
+            "p": [
+                [
+                    ["0.0", "0.0", "500", "0", "2017-01-01 12:00:00"],
+                    ["0.0", "0.0", "850", "0", "2017-01-01 12:00:00"],
+                ],
+                [
+                    ["0.0", "0.0", "500", "1", "2017-01-01 12:00:00"],
+                    ["0.0", "0.0", "850", "1", "2017-01-01 12:00:00"],
+                ],
+            ],
+        }
         assert decoder.get_coordinates() == coordinates
 
     def test_verticalprofile_values(self):
@@ -235,3 +248,12 @@ class TestDecoder:
             "p": [[16452.35546875, 44122.98046875], [56452.35546875, 14122.98046875]],
         }
         assert decoder.get_values() == values
+
+    def test_verticalprofile_to_xarray(self):
+        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        dataset = decoder.to_xarray()
+        encoder = covjson.encoder.VerticalProfile.VerticalProfile(
+            "CoverageCollection", "VerticalProfile"
+        )
+        cov = encoder.from_xarray(dataset)
+        print(cov)
