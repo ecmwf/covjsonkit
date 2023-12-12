@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 
 __version__ = re.search(
     r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
-    io.open("covjson/version.py", encoding="utf_8_sig").read(),
+    io.open("eccovjson/version.py", encoding="utf_8_sig").read(),
 ).group(1)
 
 

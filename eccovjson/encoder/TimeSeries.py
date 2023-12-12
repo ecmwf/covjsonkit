@@ -140,7 +140,10 @@ class TimeSeries(Encoder):
         )
 
         coords["z"] = ["sfc"]
-        numbers = request["number"]
+        if "/" in request["number"]:
+            numbers = request["number"].split("/")
+        else:
+            numbers = request["number"]
         steps = request["step"]
 
         times = []
