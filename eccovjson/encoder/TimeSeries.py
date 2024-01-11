@@ -32,12 +32,12 @@ class TimeSeries(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
 
     def add_range(self, coverage, values):
-        for parameter in self.parameters:
+        for parameter in values.keys():
             coverage["ranges"][parameter] = {}
             coverage["ranges"][parameter]["type"] = "NdArray"
             coverage["ranges"][parameter]["dataType"] = "float"
             coverage["ranges"][parameter]["shape"] = [len(values[parameter])]
-            coverage["ranges"][parameter]["axisNames"] = ["t"]
+            coverage["ranges"][parameter]["axisNames"] = [str(parameter)]
             coverage["ranges"][parameter]["values"] = values[
                 parameter
             ]  # [values[parameter]]
@@ -119,16 +119,56 @@ class TimeSeries(Encoder):
             elif key == "longitude":
                 coords["y"] = [request[key]]
 
-        if request["param"] == "167":
-            self.add_parameter(
-                "t",
-                {
-                    "type": "Parameter",
-                    "description": "Temperature",
-                    "unit": {"symbol": "K"},
-                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-                },
-            )
+        for param in request["param"].split("/"):
+            if param == "t":
+                self.add_parameter(
+                    "t",
+                    {
+                        "type": "Parameter",
+                        "description": "Temperature",
+                        "unit": {"symbol": "K"},
+                        "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+                    },
+                )
+            elif param == "tp":
+                self.add_parameter(
+                    "tp",
+                    {
+                        "type": "Parameter",
+                        "description": "Total Precipitation",
+                        "unit": {"symbol": "m"},
+                        "observedProperty": {
+                            "id": "tp",
+                            "label": {"en": "Total Precipitation"},
+                        },
+                    },
+                )
+            elif param == "10u":
+                self.add_parameter(
+                    "10u",
+                    {
+                        "type": "Parameter",
+                        "description": "10 metre U wind component",
+                        "unit": {"symbol": "ms-1"},
+                        "observedProperty": {
+                            "id": "10u",
+                            "label": {"en": "10 metre U wind component"},
+                        },
+                    },
+                )
+            elif param == "10v":
+                self.add_parameter(
+                    "10v",
+                    {
+                        "type": "Parameter",
+                        "description": "10 metre V wind component",
+                        "unit": {"symbol": "ms-1"},
+                        "observedProperty": {
+                            "id": "10v",
+                            "label": {"en": "10 metre V wind component"},
+                        },
+                    },
+                )
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -163,9 +203,11 @@ class TimeSeries(Encoder):
         for num in numbers:
             mars_metadata["number"] = num
             new_metadata = mars_metadata.copy()
-            self.add_coverage(new_metadata, coords, {"t": values[start:end]})
-            # vals.append(values[start:end])
-            start = end
-            end += len(times)
-
+            range_dict = {}
+            for param in request["param"].split("/"):
+                range_dict[param] = values[start:end]
+                # vals.append(values[start:end])
+                start = end
+                end += len(times)
+            self.add_coverage(new_metadata, coords, range_dict)
         return self.covjson
