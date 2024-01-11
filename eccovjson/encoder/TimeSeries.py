@@ -77,6 +77,9 @@ class TimeSeries(Encoder):
             }
         )
         for num in dataset["number"].values:
+            dv_dict = {}
+            for dv in dataset.data_vars:
+                dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
             self.add_coverage(
                 {
                     # "date": fc_time.values.astype("M8[ms]")
@@ -92,10 +95,9 @@ class TimeSeries(Encoder):
                     "z": list(dataset["z"].values),
                     "t": [str(x) for x in dataset["t"].values],
                 },
-                {
-                    "t": list(dataset["Temperature"].sel(number=num).values[0][0][0]),
-                    # "p": dataset["Pressure"].sel(fct=fc_time).values[0][0][0],
-                },
+                # "t": list(dataset["Temperature"].sel(number=num).values[0][0][0]),
+                # "p": dataset["Pressure"].sel(fct=fc_time).values[0][0][0],
+                dv_dict,
             )
         return self.covjson
 

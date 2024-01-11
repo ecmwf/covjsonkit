@@ -28,7 +28,7 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "t": {"values": ["2017-01-01T00:00:00Z"]},
+                            "t": {"values": ["2017-01-01T00:00:00"]},
                             "composite": {
                                 "dataType": "tuple",
                                 "coordinates": ["x", "y", "z"],
@@ -61,6 +61,52 @@ class TestDecoder:
                         },
                     },
                 },
+                {
+                    "mars:metadata": {
+                        "class": "od",
+                        "stream": "oper",
+                        "levtype": "pl",
+                        "date": "20170101",
+                        "step": "1",
+                        "number": "0",
+                    },
+                    "type": "Coverage",
+                    "domain": {
+                        "type": "Domain",
+                        "axes": {
+                            "t": {"values": ["2017-01-01T01:00:00"]},
+                            "composite": {
+                                "dataType": "tuple",
+                                "coordinates": ["x", "y", "z"],
+                                "values": [[1, 20, 1], [2, 21, 3], [3, 17, 7]],
+                            },
+                        },
+                    },
+                    "ranges": {
+                        "t": {
+                            "type": "NdArray",
+                            "dataType": "float",
+                            "shape": [3],
+                            "axisNames": ["t"],
+                            "values": [
+                                266.93115234375,
+                                293.83115234375,
+                                165.12313132266,
+                            ],
+                        },
+                        "p": {
+                            "type": "NdArray",
+                            "dataType": "float",
+                            "shape": [3],
+                            "axisNames": ["t"],
+                            "values": [
+                                1.93115234375,
+                                22.83115234375,
+                                12.12313132266,
+                            ],
+                        },
+                    },
+                },
             ],
             "referencing": [
                 {
@@ -87,14 +133,161 @@ class TestDecoder:
             },
         }
 
-    def test_timeseries_type(self):
-        decoder = TimeSeries.TimeSeries(self.covjson)
+    def test_bounding_box_type(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
         assert decoder.type == "CoverageCollection"
 
-    def test_timeseries_parameters(self):
-        decoder = TimeSeries.TimeSeries(self.covjson)
+    def test_bounding_box_parameters(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
         assert decoder.parameters == ["t", "p"]
 
-    def test_timeseries_referencing(self):
-        decoder = TimeSeries.TimeSeries(self.covjson)
+    def test_bounding_box_referencing(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
         assert decoder.get_referencing() == ["x", "y", "z"]
+
+    def test_bounding_box_get_parameter_metadata(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        assert decoder.get_parameter_metadata("t") == {
+            "type": "Parameter",
+            "description": "Temperature",
+            "unit": {"symbol": "K"},
+            "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+        }
+        assert decoder.get_parameter_metadata("p") == {
+            "type": "Parameter",
+            "description": "Pressure",
+            "unit": {"symbol": "pa"},
+            "observedProperty": {"id": "p", "label": {"en": "Pressure"}},
+        }
+
+    def test_bounding_box_mars_metadata(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        assert decoder.mars_metadata[0] == {
+            "class": "od",
+            "stream": "oper",
+            "levtype": "pl",
+            "date": "20170101",
+            "step": "0",
+            "number": "0",
+        }
+        assert decoder.mars_metadata[1] == {
+            "class": "od",
+            "stream": "oper",
+            "levtype": "pl",
+            "date": "20170101",
+            "step": "1",
+            "number": "0",
+        }
+
+    def test_bounding_box_domains(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        domain1 = {
+            "type": "Domain",
+            "axes": {
+                "t": {"values": ["2017-01-01T00:00:00"]},
+                "composite": {
+                    "dataType": "tuple",
+                    "coordinates": ["x", "y", "z"],
+                    "values": [[1, 20, 1], [2, 21, 3], [3, 17, 7]],
+                },
+            },
+        }
+        assert decoder.domains[0] == domain1
+        domain2 = {
+            "type": "Domain",
+            "axes": {
+                "t": {"values": ["2017-01-01T01:00:00"]},
+                "composite": {
+                    "dataType": "tuple",
+                    "coordinates": ["x", "y", "z"],
+                    "values": [[1, 20, 1], [2, 21, 3], [3, 17, 7]],
+                },
+            },
+        }
+        assert decoder.domains[1] == domain2
+
+    def test_bounding_box_ranges(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        range1 = {
+            "t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [3],
+                "axisNames": ["t"],
+                "values": [264.93115234375, 263.83115234375, 265.12313132266],
+            },
+            "p": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [3],
+                "axisNames": ["t"],
+                "values": [9.93115234375, 7.83115234375, 14.12313132266],
+            },
+        }
+        assert decoder.ranges[0] == range1
+        range2 = {
+            "t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [3],
+                "axisNames": ["t"],
+                "values": [266.93115234375, 293.83115234375, 165.12313132266],
+            },
+            "p": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [3],
+                "axisNames": ["t"],
+                "values": [1.93115234375, 22.83115234375, 12.12313132266],
+            },
+        }
+        assert decoder.ranges[1] == range2
+
+    def test_bounding_box_get_coordinates(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        coordinates = {
+            "t": [
+                [
+                    [1, 20, 1, "20170101", "2017-01-01T00:00:00", "0"],
+                    [2, 21, 3, "20170101", "2017-01-01T00:00:00", "0"],
+                    [3, 17, 7, "20170101", "2017-01-01T00:00:00", "0"],
+                ],
+                [
+                    [1, 20, 1, "20170101", "2017-01-01T01:00:00", "0"],
+                    [2, 21, 3, "20170101", "2017-01-01T01:00:00", "0"],
+                    [3, 17, 7, "20170101", "2017-01-01T01:00:00", "0"],
+                ],
+            ],
+            "p": [
+                [
+                    [1, 20, 1, "20170101", "2017-01-01T00:00:00", "0"],
+                    [2, 21, 3, "20170101", "2017-01-01T00:00:00", "0"],
+                    [3, 17, 7, "20170101", "2017-01-01T00:00:00", "0"],
+                ],
+                [
+                    [1, 20, 1, "20170101", "2017-01-01T01:00:00", "0"],
+                    [2, 21, 3, "20170101", "2017-01-01T01:00:00", "0"],
+                    [3, 17, 7, "20170101", "2017-01-01T01:00:00", "0"],
+                ],
+            ],
+        }
+        assert decoder.get_coordinates() == coordinates
+
+    def test_bounding_box_get_values(self):
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        values = {
+            "t": [
+                [264.93115234375, 263.83115234375, 265.12313132266],
+                [266.93115234375, 293.83115234375, 165.12313132266],
+            ],
+            "p": [
+                [9.93115234375, 7.83115234375, 14.12313132266],
+                [1.93115234375, 22.83115234375, 12.12313132266],
+            ],
+        }
+        assert decoder.get_values() == values
+
+    # def test_bounding_box_to_xarray(self):
+    #    decoder = BoundingBox.BoundingBox(self.covjson)
+    #    dataset = decoder.to_xarray()
+    #    print(dataset)
