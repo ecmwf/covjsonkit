@@ -5,6 +5,7 @@ from eccovjson.decoder import decoder
 from eccovjson.decoder import VerticalProfile
 from eccovjson.decoder import TimeSeries
 import eccovjson.encoder.VerticalProfile
+from eccovjson.api import Eccovjson
 
 
 class TestDecoder:
@@ -121,19 +122,19 @@ class TestDecoder:
         }
 
     def test_verticalprofile_type(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         assert decoder.type == "CoverageCollection"
 
     def test_verticalprofile_parameters(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         assert decoder.parameters == ["t", "p"]
 
     def test_verticalprofile_referencing(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         assert decoder.get_referencing() == ["x", "y", "z"]
 
     def test_verticalprofile_mars_metadata(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         metadata1 = {
             "class": "ea",
             "date": "2017-01-01 12:00:00",
@@ -154,7 +155,7 @@ class TestDecoder:
         assert decoder.mars_metadata[1] == metadata2
 
     def test_verticalprofile_domains(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         domain1 = {
             "type": "Domain",
             "domainType": "VerticalProfile",
@@ -179,7 +180,7 @@ class TestDecoder:
         assert decoder.domains[1] == domain2
 
     def test_verticalprofile_ranges(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         range1 = {
             "t": {
                 "type": "NdArray",
@@ -216,7 +217,7 @@ class TestDecoder:
         assert decoder.ranges[1] == range2
 
     def test_verticalprofile_coordinates(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         coordinates = {
             "t": [
                 [
@@ -242,7 +243,7 @@ class TestDecoder:
         assert decoder.get_coordinates() == coordinates
 
     def test_verticalprofile_values(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         values = {
             "t": [[57517.77734375, 14814.95703125], [57452.35546875, 14822.98046875]],
             "p": [[16452.35546875, 44122.98046875], [56452.35546875, 14122.98046875]],
@@ -250,7 +251,7 @@ class TestDecoder:
         assert decoder.get_values() == values
 
     def test_verticalprofile_to_xarray(self):
-        decoder = VerticalProfile.VerticalProfile(self.covjson)
+        decoder = Eccovjson().decode(self.covjson, "VerticalProfile")
         dataset = decoder.to_xarray()
         encoder = eccovjson.encoder.VerticalProfile.VerticalProfile(
             "CoverageCollection", "VerticalProfile"
