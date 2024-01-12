@@ -154,15 +154,11 @@ class TestDecoder:
 
     def test_CoverageCollection(self):
         # encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
-        encoder_obj = Eccovjson().encode(
-            "CoverageCollection", "PointSeries", "timeseries"
-        )
+        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
         assert encoder_obj.type == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = Eccovjson().encode(
-            "CoverageCollection", "PointSeries", "timeseries"
-        )
+        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
         covjson = {
             "type": "CoverageCollection",
             "domainType": "PointSeries",
@@ -174,9 +170,7 @@ class TestDecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_parameter(self):
-        encoder_obj = Eccovjson().encode(
-            "CoverageCollection", "PointSeries", "timeseries"
-        )
+        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
         encoder_obj.add_parameter(
             "t",
             {
@@ -219,9 +213,7 @@ class TestDecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_reference(self):
-        encoder_obj = Eccovjson().encode(
-            "CoverageCollection", "PointSeries", "timeseries"
-        )
+        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -250,7 +242,7 @@ class TestDecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_coverage(self):
-        encoder = Eccovjson().encode("CoverageCollection", "PointSeries", "timeseries")
+        encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
         encoder.add_parameter(
             "t",
             {
@@ -301,7 +293,7 @@ class TestDecoder:
 
     def test_from_xarray(self):
         ds = xr.open_dataset("new_timeseries.nc")
-        encoder = Eccovjson().encode("CoverageCollection", "PointSeries", "timeseries")
+        encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
         encoder.from_xarray(ds)
 
 

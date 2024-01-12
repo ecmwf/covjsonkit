@@ -144,19 +144,19 @@ class TestDecoder:
     def test_timeseries_type(self):
         # decoder = TimeSeries.TimeSeries(self.covjson)
         # assert decoder.type == "CoverageCollection"
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         assert decoder.type == "CoverageCollection"
 
     def test_timeseries_parameters(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         assert decoder.parameters == ["t", "p"]
 
     def test_timeseries_referencing(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         assert decoder.get_referencing() == ["x", "y", "z"]
 
     def test_timeseries_mars_metadata(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         metadata1 = {
             "class": "od",
             "stream": "oper",
@@ -176,7 +176,7 @@ class TestDecoder:
         assert decoder.mars_metadata == [metadata1, metadata2]
 
     def test_timeseries_domains(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         domain1 = {
             "type": "Domain",
             "axes": {
@@ -211,7 +211,7 @@ class TestDecoder:
         assert decoder.domains[1] == domain2
 
     def test_timeseries_ranges(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         range1 = {
             "t": {
                 "type": "NdArray",
@@ -248,7 +248,7 @@ class TestDecoder:
         assert decoder.ranges[1] == range2
 
     def test_timeseries_values(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         values = {
             "t": [
                 [264.93115234375, 263.83115234375, 265.12313132266],
@@ -262,7 +262,7 @@ class TestDecoder:
         assert decoder.get_values() == values
 
     def test_timeseries_coordinates(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         coordinates = {
             "t": [
                 [
@@ -293,7 +293,7 @@ class TestDecoder:
         assert decoder.get_coordinates() == coordinates
 
     def test_timeseries_to_xarray(self):
-        decoder = Eccovjson().decode(self.covjson, "timeseries")
+        decoder = Eccovjson().decode(self.covjson, self.covjson["domainType"])
         ds = decoder.to_xarray()
         # print(ds)
         # print(ds["Temperature"])

@@ -2,6 +2,8 @@ from .encoder import Encoder
 import xarray as xr
 from datetime import timedelta, datetime
 import datetime
+import dateinfer
+import pandas as pd
 
 
 class TimeSeries(Encoder):
@@ -190,9 +192,10 @@ class TimeSeries(Encoder):
 
         times = []
         date_format = "%Y%m%dT%H%M%S"
-        start_time = datetime.datetime.strptime(mars_metadata["date"], date_format)
+        date = pd.Timestamp(mars_metadata["date"]).strftime(date_format)
+        start_time = datetime.datetime.strptime(date, date_format)
         for step in steps:
-            # add current date to list by converting  it to iso format
+            # add current date to list by converting it to iso format
             stamp = start_time + timedelta(hours=step)
             times.append(stamp.isoformat())
             # increment start date by timedelta
