@@ -23,22 +23,13 @@ class Eccovjson:
         if domaintype == "timeseries":
             domaintype = "PointSeries"
         feature = self._feature_factory(domaintype.lower(), "encoder")
-        # if requesttype == "timeseries":
-        #    encoder_obj = eccovjson.encoder.TimeSeries.TimeSeries(type, domaintype)
-        # elif requesttype == "VerticalProfile":
-        #    encoder_obj = eccovjson.encoder.VerticalProfile.VerticalProfile(
-        #        type, domaintype
-        #    )
         return feature(type, domaintype)
 
-    def decode(self, covjson, requesttype):
+    def decode(self, covjson):
+        requesttype = covjson["domainType"]
         if requesttype == "timeseries":
             requesttype = "PointSeries"
         feature = self._feature_factory(requesttype.lower(), "decoder")
-        # if requesttype == "timeseries":
-        #    decoder_obj = eccovjson.decoder.TimeSeries.TimeSeries(covjson)
-        # elif requesttype == "VerticalProfile":
-        #    decoder_obj = eccovjson.decoder.VerticalProfile.VerticalProfile(covjson)
         return feature(covjson)
 
     def _feature_factory(self, feature_type, encoder_decoder):
