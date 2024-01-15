@@ -124,7 +124,7 @@ class TimeSeries(Encoder):
                 coords["y"] = [request[key]]
 
         for param in request["param"].split("/"):
-            if param == "t":
+            if param == "t" or param == "167":
                 self.add_parameter(
                     "t",
                     {
@@ -134,7 +134,7 @@ class TimeSeries(Encoder):
                         "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
                     },
                 )
-            elif param == "tp":
+            elif param == "tp" or param == "228":
                 self.add_parameter(
                     "tp",
                     {
@@ -147,7 +147,7 @@ class TimeSeries(Encoder):
                         },
                     },
                 )
-            elif param == "10u":
+            elif param == "10u" or param == "165":
                 self.add_parameter(
                     "10u",
                     {
@@ -160,7 +160,7 @@ class TimeSeries(Encoder):
                         },
                     },
                 )
-            elif param == "10v":
+            elif param == "10v" or param == "166":
                 self.add_parameter(
                     "10v",
                     {
