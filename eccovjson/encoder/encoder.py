@@ -37,6 +37,20 @@ class Encoder(ABC):
     def add_reference(self, reference):
         self.covjson["referencing"].append(reference)
 
+    def convert_param_id_to_param(self, paramid):
+        try:
+            param = int(paramid)
+        except:
+            return paramid
+        if param == 165:
+            return "10u"
+        elif param == 166:
+            return "10v"
+        elif param == 167:
+            return "t"
+        elif param == 228:
+            return "tp"
+
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
         pass

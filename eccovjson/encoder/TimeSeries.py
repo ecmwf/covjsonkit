@@ -35,12 +35,13 @@ class TimeSeries(Encoder):
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
-            coverage["ranges"][parameter] = {}
-            coverage["ranges"][parameter]["type"] = "NdArray"
-            coverage["ranges"][parameter]["dataType"] = "float"
-            coverage["ranges"][parameter]["shape"] = [len(values[parameter])]
-            coverage["ranges"][parameter]["axisNames"] = [str(parameter)]
-            coverage["ranges"][parameter]["values"] = values[
+            param = self.convert_param_id_to_param(parameter)
+            coverage["ranges"][param] = {}
+            coverage["ranges"][param]["type"] = "NdArray"
+            coverage["ranges"][param]["dataType"] = "float"
+            coverage["ranges"][param]["shape"] = [len(values[parameter])]
+            coverage["ranges"][param]["axisNames"] = [str(param)]
+            coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter]]
 
