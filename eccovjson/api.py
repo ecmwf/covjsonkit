@@ -33,6 +33,8 @@ class Eccovjson:
         requesttype = covjson["domainType"]
         if requesttype == "timeseries":
             requesttype = "PointSeries"
+        elif requesttype == "MultiPoint":
+            requesttype = "boundingbox"
         feature = self._feature_factory(requesttype.lower(), "decoder")
         return feature(covjson)
 
