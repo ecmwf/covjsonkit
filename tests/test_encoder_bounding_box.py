@@ -20,11 +20,11 @@ def get_timestamps(start_dt, end_dt, delta):
     return dates
 
 
-class TestEecoder:
+class TestEncoder:
     def setup_method(self, method):
         self.covjson = {
             "type": "CoverageCollection",
-            "domainType": "PointSeries",
+            "domainType": "MultiPoint",
             "coverages": [
                 {
                     "mars:metadata": {
@@ -39,15 +39,11 @@ class TestEecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "x": {"values": [3]},
-                            "y": {"values": [7]},
-                            "z": {"values": [1]},
-                            "t": {
-                                "values": [
-                                    "2017-01-01 00:00:00",
-                                    "2017-01-01 06:00:00",
-                                    "2017-01-01 12:00:00",
-                                ]
+                            "t": {"values": ["2017-01-01T00:00:00"]},
+                            "composite": {
+                                "dataType": "tuple",
+                                "coordinates": ["x", "y", "z"],
+                                "values": [[1, 20, 1], [2, 21, 3], [3, 17, 7]],
                             },
                         },
                     },
@@ -81,23 +77,19 @@ class TestEecoder:
                         "class": "od",
                         "stream": "oper",
                         "levtype": "pl",
-                        "date": "20170102",
-                        "step": "0",
+                        "date": "20170101",
+                        "step": "1",
                         "number": "0",
                     },
                     "type": "Coverage",
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "x": {"values": [3]},
-                            "y": {"values": [7]},
-                            "z": {"values": [1]},
-                            "t": {
-                                "values": [
-                                    "2017-01-02 00:00:00",
-                                    "2017-01-02 06:00:00",
-                                    "2017-01-02 12:00:00",
-                                ]
+                            "t": {"values": ["2017-01-01T01:00:00"]},
+                            "composite": {
+                                "dataType": "tuple",
+                                "coordinates": ["x", "y", "z"],
+                                "values": [[1, 20, 1], [2, 21, 3], [3, 17, 7]],
                             },
                         },
                     },
@@ -108,9 +100,9 @@ class TestEecoder:
                             "shape": [3],
                             "axisNames": ["t"],
                             "values": [
-                                263.83115234375,
-                                265.12313132266,
-                                264.93115234375,
+                                266.93115234375,
+                                293.83115234375,
+                                165.12313132266,
                             ],
                         },
                         "p": {
@@ -119,9 +111,9 @@ class TestEecoder:
                             "shape": [3],
                             "axisNames": ["t"],
                             "values": [
-                                13.83115234375,
-                                14.12313132266,
-                                7.93115234375,
+                                1.93115234375,
+                                22.83115234375,
+                                12.12313132266,
                             ],
                         },
                     },
@@ -153,14 +145,14 @@ class TestEecoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
         assert encoder_obj.type == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
         covjson = {
             "type": "CoverageCollection",
-            "domainType": "PointSeries",
+            "domainType": "MultiPoint",
             "coverages": [],
             "referencing": [],
             "parameters": {},
@@ -169,7 +161,7 @@ class TestEecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_parameter(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
         encoder_obj.add_parameter(
             "t",
             {
@@ -190,7 +182,7 @@ class TestEecoder:
         )
         covjson = {
             "type": "CoverageCollection",
-            "domainType": "PointSeries",
+            "domainType": "MultiPoint",
             "coverages": [],
             "referencing": [],
             "parameters": {
@@ -212,7 +204,7 @@ class TestEecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_reference(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -224,7 +216,7 @@ class TestEecoder:
         )
         covjson = {
             "type": "CoverageCollection",
-            "domainType": "PointSeries",
+            "domainType": "MultiPoint",
             "coverages": [],
             "referencing": [
                 {
@@ -241,7 +233,7 @@ class TestEecoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_coverage(self):
-        encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder = Eccovjson().encode("CoverageCollection", "BoundingBox")
         encoder.add_parameter(
             "t",
             {
@@ -264,82 +256,29 @@ class TestEecoder:
         metadatas = []
         coords = []
         values = []
-        for number in range(0, 50):
-            metadata = {
-                "class": "od",
-                "stream": "oper",
-                "levtype": "pl",
-                "date": "20170101",
-                "step": "0",
-                "number": str(number),
-            }
-            timestamps = get_timestamps(
-                datetime(2017, 1, 1, 0, 00),
-                datetime(2017, 1, 14, 0, 00),
-                timedelta(hours=6),
-            )
-            coord = {
-                "x": [3],
-                "y": [7],
-                "z": [1],
-                "t": timestamps,
-            }
-            coords.append(coord)
-            value = {"t": [random.uniform(230, 270) for _ in range(0, len(timestamps))]}
-            values.append(value)
-            encoder.add_coverage(metadata, coord, value)
-            # print(encoder.covjson)
+
+        metadata = {
+            "class": "od",
+            "stream": "oper",
+            "levtype": "pl",
+            "date": "20170101",
+            "step": "0",
+            "number": 0,
+        }
+        coords = {}
+        coords["t"] = ["2017-01-01T00:00:00"]
+        coords["composite"] = [[1, 20, 1], [2, 21, 3], [3, 17, 7]]
+        value = {"t": [111, 222, 333]}
+        encoder.add_coverage(metadata, coords, value)
+        # print(encoder.covjson)
+
+        print(encoder.covjson)
+
+    """
 
     def test_from_xarray(self):
         ds = xr.open_dataset("new_timeseries.nc")
         encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
         encoder.from_xarray(ds)
 
-
-"""
-    def test_add_coverage_marsmetadata(self):
-        encoder_obj = TimeSeries.TimeSeries("CoverageCollection", "PointSeries")
-        encoder_obj.add_coverage(
-            {
-                "class": "od",
-                "stream": "oper",
-                "levtype": "pl",
-                "date": "20170101",
-                "step": "0",
-                "number": "0",
-            },
-            {},
-            {},
-        )
-        covjson = {
-            "type": "CoverageCollection",
-            "domainType": "PointSeries",
-            "coverages": [
-                {
-                    "mars:metadata": {
-                        "class": "od",
-                        "stream": "oper",
-                        "levtype": "pl",
-                        "date": "20170101",
-                        "step": "0",
-                        "number": "0",
-                    },
-                    "type": "Coverage",
-                    "domain": {
-                        "type": "Domain",
-                        "axes": {
-                            "x": {"values": []},
-                            "y": {"values": []},
-                            "z": {"values": []},
-                            "t": {"values": []},
-                        },
-                    },
-                    "ranges": {},
-                }
-            ],
-            "referencing": [],
-            "parameters": {},
-        }
-        print(encoder_obj.covjson)
-        assert encoder_obj.covjson == covjson
-"""
+        """

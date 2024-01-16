@@ -4,14 +4,18 @@ import eccovjson.decoder.TimeSeries
 import eccovjson.decoder.VerticalProfile
 import eccovjson.encoder.TimeSeries
 import eccovjson.encoder.VerticalProfile
+import eccovjson.encoder.BoundingBox
+import eccovjson.decoder.BoundingBox
 
 features_encoder = {
     "pointseries": eccovjson.encoder.TimeSeries.TimeSeries,
     "verticalprofile": eccovjson.encoder.VerticalProfile.VerticalProfile,
+    "boundingbox": eccovjson.encoder.BoundingBox.BoundingBox,
 }
 features_decoder = {
     "pointseries": eccovjson.decoder.TimeSeries.TimeSeries,
     "verticalprofile": eccovjson.decoder.VerticalProfile.VerticalProfile,
+    "boundingbox": eccovjson.decoder.BoundingBox.BoundingBox,
 }
 
 
