@@ -2,7 +2,7 @@ from .encoder import Encoder
 import xarray as xr
 from datetime import timedelta, datetime
 import datetime
-import dateinfer
+
 import pandas as pd
 
 
