@@ -191,7 +191,7 @@ class TimeSeries(Encoder):
                 )
             elif param == "tcc" or param == "164":
                 self.add_parameter(
-                    "10fg",
+                    "tcc",
                     {
                         "type": "Parameter",
                         "description": "Total cloud cover",
