@@ -174,6 +174,34 @@ class TimeSeries(Encoder):
                         },
                     },
                 )
+            elif param == "10fg" or param == "49":
+                self.add_parameter(
+                    "10fg",
+                    {
+                        "type": "Parameter",
+                        "description": "Maximum 10 metre wind gust since previous post-processing",
+                        "unit": {"symbol": "ms-1"},
+                        "observedProperty": {
+                            "id": "10fg",
+                            "label": {
+                                "en": "Maximum 10 metre wind gust since previous post-processing"
+                            },
+                        },
+                    },
+                )
+            elif param == "tcc" or param == "164":
+                self.add_parameter(
+                    "10fg",
+                    {
+                        "type": "Parameter",
+                        "description": "Total cloud cover",
+                        "unit": {"symbol": "ms-1"},
+                        "observedProperty": {
+                            "id": "tcc",
+                            "label": {"en": "Total cloud cover"},
+                        },
+                    },
+                )
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
