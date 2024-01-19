@@ -69,55 +69,8 @@ class BoundingBox(Encoder):
                 mars_metadata[key] = request[key]
 
         for param in request["param"].split("/"):
-            if param == "t" or param == "167":
-                self.add_parameter(
-                    "t",
-                    {
-                        "type": "Parameter",
-                        "description": "Temperature",
-                        "unit": {"symbol": "K"},
-                        "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-                    },
-                )
-            elif param == "tp" or param == "228":
-                self.add_parameter(
-                    "tp",
-                    {
-                        "type": "Parameter",
-                        "description": "Total Precipitation",
-                        "unit": {"symbol": "m"},
-                        "observedProperty": {
-                            "id": "tp",
-                            "label": {"en": "Total Precipitation"},
-                        },
-                    },
-                )
-            elif param == "10u" or param == "165":
-                self.add_parameter(
-                    "10u",
-                    {
-                        "type": "Parameter",
-                        "description": "10 metre U wind component",
-                        "unit": {"symbol": "ms-1"},
-                        "observedProperty": {
-                            "id": "10u",
-                            "label": {"en": "10 metre U wind component"},
-                        },
-                    },
-                )
-            elif param == "10v" or param == "166":
-                self.add_parameter(
-                    "10v",
-                    {
-                        "type": "Parameter",
-                        "description": "10 metre V wind component",
-                        "unit": {"symbol": "ms-1"},
-                        "observedProperty": {
-                            "id": "10v",
-                            "label": {"en": "10 metre V wind component"},
-                        },
-                    },
-                )
+            self.add_parameter(param)
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],

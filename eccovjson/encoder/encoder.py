@@ -38,9 +38,71 @@ class Encoder(ABC):
             )
         """
 
-    def add_parameter(self, parameter, metadata):
-        self.covjson["parameters"][parameter] = metadata
-        self.parameters.append(parameter)
+    def add_parameter(self, param):
+        param = self.convert_param_id_to_param(param)
+        if param == "t" or param == "167":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "Temperature",
+                "unit": {"symbol": "K"},
+                "observedProperty": {
+                    "id": "t",
+                    "label": {"en": "Temperature"},
+                },
+            }
+        elif param == "tp" or param == "228":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "Total Precipitation",
+                "unit": {"symbol": "m"},
+                "observedProperty": {
+                    "id": "tp",
+                    "label": {"en": "Total Precipitation"},
+                },
+            }
+        elif param == "10u" or param == "165":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "10 metre U wind component",
+                "unit": {"symbol": "ms-1"},
+                "observedProperty": {
+                    "id": "10u",
+                    "label": {"en": "10 metre U wind component"},
+                },
+            }
+        elif param == "10v" or param == "166":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "10 metre V wind component",
+                "unit": {"symbol": "ms-1"},
+                "observedProperty": {
+                    "id": "10v",
+                    "label": {"en": "10 metre V wind component"},
+                },
+            }
+        elif param == "10fg" or param == "49":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "Maximum 10 metre wind gust since previous post-processing",
+                "unit": {"symbol": "ms-1"},
+                "observedProperty": {
+                    "id": "10fg",
+                    "label": {
+                        "en": "Maximum 10 metre wind gust since previous post-processing"
+                    },
+                },
+            }
+        elif param == "tcc" or param == "164":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "Total cloud cover",
+                "unit": {"symbol": "ms-1"},
+                "observedProperty": {
+                    "id": "tcc",
+                    "label": {"en": "Total cloud cover"},
+                },
+            }
+        self.parameters.append(param)
 
     def add_reference(self, reference):
         self.covjson["referencing"].append(reference)

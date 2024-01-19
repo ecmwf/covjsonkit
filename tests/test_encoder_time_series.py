@@ -170,24 +170,9 @@ class TestEecoder:
 
     def test_add_parameter(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
-        encoder_obj.add_parameter(
-            "t",
-            {
-                "type": "Parameter",
-                "description": "Temperature",
-                "unit": {"symbol": "K"},
-                "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-            },
-        )
-        encoder_obj.add_parameter(
-            "p",
-            {
-                "type": "Parameter",
-                "description": "Pressure",
-                "unit": {"symbol": "pa"},
-                "observedProperty": {"id": "p", "label": {"en": "Pressure"}},
-            },
-        )
+        encoder_obj.add_parameter("t")
+        encoder_obj.add_parameter("tp")
+        print(encoder_obj.covjson)
         covjson = {
             "type": "CoverageCollection",
             "domainType": "PointSeries",
@@ -198,13 +183,19 @@ class TestEecoder:
                     "type": "Parameter",
                     "description": "Temperature",
                     "unit": {"symbol": "K"},
-                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+                    "observedProperty": {
+                        "id": "t",
+                        "label": {"en": "Temperature"},
+                    },
                 },
-                "p": {
+                "tp": {
                     "type": "Parameter",
-                    "description": "Pressure",
-                    "unit": {"symbol": "pa"},
-                    "observedProperty": {"id": "p", "label": {"en": "Pressure"}},
+                    "description": "Total Precipitation",
+                    "unit": {"symbol": "m"},
+                    "observedProperty": {
+                        "id": "tp",
+                        "label": {"en": "Total Precipitation"},
+                    },
                 },
             },
         }
@@ -242,15 +233,7 @@ class TestEecoder:
 
     def test_add_coverage(self):
         encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
-        encoder.add_parameter(
-            "t",
-            {
-                "type": "Parameter",
-                "description": "Temperature",
-                "unit": {"symbol": "K"},
-                "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-            },
-        )
+        encoder.add_parameter("t")
         encoder.add_reference(
             {
                 "coordinates": ["x", "y", "z"],

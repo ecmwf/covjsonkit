@@ -48,25 +48,10 @@ class VerticalProfile(Encoder):
     def from_xarray(self, dataset):
         for parameter in dataset.data_vars:
             if parameter == "Temperature":
-                self.add_parameter(
-                    "t",
-                    {
-                        "type": "Parameter",
-                        "description": "Temperature",
-                        "unit": {"symbol": "K"},
-                        "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-                    },
-                )
+                self.add_parameter("t")
             elif parameter == "Pressure":
-                self.add_parameter(
-                    "p",
-                    {
-                        "type": "Parameter",
-                        "description": "Pressure",
-                        "unit": {"symbol": "pa"},
-                        "observedProperty": {"id": "p", "label": {"en": "Pressure"}},
-                    },
-                )
+                self.add_parameter("p")
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
