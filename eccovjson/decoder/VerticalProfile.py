@@ -1,5 +1,6 @@
-from .decoder import Decoder
 import xarray as xr
+
+from .decoder import Decoder
 
 
 class VerticalProfile(Decoder):

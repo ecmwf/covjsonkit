@@ -1,13 +1,13 @@
-import pytest
 import json
-
-from eccovjson.encoder import encoder
-from eccovjson.encoder import TimeSeries
-import eccovjson.decoder.TimeSeries
-from eccovjson.api import Eccovjson
 import random
 from datetime import datetime, timedelta
+
+import pytest
 import xarray as xr
+
+import eccovjson.decoder.TimeSeries
+from eccovjson.api import Eccovjson
+from eccovjson.encoder import TimeSeries, encoder
 
 
 def get_timestamps(start_dt, end_dt, delta):

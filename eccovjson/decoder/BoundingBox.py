@@ -1,6 +1,8 @@
-from .decoder import Decoder
-import xarray as xr
 import datetime as dt
+
+import xarray as xr
+
+from .decoder import Decoder
 
 
 class BoundingBox(Decoder):

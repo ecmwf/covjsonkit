@@ -1,9 +1,10 @@
-from .encoder import Encoder
-import xarray as xr
-from datetime import timedelta, datetime
 import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
+import xarray as xr
+
+from .encoder import Encoder
 
 
 class TimeSeries(Encoder):
