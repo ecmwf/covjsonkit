@@ -40,7 +40,7 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
+            coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
@@ -133,21 +133,29 @@ class TimeSeries(Encoder):
         # convert step into datetime
         date_format = "%Y%m%dT%H%M%S"
         date = pd.Timestamp(mars_metadata["date"]).strftime(date_format)
-        start_time = datetime.datetime.strptime(date, date_format)
+        start_time = datetime.strptime(date, date_format)
         for step in steps:
             # add current date to list by converting it to iso format
             stamp = start_time + timedelta(hours=int(step))
             coords["t"].append(stamp.isoformat())
             # increment start date by timedelta
 
-        for number in df["number"].unique():
+        if "number" not in df.columns:
             new_metadata = mars_metadata.copy()
-            new_metadata["number"] = number
-            df_number = df[df["number"] == number]
             range_dict = {}
             for param in params:
-                df_param = df_number[df_number["param"] == param]
+                df_param = df[df["param"] == param]
                 range_dict[param] = df_param["values"].values.tolist()
             self.add_coverage(new_metadata, coords, range_dict)
+        else:
+            for number in df["number"].unique():
+                new_metadata = mars_metadata.copy()
+                new_metadata["number"] = number
+                df_number = df[df["number"] == number]
+                range_dict = {}
+                for param in params:
+                    df_param = df_number[df_number["param"] == param]
+                    range_dict[param] = df_param["values"].values.tolist()
+                self.add_coverage(new_metadata, coords, range_dict)
 
         return self.covjson
