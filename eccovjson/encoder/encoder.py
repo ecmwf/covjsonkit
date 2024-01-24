@@ -1,10 +1,4 @@
-import datetime as dt
-import json
-import os
 from abc import ABC, abstractmethod
-
-import geopandas as gpd
-import xarray as xr
 
 from eccovjson.Coverage import Coverage
 from eccovjson.CoverageCollection import CoverageCollection
@@ -99,7 +93,7 @@ class Encoder(ABC):
     def convert_param_id_to_param(self, paramid):
         try:
             param = int(paramid)
-        except:
+        except BaseException:
             return paramid
         if param == 165:
             return "10u"

@@ -12,7 +12,8 @@ __version__ = re.search(
 setup(
     name="eccovjson",
     version=__version__,
-    description="ECMWF library for encoding and decoding coerageJSON files/objects of meteorlogical features such as vertical profiles and time series.",
+    description="""ECMWF library for encoding and decoding coerageJSON files/objects of meteorlogical features such as
+                   vertical profiles and time series.""",
     long_description="",
     url="https://github.com/ecmwf/eccovjson",
     author="ECMWF",

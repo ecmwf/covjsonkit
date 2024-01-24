@@ -1,6 +1,3 @@
-import json
-
-
 class Coverage:
     def __init__(self, covjson):
         if isinstance(covjson, dict):

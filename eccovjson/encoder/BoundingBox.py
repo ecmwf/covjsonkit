@@ -1,9 +1,3 @@
-import datetime
-from datetime import datetime, timedelta
-
-import pandas as pd
-import xarray as xr
-
 from .encoder import Encoder
 
 
@@ -73,7 +67,7 @@ class BoundingBox(Encoder):
         )
 
         new_metadata = mars_metadata.copy()
-        range_dict = {}
+        # range_dict = {}
         vals = {}
         for param in request["param"].split("/"):
             param = self.convert_param_id_to_param(param)

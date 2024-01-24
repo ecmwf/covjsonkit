@@ -102,7 +102,7 @@ class TimeSeries(Decoder):
         return ds
 
 
-"""   
+"""
     def to_xarray(self):
         dims = ["x", "y", "z", "fct", "t"]
         dataarraydict = {}

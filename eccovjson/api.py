@@ -1,5 +1,3 @@
-import json
-
 import eccovjson.decoder.BoundingBox
 import eccovjson.decoder.Frame
 import eccovjson.decoder.TimeSeries
