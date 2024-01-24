@@ -27,17 +27,6 @@ class Encoder(ABC):
         else:
             raise TypeError("Type must be Coverage or CoverageCollection")
 
-        """
-        if (
-            domaintype != "PointSeries"
-            and domaintype != "VerticalProfile"
-            and domaintype != "BoundingBox"
-        ):
-            raise TypeError(
-                "DomainType must be PointSeries or VerticalProfile or BoundingBox"
-            )
-        """
-
     def add_parameter(self, param):
         param = self.convert_param_id_to_param(param)
         if param == "t" or param == "167":
