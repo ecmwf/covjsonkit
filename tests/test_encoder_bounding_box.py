@@ -1,13 +1,4 @@
-import json
-import random
-from datetime import datetime, timedelta
-
-import pytest
-import xarray as xr
-
-import eccovjson.decoder.TimeSeries
 from eccovjson.api import Eccovjson
-from eccovjson.encoder import TimeSeries, encoder
 
 
 def get_timestamps(start_dt, end_dt, delta):
@@ -232,9 +223,9 @@ class TestEncoder:
             }
         )
 
-        metadatas = []
+        # metadatas = []
         coords = []
-        values = []
+        # values = []
 
         metadata = {
             "class": "od",

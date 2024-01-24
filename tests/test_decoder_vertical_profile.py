@@ -1,10 +1,5 @@
-import json
-
-import pytest
-
 import eccovjson.encoder.VerticalProfile
 from eccovjson.api import Eccovjson
-from eccovjson.decoder import TimeSeries, VerticalProfile, decoder
 
 
 class TestDecoder:
