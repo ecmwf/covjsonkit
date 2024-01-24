@@ -4,17 +4,6 @@ ECMWF library for encoding and decoding coerageJSON files/objects of meteorlogic
 
 * Encodes and decodes CoverageJSON objects
 
-* CoverageCollection(python dictionary)
-  * get_coverages()
- 
-* Coverage()
-  * get_axes()
-  * get_metadata()
-  * get_ranges()
-  * get_parameters()
 
- 
-* TimeSeriesCoverage()
-  * set_axes()
-  * set_ranges()
-  * set_parameters()
+| :warning: This project is BETA and will be experimental for the foreseeable future. Interfaces and functionality are likely to change. DO NOT use this software in any project/software that is operational. |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
