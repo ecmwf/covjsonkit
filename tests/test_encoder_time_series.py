@@ -1,6 +1,7 @@
 import random
 from datetime import datetime, timedelta
 
+import pytest
 import xarray as xr
 
 from eccovjson.api import Eccovjson
@@ -269,6 +270,7 @@ class TestEecoder:
             encoder.add_coverage(metadata, coord, value)
             # print(encoder.covjson)
 
+    @pytest.mark.data
     def test_from_xarray(self):
         ds = xr.open_dataset("new_timeseries.nc")
         encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
