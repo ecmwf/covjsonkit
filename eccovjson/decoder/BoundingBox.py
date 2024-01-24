@@ -76,15 +76,9 @@ class BoundingBox(Decoder):
                 num = [int(coord[0][5]) for coord in coords]
                 coords_fc = coords[ind]
                 try:
-                    t = [
-                        dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S")
-                        for coord in coords_fc
-                    ]
+                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S") for coord in coords_fc]
                 except ValueError:
-                    t = [
-                        dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%S")
-                        for coord in coords_fc
-                    ]
+                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%S") for coord in coords_fc]
 
                 param_coords = {"x": xs, "y": ys, "z": zs, "number": num, "t": t}
                 dataarray = xr.DataArray(
@@ -95,12 +89,8 @@ class BoundingBox(Decoder):
                 )
 
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "description"
-                ]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["description"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(dataarraydict)

@@ -78,9 +78,7 @@ class Encoder(ABC):
                 "unit": {"symbol": "ms-1"},
                 "observedProperty": {
                     "id": "10fg",
-                    "label": {
-                        "en": "Maximum 10 metre wind gust since previous post-processing"
-                    },
+                    "label": {"en": "Maximum 10 metre wind gust since previous post-processing"},
                 },
             }
         elif param == "tcc" or param == "164":

@@ -42,9 +42,7 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = values[
-                parameter
-            ]  # [values[parameter]]
+            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata

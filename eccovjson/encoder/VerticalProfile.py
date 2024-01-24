@@ -40,9 +40,7 @@ class VerticalProfile(Encoder):
             coverage["ranges"][parameter]["dataType"] = "float"
             coverage["ranges"][parameter]["shape"] = [len(values[parameter])]
             coverage["ranges"][parameter]["axisNames"] = ["z"]
-            coverage["ranges"][parameter]["values"] = values[
-                parameter
-            ]  # [values[parameter]]
+            coverage["ranges"][parameter]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
