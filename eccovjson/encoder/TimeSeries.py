@@ -69,9 +69,6 @@ class TimeSeries(Encoder):
                 dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
             self.add_coverage(
                 {
-                    # "date": fc_time.values.astype("M8[ms]")
-                    # .astype("O")
-                    # .strftime("%m/%d/%Y"),
                     "number": num,
                     "type": "forecast",
                     "step": 0,
@@ -82,33 +79,32 @@ class TimeSeries(Encoder):
                     "z": list(dataset["z"].values),
                     "t": [str(x) for x in dataset["t"].values],
                 },
-                # "t": list(dataset["Temperature"].sel(number=num).values[0][0][0]),
-                # "p": dataset["Pressure"].sel(fct=fc_time).values[0][0][0],
                 dv_dict,
             )
         return self.covjson
 
-    def from_polytope(self, result, request):
-        # ancestors = [val.get_ancestors() for val in result.leaves]
+    def from_polytope(self, result):
+        ancestors = [val.get_ancestors() for val in result.leaves]
         values = [val.result for val in result.leaves]
 
-        mars_metadata = {}
-        coords = {}
-        for key in request.keys():
-            if (
-                key != "latitude"
-                and key != "longitude"
-                and key != "param"
-                and key != "number"
-                and key != "step"
-            ):
-                mars_metadata[key] = request[key]
-            elif key == "latitude":
-                coords["x"] = [request[key]]
-            elif key == "longitude":
-                coords["y"] = [request[key]]
+        columns = []
+        df_dict = {}
+        # Create empty dataframe
+        for feature in ancestors[0]:
+            columns.append(str(feature).split("=")[0])
+            df_dict[str(feature).split("=")[0]] = []
 
-        for param in request["param"].split("/"):
+        # populate dataframe
+        for ancestor in ancestors:
+            for feature in ancestor:
+                df_dict[str(feature).split("=")[0]].append(str(feature).split("=")[1])
+        values = [val.result for val in result.leaves]
+        df_dict["values"] = values
+        df = pd.DataFrame(df_dict)
+
+        params = df["param"].unique()
+
+        for param in params:
             self.add_parameter(param)
 
         self.add_reference(
@@ -120,37 +116,41 @@ class TimeSeries(Encoder):
                 },
             }
         )
+        steps = df["step"].unique()
 
+        mars_metadata = {}
+        mars_metadata["class"] = df["class"].unique()[0]
+        mars_metadata["expver"] = df["expver"].unique()[0]
+        mars_metadata["levtype"] = df["levtype"].unique()[0]
+        mars_metadata["type"] = df["type"].unique()[0]
+        mars_metadata["date"] = df["date"].unique()[0]
+        mars_metadata["domain"] = df["domain"].unique()[0]
+        mars_metadata["stream"] = df["stream"].unique()[0]
+
+        coords = {}
+        coords["x"] = list(df["latitude"].unique())
+        coords["y"] = list(df["longitude"].unique())
         coords["z"] = ["sfc"]
-        if "/" in request["number"]:
-            numbers = request["number"].split("/")
-        else:
-            numbers = request["number"]
-        steps = request["step"]
+        coords["t"] = []
 
-        times = []
+        # convert step into datetime
         date_format = "%Y%m%dT%H%M%S"
         date = pd.Timestamp(mars_metadata["date"]).strftime(date_format)
         start_time = datetime.datetime.strptime(date, date_format)
         for step in steps:
             # add current date to list by converting it to iso format
-            stamp = start_time + timedelta(hours=step)
-            times.append(stamp.isoformat())
+            stamp = start_time + timedelta(hours=int(step))
+            coords["t"].append(stamp.isoformat())
             # increment start date by timedelta
 
-        coords["t"] = times
-        vals = []
-        start = 0
-        end = len(times)
-        new_metadata = mars_metadata.copy()
-        for num in numbers:
-            mars_metadata["number"] = num
+        for number in df["number"].unique():
             new_metadata = mars_metadata.copy()
+            new_metadata["number"] = number
+            df_number = df[df["number"] == number]
             range_dict = {}
-            for param in request["param"].split("/"):
-                range_dict[param] = values[start:end]
-                # vals.append(values[start:end])
-                start = end
-                end += len(times)
+            for param in params:
+                df_param = df_number[df_number["param"] == param]
+                range_dict[param] = df_param["values"].values.tolist()
             self.add_coverage(new_metadata, coords, range_dict)
+
         return self.covjson
