@@ -1,6 +1,8 @@
-from .decoder import Decoder
-import xarray as xr
 import datetime as dt
+
+import xarray as xr
+
+from .decoder import Decoder
 
 
 class TimeSeries(Decoder):
@@ -75,15 +77,9 @@ class TimeSeries(Decoder):
                 num = [int(coord[0][5]) for coord in coords]
                 coords_fc = coords[ind]
                 try:
-                    t = [
-                        dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S")
-                        for coord in coords_fc
-                    ]
+                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S") for coord in coords_fc]
                 except ValueError:
-                    t = [
-                        dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%S")
-                        for coord in coords_fc
-                    ]
+                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%S") for coord in coords_fc]
 
                 param_coords = {"x": x, "y": y, "z": z, "number": num, "t": t}
                 dataarray = xr.DataArray(
@@ -94,12 +90,8 @@ class TimeSeries(Decoder):
                 )
 
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "description"
-                ]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["description"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(dataarraydict)
@@ -110,7 +102,7 @@ class TimeSeries(Decoder):
         return ds
 
 
-"""   
+"""
     def to_xarray(self):
         dims = ["x", "y", "z", "fct", "t"]
         dataarraydict = {}

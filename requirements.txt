@@ -1,2 +1,4 @@
 polytope
-json
+# json
+xarray==2022.12.0
+pandas==1.5.2

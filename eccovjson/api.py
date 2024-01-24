@@ -1,13 +1,11 @@
-import json
-
+import eccovjson.decoder.BoundingBox
+import eccovjson.decoder.Frame
 import eccovjson.decoder.TimeSeries
 import eccovjson.decoder.VerticalProfile
+import eccovjson.encoder.BoundingBox
+import eccovjson.encoder.Frame
 import eccovjson.encoder.TimeSeries
 import eccovjson.encoder.VerticalProfile
-import eccovjson.encoder.BoundingBox
-import eccovjson.decoder.BoundingBox
-import eccovjson.encoder.Frame
-import eccovjson.decoder.Frame
 
 features_encoder = {
     "pointseries": eccovjson.encoder.TimeSeries.TimeSeries,

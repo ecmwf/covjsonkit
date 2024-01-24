@@ -1,9 +1,6 @@
-import os
 import json
-import xarray as xr
-import datetime as dt
-import geopandas as gpd
 from abc import ABC, abstractmethod
+
 from eccovjson.Coverage import Coverage
 from eccovjson.CoverageCollection import CoverageCollection
 

@@ -1,9 +1,3 @@
-import pytest
-import json
-
-from eccovjson.decoder import decoder
-from eccovjson.decoder import VerticalProfile
-from eccovjson.decoder import TimeSeries
 import eccovjson.encoder.VerticalProfile
 from eccovjson.api import Eccovjson
 
@@ -99,9 +93,7 @@ class TestDecoder:
                     "coordinates": ["z"],
                     "system": {
                         "type": "VerticalCRS",
-                        "cs": {
-                            "csAxes": [{"name": {"en": "level"}, "direction": "down"}]
-                        },
+                        "cs": {"csAxes": [{"name": {"en": "level"}, "direction": "down"}]},
                     },
                 },
             ],
@@ -253,8 +245,6 @@ class TestDecoder:
     def test_verticalprofile_to_xarray(self):
         decoder = Eccovjson().decode(self.covjson)
         dataset = decoder.to_xarray()
-        encoder = eccovjson.encoder.VerticalProfile.VerticalProfile(
-            "CoverageCollection", "VerticalProfile"
-        )
+        encoder = eccovjson.encoder.VerticalProfile.VerticalProfile("CoverageCollection", "VerticalProfile")
         cov = encoder.from_xarray(dataset)
         print(cov)

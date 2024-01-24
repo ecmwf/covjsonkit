@@ -1,9 +1,8 @@
-from .encoder import Encoder
-import xarray as xr
-from datetime import timedelta, datetime
-import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
+
+from .encoder import Encoder
 
 
 class TimeSeries(Encoder):
@@ -41,9 +40,7 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = values[
-                parameter
-            ]  # [values[parameter]]
+            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata

@@ -1,13 +1,10 @@
-import pytest
-import json
-
-from eccovjson.encoder import encoder
-from eccovjson.encoder import TimeSeries
-import eccovjson.decoder.TimeSeries
-from eccovjson.api import Eccovjson
 import random
 from datetime import datetime, timedelta
+
+import pytest
 import xarray as xr
+
+from eccovjson.api import Eccovjson
 
 
 def get_timestamps(start_dt, end_dt, delta):
@@ -244,7 +241,7 @@ class TestEecoder:
             }
         )
 
-        metadatas = []
+        # metadatas = []
         coords = []
         values = []
         for number in range(0, 50):
@@ -273,6 +270,7 @@ class TestEecoder:
             encoder.add_coverage(metadata, coord, value)
             # print(encoder.covjson)
 
+    @pytest.mark.data
     def test_from_xarray(self):
         ds = xr.open_dataset("new_timeseries.nc")
         encoder = Eccovjson().encode("CoverageCollection", "PointSeries")

@@ -1,9 +1,5 @@
-import os
-import json
-import xarray as xr
-import datetime as dt
-import geopandas as gpd
 from abc import ABC, abstractmethod
+
 from eccovjson.Coverage import Coverage
 from eccovjson.CoverageCollection import CoverageCollection
 
@@ -76,9 +72,7 @@ class Encoder(ABC):
                 "unit": {"symbol": "ms-1"},
                 "observedProperty": {
                     "id": "10fg",
-                    "label": {
-                        "en": "Maximum 10 metre wind gust since previous post-processing"
-                    },
+                    "label": {"en": "Maximum 10 metre wind gust since previous post-processing"},
                 },
             }
         elif param == "tcc" or param == "164":
@@ -99,7 +93,7 @@ class Encoder(ABC):
     def convert_param_id_to_param(self, paramid):
         try:
             param = int(paramid)
-        except:
+        except BaseException:
             return paramid
         if param == 165:
             return "10u"

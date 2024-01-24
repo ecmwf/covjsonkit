@@ -1,5 +1,6 @@
-from .decoder import Decoder
 import xarray as xr
+
+from .decoder import Decoder
 
 
 class VerticalProfile(Decoder):
@@ -79,12 +80,8 @@ class VerticalProfile(Decoder):
                     name=parameter,
                 )
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "description"
-                ]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["description"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(dataarraydict)

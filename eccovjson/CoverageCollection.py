@@ -1,6 +1,3 @@
-import json
-
-
 class CoverageCollection:
     def __init__(self, covjson):
         if isinstance(covjson, dict):
@@ -12,8 +9,6 @@ class CoverageCollection:
         if self.type == "CoverageCollection":
             print("Correct Type")
         elif self.type == "Coverage":
-            raise TypeError(
-                "CoverageCollection class takes CoverageCollection not Coverage"
-            )
+            raise TypeError("CoverageCollection class takes CoverageCollection not Coverage")
 
         self.coverages = self.coverage["coverages"]

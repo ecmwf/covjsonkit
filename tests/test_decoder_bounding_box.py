@@ -1,12 +1,6 @@
-import pytest
-import json
+# from earthkit import data
 
-from eccovjson.decoder import decoder
-from eccovjson.decoder import VerticalProfile
-from eccovjson.decoder import TimeSeries
 from eccovjson.decoder import BoundingBox
-from earthkit import data
-import xarray as xr
 
 
 class TestDecoder:
