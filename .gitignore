@@ -1,0 +1,16 @@
+*.py[cod]
+*.nc
+*.swp
+**/__pycache__
+.vscode
+polytope_mars.egg-info
+.pytest_cache
+*.prof
+*.idx
+.venv
+PKG-info
+SOURCES.txt
+top_level.txt
+*.ipynb
+*.covjson
+*.egg-info
