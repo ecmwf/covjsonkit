@@ -79,7 +79,7 @@ class Encoder(ABC):
             self.covjson["parameters"][param] = {
                 "type": "Parameter",
                 "description": "Total cloud cover",
-                "unit": {"symbol": "Dimensionless number"},
+                "unit": {"symbol": ""},
                 "observedProperty": {
                     "id": "tcc",
                     "label": {"en": "Total cloud cover"},
