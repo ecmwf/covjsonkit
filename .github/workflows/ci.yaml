@@ -131,6 +131,7 @@ jobs:
           files: coverage.xml
   deploy:
     needs: test
+    if: ${{ github.event_name == 'release' }}
     name: Upload to Pypi
     runs-on: ubuntu-latest
     steps:
