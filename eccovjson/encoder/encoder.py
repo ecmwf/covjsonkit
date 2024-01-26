@@ -117,6 +117,8 @@ class Encoder(ABC):
             return "10fg"
         elif param == 164:
             return "tcc"
+        elif param == 168:
+            return "2d"
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
