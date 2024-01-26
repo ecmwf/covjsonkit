@@ -85,6 +85,16 @@ class Encoder(ABC):
                     "label": {"en": "Total cloud cover"},
                 },
             }
+        elif param == "2d" or param == "168":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "2 metre dewpoint temperature",
+                "unit": {"symbol": "K"},
+                "observedProperty": {
+                    "id": "2d",
+                    "label": {"en": "2 metre dewpoint temperature"},
+                },
+            }
         self.parameters.append(param)
 
     def add_reference(self, reference):
