@@ -79,10 +79,20 @@ class Encoder(ABC):
             self.covjson["parameters"][param] = {
                 "type": "Parameter",
                 "description": "Total cloud cover",
-                "unit": {"symbol": "ms-1"},
+                "unit": {"symbol": ""},
                 "observedProperty": {
                     "id": "tcc",
                     "label": {"en": "Total cloud cover"},
+                },
+            }
+        elif param == "2d" or param == "168":
+            self.covjson["parameters"][param] = {
+                "type": "Parameter",
+                "description": "2 metre dewpoint temperature",
+                "unit": {"symbol": "K"},
+                "observedProperty": {
+                    "id": "2d",
+                    "label": {"en": "2 metre dewpoint temperature"},
                 },
             }
         self.parameters.append(param)
@@ -107,6 +117,8 @@ class Encoder(ABC):
             return "10fg"
         elif param == 164:
             return "tcc"
+        elif param == 168:
+            return "2d"
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
