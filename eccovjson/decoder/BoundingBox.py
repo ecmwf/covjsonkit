@@ -35,13 +35,14 @@ class BoundingBox(Decoder):
         return values
 
     def get_coordinates(self):
+        """
         coord_dict = {}
         for param in self.parameters:
             coord_dict[param] = []
         # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
         for ind, domain in enumerate(self.domains):
             t = domain["axes"]["t"]["values"][0]
-            num = self.mars_metadata[ind]["number"]
+            # num = self.mars_metadata[ind]["number"]
             fct = self.mars_metadata[ind]["date"]
 
             for param in self.parameters:
@@ -50,52 +51,39 @@ class BoundingBox(Decoder):
                     x = coord[0]
                     y = coord[1]
                     z = coord[2]
-                    coords.append([x, y, z, fct, t, num])
+                    coords.append([x, y, z, fct, t])
                 coord_dict[param].append(coords)
         return coord_dict
+        """
+        return self.domains[0]["axes"]
 
     def to_geopandas(self):
         pass
 
     def to_xarray(self):
-        dims = ["x", "y", "z", "number", "t"]
+        dims = ["points"]
         dataarraydict = {}
 
         # Get coordinates
+        x = []
+        y = []
+        for coord in self.get_coordinates()["composite"]["values"]:
+            x.append(float(coord[0]))
+            y.append(float(coord[1]))
+
+        # Get values
         for parameter in self.parameters:
-            param_values = [[[self.get_values()[parameter]]]]
-            for ind, fc_time_vals in enumerate(self.get_values()[parameter]):
-                coords = self.get_coordinates()[parameter]
-                xs = []
-                ys = []
-                zs = []
-                for coord in coords[ind]:
-                    xs.append(coord[0])
-                    ys.append(coord[1])
-                    zs.append(coord[2])
-                num = [int(coord[0][5]) for coord in coords]
-                coords_fc = coords[ind]
-                try:
-                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S") for coord in coords_fc]
-                except ValueError:
-                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%S") for coord in coords_fc]
+            dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
+            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["description"]
+            dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
-                param_coords = {"x": xs, "y": ys, "z": zs, "number": num, "t": t}
-                dataarray = xr.DataArray(
-                    param_values,
-                    dims=dims,
-                    coords=param_coords,
-                    name=parameter,
-                )
-
-                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["description"]
-                dataarraydict[dataarray.attrs["long_name"]] = dataarray
-
-        ds = xr.Dataset(dataarraydict)
+        ds = xr.Dataset(
+            dataarraydict,
+            coords=dict(points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
+        )
         for mars_metadata in self.mars_metadata[0]:
-            if mars_metadata != "date" and mars_metadata != "step":
-                ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+            ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
         return ds

@@ -1,3 +1,7 @@
+from datetime import datetime, timedelta
+
+import pandas as pd
+
 from .encoder import Encoder
 
 
@@ -23,7 +27,7 @@ class BoundingBox(Encoder):
         coverage["domain"]["axes"]["t"] = {}
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
-        coverage["domain"]["axes"]["composite"]["dataType"] = ("tuple",)
+        coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
         coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0]["coordinates"]
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
@@ -43,17 +47,28 @@ class BoundingBox(Encoder):
     def from_xarray(self, dataset):
         pass
 
-    def from_polytope(self, result, request):
-        values = [val.result for val in result.leaves]
+    def from_polytope(self, result):
         ancestors = [val.get_ancestors() for val in result.leaves]
+        values = [val.result for val in result.leaves]
 
-        mars_metadata = {}
-        coords = {}
-        for key in request.keys():
-            if key != "latitude" and key != "longitude" and key != "param" and key != "number" and key != "step":
-                mars_metadata[key] = request[key]
+        columns = []
+        df_dict = {}
+        # Create empty dataframe
+        for feature in ancestors[0]:
+            columns.append(str(feature).split("=")[0])
+            df_dict[str(feature).split("=")[0]] = []
 
-        for param in request["param"].split("/"):
+        # populate dataframe
+        for ancestor in ancestors:
+            for feature in ancestor:
+                df_dict[str(feature).split("=")[0]].append(str(feature).split("=")[1])
+        values = [val.result for val in result.leaves]
+        df_dict["values"] = values
+        df = pd.DataFrame(df_dict)
+
+        params = df["param"].unique()
+
+        for param in params:
             self.add_parameter(param)
 
         self.add_reference(
@@ -65,37 +80,29 @@ class BoundingBox(Encoder):
                 },
             }
         )
+        steps = df["step"].unique()
 
-        new_metadata = mars_metadata.copy()
-        # range_dict = {}
-        vals = {}
-        for param in request["param"].split("/"):
-            param = self.convert_param_id_to_param(param)
-            vals[param] = []
+        mars_metadata = {}
+        mars_metadata["class"] = df["class"].unique()[0]
+        mars_metadata["expver"] = df["expver"].unique()[0]
+        mars_metadata["levtype"] = df["levtype"].unique()[0]
+        mars_metadata["type"] = df["type"].unique()[0]
+        # mars_metadata["date"] = df["date"].unique()[0]
+        mars_metadata["domain"] = df["domain"].unique()[0]
+        mars_metadata["stream"] = df["stream"].unique()[0]
+
+        range_dict = {}
         coords = {}
         coords["composite"] = []
-        coords["t"] = str(ancestors[0][1]).split("=")[1]
+        coords["t"] = df["date"].unique()[0]
 
-        for ind, feature in enumerate(ancestors[0]):
-            if str(feature).split("=")[0] == "latitude":
-                lat = ind
-            elif str(feature).split("=")[0] == "longitude":
-                long = ind
-            elif str(feature).split("=")[0] == "param":
-                param = ind
-                param_id = str(feature).split("=")[1]
+        for param in params:
+            df_param = df[df["param"] == param]
+            range_dict[param] = df_param["values"].values.tolist()
 
-        for ind, ancestor in enumerate(ancestors):
-            coord = []
-            coord.append(str(ancestor[lat]).split("=")[1])
-            coord.append(str(ancestor[long]).split("=")[1])
-            coord.append("sfc")
-            coords["composite"].append(coord)
-            param_id = self.convert_param_id_to_param(str(ancestor[param]).split("=")[1])
-            vals[param_id].append(values[ind])
+        df_param = df[df["param"] == params[0]]
+        for row in df_param.iterrows():
+            coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
 
-        param = self.convert_param_id_to_param(request["param"].split("/")[0])
-        coords["composite"] = coords["composite"][0 : len(vals[param])]
-
-        self.add_coverage(new_metadata, coords, vals)
+        self.add_coverage(mars_metadata, coords, range_dict)
         return self.covjson
