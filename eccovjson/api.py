@@ -2,22 +2,26 @@ import eccovjson.decoder.BoundingBox
 import eccovjson.decoder.Frame
 import eccovjson.decoder.TimeSeries
 import eccovjson.decoder.VerticalProfile
+import eccovjson.decoder.Path
 import eccovjson.encoder.BoundingBox
 import eccovjson.encoder.Frame
 import eccovjson.encoder.TimeSeries
 import eccovjson.encoder.VerticalProfile
+import eccovjson.encoder.Path
 
 features_encoder = {
     "pointseries": eccovjson.encoder.TimeSeries.TimeSeries,
     "verticalprofile": eccovjson.encoder.VerticalProfile.VerticalProfile,
     "boundingbox": eccovjson.encoder.BoundingBox.BoundingBox,
     "frame": eccovjson.encoder.Frame.Frame,
+    "path": eccovjson.encoder.Path.Path,
 }
 features_decoder = {
     "pointseries": eccovjson.decoder.TimeSeries.TimeSeries,
     "verticalprofile": eccovjson.decoder.VerticalProfile.VerticalProfile,
     "boundingbox": eccovjson.decoder.BoundingBox.BoundingBox,
     "frame": eccovjson.decoder.Frame.Frame,
+    "path": eccovjson.decoder.Path.Path,
 }
 
 
@@ -28,6 +32,8 @@ class Eccovjson:
     def encode(self, type, domaintype):
         if domaintype == "timeseries":
             domaintype = "PointSeries"
+        elif domaintype == "trajectory":
+            domaintype = "path"
         feature = self._feature_factory(domaintype.lower(), "encoder")
         return feature(type, domaintype)
 
@@ -37,6 +43,8 @@ class Eccovjson:
             requesttype = "PointSeries"
         elif requesttype == "MultiPoint":
             requesttype = "boundingbox"
+        elif requesttype == "Trajectory":
+            requesttype = "path"
         feature = self._feature_factory(requesttype.lower(), "decoder")
         return feature(covjson)
 
