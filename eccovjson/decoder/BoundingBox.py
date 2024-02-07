@@ -35,26 +35,6 @@ class BoundingBox(Decoder):
         return values
 
     def get_coordinates(self):
-        """
-        coord_dict = {}
-        for param in self.parameters:
-            coord_dict[param] = []
-        # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
-        for ind, domain in enumerate(self.domains):
-            t = domain["axes"]["t"]["values"][0]
-            # num = self.mars_metadata[ind]["number"]
-            fct = self.mars_metadata[ind]["date"]
-
-            for param in self.parameters:
-                coords = []
-                for coord in domain["axes"]["composite"]["values"]:
-                    x = coord[0]
-                    y = coord[1]
-                    z = coord[2]
-                    coords.append([x, y, z, fct, t])
-                coord_dict[param].append(coords)
-        return coord_dict
-        """
         return self.domains[0]["axes"]
 
     def to_geopandas(self):

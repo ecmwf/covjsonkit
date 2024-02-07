@@ -24,8 +24,6 @@ class Path(Encoder):
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        # coverage["domain"]["axes"]["t"] = {}
-        # coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
         coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0]["coordinates"]
@@ -87,14 +85,12 @@ class Path(Encoder):
         mars_metadata["expver"] = df["expver"].unique()[0]
         mars_metadata["levtype"] = df["levtype"].unique()[0]
         mars_metadata["type"] = df["type"].unique()[0]
-        # mars_metadata["date"] = df["date"].unique()[0]
         mars_metadata["domain"] = df["domain"].unique()[0]
         mars_metadata["stream"] = df["stream"].unique()[0]
 
         range_dict = {}
         coords = {}
         coords["composite"] = []
-        # coords["t"] = df["date"].unique()[0]
 
         for param in params:
             df_param = df[df["param"] == param]
