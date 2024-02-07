@@ -1,5 +1,3 @@
-import datetime as dt
-
 import xarray as xr
 
 from .decoder import Decoder

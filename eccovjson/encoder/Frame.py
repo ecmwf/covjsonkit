@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 import pandas as pd
 
 from .encoder import Encoder
@@ -80,7 +78,6 @@ class Frame(Encoder):
                 },
             }
         )
-        steps = df["step"].unique()
 
         mars_metadata = {}
         mars_metadata["class"] = df["class"].unique()[0]
