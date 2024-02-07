@@ -3,7 +3,7 @@ import xarray as xr
 from .decoder import Decoder
 
 
-class Frame(Decoder):
+class Path(Decoder):
     def __init__(self, covjson):
         super().__init__(covjson)
         self.domains = self.get_domains()
@@ -42,9 +42,11 @@ class Frame(Decoder):
         # Get coordinates
         x = []
         y = []
+        t = []
         for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[0]))
-            y.append(float(coord[1]))
+            x.append(float(coord[1]))
+            y.append(float(coord[2]))
+            t.append(coord[0])
 
         # Get values
         for parameter in self.parameters:
@@ -56,7 +58,9 @@ class Frame(Decoder):
 
         ds = xr.Dataset(
             dataarraydict,
-            coords=dict(points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
+            coords=dict(
+                points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y), t=(["points"], t)
+            ),
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]

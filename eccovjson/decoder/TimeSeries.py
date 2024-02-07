@@ -29,9 +29,6 @@ class TimeSeries(Decoder):
             values[parameter] = []
             for range in self.ranges:
                 values[parameter].append(range[parameter]["values"])
-            # values[parameter] = [
-            #    value for sublist in values[parameter] for value in sublist
-            # ]
         return values
 
     def get_coordinates(self):
