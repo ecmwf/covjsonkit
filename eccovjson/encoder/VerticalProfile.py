@@ -114,7 +114,6 @@ class VerticalProfile(Encoder):
                 },
             }
         )
-        steps = df["step"].unique()
 
         mars_metadata = {}
         mars_metadata["class"] = df["class"].unique()[0]
