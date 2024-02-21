@@ -1,6 +1,8 @@
-from .decoder import Decoder
-import xarray as xr
 import datetime as dt
+
+import xarray as xr
+
+from .decoder import Decoder
 
 
 class TimeSeries(Decoder):
@@ -27,9 +29,6 @@ class TimeSeries(Decoder):
             values[parameter] = []
             for range in self.ranges:
                 values[parameter].append(range[parameter]["values"])
-            # values[parameter] = [
-            #    value for sublist in values[parameter] for value in sublist
-            # ]
         return values
 
     def get_coordinates(self):

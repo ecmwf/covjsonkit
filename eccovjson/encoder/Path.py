@@ -3,10 +3,10 @@ import pandas as pd
 from .encoder import Encoder
 
 
-class BoundingBox(Encoder):
+class Path(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
-        self.covjson["domainType"] = "MultiPoint"
+        self.covjson["domainType"] = "Trajectory"
 
     def add_coverage(self, mars_metadata, coords, values):
         new_coverage = {}
@@ -22,8 +22,6 @@ class BoundingBox(Encoder):
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
         coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0]["coordinates"]
@@ -71,7 +69,7 @@ class BoundingBox(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["t", "x", "y"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -90,7 +88,6 @@ class BoundingBox(Encoder):
         range_dict = {}
         coords = {}
         coords["composite"] = []
-        coords["t"] = df["date"].unique()[0]
 
         for param in params:
             df_param = df[df["param"] == param]
@@ -98,7 +95,7 @@ class BoundingBox(Encoder):
 
         df_param = df[df["param"] == params[0]]
         for row in df_param.iterrows():
-            coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
+            coords["composite"].append([row[1]["date"], row[1]["latitude"], row[1]["longitude"]])
 
         self.add_coverage(mars_metadata, coords, range_dict)
         return self.covjson

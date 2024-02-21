@@ -1,3 +1,5 @@
+import pandas as pd
+
 from .encoder import Encoder
 
 
@@ -80,4 +82,70 @@ class VerticalProfile(Encoder):
         return self.covjson
 
     def from_polytope(self, result):
-        pass
+        ancestors = [val.get_ancestors() for val in result.leaves]
+        values = [val.result for val in result.leaves]
+
+        columns = []
+        df_dict = {}
+        # Create empty dataframe
+        for feature in ancestors[0]:
+            columns.append(str(feature).split("=")[0])
+            df_dict[str(feature).split("=")[0]] = []
+
+        # populate dataframe
+        for ancestor in ancestors:
+            for feature in ancestor:
+                df_dict[str(feature).split("=")[0]].append(str(feature).split("=")[1])
+        values = [val.result for val in result.leaves]
+        df_dict["values"] = values
+        df = pd.DataFrame(df_dict)
+
+        params = df["param"].unique()
+
+        for param in params:
+            self.add_parameter(param)
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        mars_metadata = {}
+        mars_metadata["class"] = df["class"].unique()[0]
+        mars_metadata["expver"] = df["expver"].unique()[0]
+        mars_metadata["levtype"] = df["levtype"].unique()[0]
+        mars_metadata["type"] = df["type"].unique()[0]
+        mars_metadata["date"] = df["date"].unique()[0]
+        mars_metadata["domain"] = df["domain"].unique()[0]
+        mars_metadata["stream"] = df["stream"].unique()[0]
+
+        coords = {}
+        coords["x"] = list(df["latitude"].unique())
+        coords["y"] = list(df["longitude"].unique())
+        coords["z"] = list(df["level"].unique())
+        coords["t"] = list(df["date"].unique())
+
+        if "number" not in df.columns:
+            new_metadata = mars_metadata.copy()
+            range_dict = {}
+            for param in params:
+                df_param = df[df["param"] == param]
+                range_dict[param] = df_param["values"].values.tolist()
+            self.add_coverage(new_metadata, coords, range_dict)
+        else:
+            for number in df["number"].unique():
+                new_metadata = mars_metadata.copy()
+                new_metadata["number"] = number
+                df_number = df[df["number"] == number]
+                range_dict = {}
+                for param in params:
+                    df_param = df_number[df_number["param"] == param]
+                    range_dict[param] = df_param["values"].values.tolist()
+                self.add_coverage(new_metadata, coords, range_dict)
+
+        return self.covjson
