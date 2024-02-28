@@ -1,11 +1,13 @@
 import eccovjson.decoder.BoundingBox
 import eccovjson.decoder.Frame
 import eccovjson.decoder.Path
+import eccovjson.decoder.Shapefile
 import eccovjson.decoder.TimeSeries
 import eccovjson.decoder.VerticalProfile
 import eccovjson.encoder.BoundingBox
 import eccovjson.encoder.Frame
 import eccovjson.encoder.Path
+import eccovjson.encoder.Shapefile
 import eccovjson.encoder.TimeSeries
 import eccovjson.encoder.VerticalProfile
 
@@ -13,6 +15,7 @@ features_encoder = {
     "pointseries": eccovjson.encoder.TimeSeries.TimeSeries,
     "verticalprofile": eccovjson.encoder.VerticalProfile.VerticalProfile,
     "boundingbox": eccovjson.encoder.BoundingBox.BoundingBox,
+    "shapefile": eccovjson.encoder.Shapefile.Shapefile,
     "frame": eccovjson.encoder.Frame.Frame,
     "path": eccovjson.encoder.Path.Path,
 }
@@ -20,6 +23,7 @@ features_decoder = {
     "pointseries": eccovjson.decoder.TimeSeries.TimeSeries,
     "verticalprofile": eccovjson.decoder.VerticalProfile.VerticalProfile,
     "boundingbox": eccovjson.decoder.BoundingBox.BoundingBox,
+    "shapefile": eccovjson.decoder.Shapefile.Shapefile,
     "frame": eccovjson.decoder.Frame.Frame,
     "path": eccovjson.decoder.Path.Path,
 }
