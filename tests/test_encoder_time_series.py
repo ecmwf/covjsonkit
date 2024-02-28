@@ -17,7 +17,7 @@ def get_timestamps(start_dt, end_dt, delta):
     return dates
 
 
-class TestEecoder:
+class TestEncoder:
     def setup_method(self, method):
         self.covjson = {
             "type": "CoverageCollection",
