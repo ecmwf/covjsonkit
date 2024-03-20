@@ -174,39 +174,43 @@ class TestEncoder:
             "parameters": {
                 "10v": {
                     "type": "Parameter",
-                    "description": ("This parameter is the northward component of the 10m wind."
-                                    " It is the horizontal speed of air moving towards the north"
-                                    ", at a height of ten metres"
-                                    " above the surface of the Earth, in metres per second."
-                                    "<br/><br/>Care should be taken when"
-                                    " comparing this parameter with observations, because"
-                                    " wind observations vary on small space"
-                                    " and time scales and are affected by the local terrain,"
-                                    " vegetation and buildings that are"
-                                    " represented only on average in the ECMWF Integrated Forecasting"
-                                    " System.<br/><br/>This parameter"
-                                    " can be combined with the U component of 10m wind to give "
-                                    "the speed and direction of the horizontal"
-                                    " 10m wind."),
+                    "description": (
+                        "This parameter is the northward component of the 10m wind."
+                        " It is the horizontal speed of air moving towards the north"
+                        ", at a height of ten metres"
+                        " above the surface of the Earth, in metres per second."
+                        "<br/><br/>Care should be taken when"
+                        " comparing this parameter with observations, because"
+                        " wind observations vary on small space"
+                        " and time scales and are affected by the local terrain,"
+                        " vegetation and buildings that are"
+                        " represented only on average in the ECMWF Integrated Forecasting"
+                        " System.<br/><br/>This parameter"
+                        " can be combined with the U component of 10m wind to give "
+                        "the speed and direction of the horizontal"
+                        " 10m wind."
+                    ),
                     "unit": {"symbol": "m s**-1"},
                     "observedProperty": {"id": "10v", "label": {"en": "10 metre V wind component"}},
                 },
                 "2t": {
                     "type": "Parameter",
-                    "description": ("This parameter is the temperature of air at 2m above the surface of land,"
-                                    " sea or in-land waters.<br/><br/>2m temperature is calculated by "
-                                    "interpolating between the lowest"
-                                    " model level and the Earth's surface, taking account of the "
-                                    "atmospheric conditions."
-                                    "<a href='https://www.ecmwf.int/sites/default/files/elibrar"
-                                    "y/2016/17117-part-iv-physical-processes.pdf#subsection.3.10.3'>"
-                                    " See further information </a>.<br/><br/>This parameter has "
-                                    "units of kelvin (K). Temperature measured in kelvin"
-                                    " can be converted to degrees Celsius (°C) by subtracting 273.15."
-                                    "<br/><br/>Please note that the encodings listed"
-                                    " here for s2s & uerra (which includes encodings for carra/cerra) "
-                                    "include entries for Mean 2 metre temperature."
-                                    " The specific encoding for Mean 2 metre temperature can be found in 228004."),
+                    "description": (
+                        "This parameter is the temperature of air at 2m above the surface of land,"
+                        " sea or in-land waters.<br/><br/>2m temperature is calculated by "
+                        "interpolating between the lowest"
+                        " model level and the Earth's surface, taking account of the "
+                        "atmospheric conditions."
+                        "<a href='https://www.ecmwf.int/sites/default/files/elibrar"
+                        "y/2016/17117-part-iv-physical-processes.pdf#subsection.3.10.3'>"
+                        " See further information </a>.<br/><br/>This parameter has "
+                        "units of kelvin (K). Temperature measured in kelvin"
+                        " can be converted to degrees Celsius (°C) by subtracting 273.15."
+                        "<br/><br/>Please note that the encodings listed"
+                        " here for s2s & uerra (which includes encodings for carra/cerra) "
+                        "include entries for Mean 2 metre temperature."
+                        " The specific encoding for Mean 2 metre temperature can be found in 228004."
+                    ),
                     "unit": {"symbol": "K"},
                     "observedProperty": {
                         "id": "2t",
