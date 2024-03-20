@@ -2,8 +2,6 @@ import json
 import os
 from os.path import dirname
 
-import requests
-
 
 def get_param_from_db(param_id):
     """

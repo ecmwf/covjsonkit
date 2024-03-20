@@ -1,4 +1,3 @@
-import eccovjson.encoder.VerticalProfile
 from eccovjson.api import Eccovjson
 
 
