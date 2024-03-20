@@ -54,7 +54,7 @@ class Shapefile(Decoder):
             dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
             dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]['id']
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
             dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(

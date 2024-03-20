@@ -25,7 +25,7 @@ class Encoder(ABC):
             raise TypeError("Type must be Coverage or CoverageCollection")
 
     def add_parameter(self, param):
-        #param = self.convert_param_id_to_param(param)
+        # param = self.convert_param_id_to_param(param)
         param_dict = get_param_from_db(int(param))
         unit = get_unit_from_db(param_dict["unit_id"])
         self.covjson["parameters"][param_dict["shortname"]] = {
