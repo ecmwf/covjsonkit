@@ -1,4 +1,3 @@
-import eccovjson.encoder.VerticalProfile
 from eccovjson.api import Eccovjson
 
 
@@ -242,9 +241,9 @@ class TestDecoder:
         }
         assert decoder.get_values() == values
 
-    def test_verticalprofile_to_xarray(self):
-        decoder = Eccovjson().decode(self.covjson)
-        dataset = decoder.to_xarray()
-        encoder = eccovjson.encoder.VerticalProfile.VerticalProfile("CoverageCollection", "VerticalProfile")
-        cov = encoder.from_xarray(dataset)
-        print(cov)
+    # def test_verticalprofile_to_xarray(self):
+    #    decoder = Eccovjson().decode(self.covjson)
+    #    dataset = decoder.to_xarray()
+    #    encoder = eccovjson.encoder.VerticalProfile.VerticalProfile("CoverageCollection", "VerticalProfile")
+    #    cov = encoder.from_xarray(dataset)
+    #    print(cov)

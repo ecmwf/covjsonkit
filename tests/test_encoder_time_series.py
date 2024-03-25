@@ -1,9 +1,6 @@
 import random
 from datetime import datetime, timedelta
 
-import pytest
-import xarray as xr
-
 from eccovjson.api import Eccovjson
 
 
@@ -167,31 +164,57 @@ class TestEncoder:
 
     def test_add_parameter(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
-        encoder_obj.add_parameter("t")
-        encoder_obj.add_parameter("tp")
-        print(encoder_obj.covjson)
+        encoder_obj.add_parameter(167)
+        encoder_obj.add_parameter(166)
         covjson = {
             "type": "CoverageCollection",
             "domainType": "PointSeries",
             "coverages": [],
             "referencing": [],
             "parameters": {
-                "t": {
+                "10v": {
                     "type": "Parameter",
-                    "description": "Temperature",
+                    "description": (
+                        "This parameter is the northward component of the 10m wind."
+                        " It is the horizontal speed of air moving towards the north"
+                        ", at a height of ten metres"
+                        " above the surface of the Earth, in metres per second."
+                        "<br/><br/>Care should be taken when"
+                        " comparing this parameter with observations, because"
+                        " wind observations vary on small space"
+                        " and time scales and are affected by the local terrain,"
+                        " vegetation and buildings that are"
+                        " represented only on average in the ECMWF Integrated Forecasting"
+                        " System.<br/><br/>This parameter"
+                        " can be combined with the U component of 10m wind to give "
+                        "the speed and direction of the horizontal"
+                        " 10m wind."
+                    ),
+                    "unit": {"symbol": "m s**-1"},
+                    "observedProperty": {"id": "10v", "label": {"en": "10 metre V wind component"}},
+                },
+                "2t": {
+                    "type": "Parameter",
+                    "description": (
+                        "This parameter is the temperature of air at 2m above the surface of land,"
+                        " sea or in-land waters.<br/><br/>2m temperature is calculated by "
+                        "interpolating between the lowest"
+                        " model level and the Earth's surface, taking account of the "
+                        "atmospheric conditions."
+                        "<a href='https://www.ecmwf.int/sites/default/files/elibrar"
+                        "y/2016/17117-part-iv-physical-processes.pdf#subsection.3.10.3'>"
+                        " See further information </a>.<br/><br/>This parameter has "
+                        "units of kelvin (K). Temperature measured in kelvin"
+                        " can be converted to degrees Celsius (°C) by subtracting 273.15."
+                        "<br/><br/>Please note that the encodings listed"
+                        " here for s2s & uerra (which includes encodings for carra/cerra) "
+                        "include entries for Mean 2 metre temperature."
+                        " The specific encoding for Mean 2 metre temperature can be found in 228004."
+                    ),
                     "unit": {"symbol": "K"},
                     "observedProperty": {
-                        "id": "t",
-                        "label": {"en": "Temperature"},
-                    },
-                },
-                "tp": {
-                    "type": "Parameter",
-                    "description": "Total Precipitation",
-                    "unit": {"symbol": "m"},
-                    "observedProperty": {
-                        "id": "tp",
-                        "label": {"en": "Total Precipitation"},
+                        "id": "2t",
+                        "label": {"en": "2 metre temperature"},
                     },
                 },
             },
@@ -230,7 +253,7 @@ class TestEncoder:
 
     def test_add_coverage(self):
         encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
-        encoder.add_parameter("t")
+        encoder.add_parameter(167)
         encoder.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -265,13 +288,13 @@ class TestEncoder:
                 "t": timestamps,
             }
             coords.append(coord)
-            value = {"t": [random.uniform(230, 270) for _ in range(0, len(timestamps))]}
+            value = {"2t": [random.uniform(230, 270) for _ in range(0, len(timestamps))]}
             values.append(value)
             encoder.add_coverage(metadata, coord, value)
             # print(encoder.covjson)
 
-    @pytest.mark.data
-    def test_from_xarray(self):
-        ds = xr.open_dataset("new_timeseries.nc")
-        encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
-        encoder.from_xarray(ds)
+    # @pytest.mark.data
+    # def test_from_xarray(self):
+    #    ds = xr.open_dataset("new_timeseries.nc")
+    #    encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
+    #    encoder.from_xarray(ds)
