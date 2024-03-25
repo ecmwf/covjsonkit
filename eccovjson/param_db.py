@@ -5,6 +5,7 @@ from os.path import dirname
 
 def get_param_from_db(param_id):
     """
+    import requests
     url = f"https://codes.ecmwf.int/parameter-database/api/v1/param/?format=json&searcg={param_id}"
     response = requests.get(url)
     if response.status_code == 200:
