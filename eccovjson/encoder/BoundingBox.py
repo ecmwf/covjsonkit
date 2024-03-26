@@ -68,6 +68,10 @@ class BoundingBox(Encoder):
         coords["composite"] = []
         coords["t"] = dataset.attrs["date"]
 
+        xy = zip(dataset.x.values, dataset.y.values)
+        for x, y in xy:
+            coords["composite"].append([x, y])
+
         self.add_coverage(mars_metadata, coords, range_dicts)
         return self.covjson
 
