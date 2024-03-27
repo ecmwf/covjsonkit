@@ -46,10 +46,9 @@ class TimeSeries(Encoder):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-
         for data_var in dataset.data_vars:
             self.add_parameter(data_var)
-        
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from eccovjson.Coverage import Coverage
 from eccovjson.CoverageCollection import CoverageCollection
-from eccovjson.param_db import get_param_from_db, get_unit_from_db, get_param_id_from_db
+from eccovjson.param_db import get_param_from_db, get_unit_from_db
 
 
 class Encoder(ABC):

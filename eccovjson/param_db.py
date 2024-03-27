@@ -25,11 +25,13 @@ def get_param_from_db(param_id):
         params = json.load(f)
     return params[str(param_id)]
 
+
 def get_param_id_from_db(param_id):
     param_id_path = os.path.join(dirname(__file__), "data/param_id.json")
     with open(param_id_path) as f:
         param_ids = json.load(f)
     return param_ids[str(param_id)]
+
 
 def get_unit_from_db(unit_id):
     unit_path = os.path.join(dirname(__file__), "data/unit.json")
