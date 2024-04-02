@@ -41,7 +41,36 @@ class Path(Encoder):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        pass
+        range_dicts = {}
+
+        for data_var in dataset.data_vars:
+            self.add_parameter(data_var)
+            range_dicts[data_var] = dataset[data_var].values.tolist()
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        mars_metadata = {}
+
+        for metadata in dataset.attrs:
+            mars_metadata[metadata] = dataset.attrs[metadata]
+
+        coords = {}
+        coords["composite"] = []
+
+        xyt = zip(dataset.t.values, dataset.x.values, dataset.y.values)
+        for t, x, y in xyt:
+            coords["composite"].append([t, x, y])
+
+        self.add_coverage(mars_metadata, coords, range_dicts)
+        return self.covjson
 
     def from_polytope(self, result):
         ancestors = [val.get_ancestors() for val in result.leaves]

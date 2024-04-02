@@ -25,8 +25,7 @@ class Encoder(ABC):
             raise TypeError("Type must be Coverage or CoverageCollection")
 
     def add_parameter(self, param):
-        # param = self.convert_param_id_to_param(param)
-        param_dict = get_param_from_db(int(param))
+        param_dict = get_param_from_db(param)
         unit = get_unit_from_db(param_dict["unit_id"])
         self.covjson["parameters"][param_dict["shortname"]] = {
             "type": "Parameter",
@@ -49,22 +48,6 @@ class Encoder(ABC):
             return paramid
         param_dict = get_param_from_db(int(param))
         return param_dict["shortname"]
-        """
-        if param == 165:
-            return "10u"
-        elif param == 166:
-            return "10v"
-        elif param == 167:
-            return "2t"
-        elif param == 228:
-            return "tp"
-        elif param == 49:
-            return "10fg"
-        elif param == 164:
-            return "tcc"
-        elif param == 168:
-            return "2d"
-        """
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):

@@ -46,11 +46,9 @@ class TimeSeries(Encoder):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        for parameter in dataset.data_vars:
-            if parameter == "Temperature":
-                self.add_parameter("t")
-            elif parameter == "Pressure":
-                self.add_parameter("p")
+        for data_var in dataset.data_vars:
+            self.add_parameter(data_var)
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -64,12 +62,12 @@ class TimeSeries(Encoder):
             dv_dict = {}
             for dv in dataset.data_vars:
                 dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
+            mars_metadata = {}
+            for metadata in dataset.attrs:
+                mars_metadata[metadata] = dataset.attrs[metadata]
+            mars_metadata["number"] = num
             self.add_coverage(
-                {
-                    "number": num,
-                    "type": "forecast",
-                    "step": 0,
-                },
+                mars_metadata,
                 {
                     "x": list(dataset["x"].values),
                     "y": list(dataset["y"].values),
