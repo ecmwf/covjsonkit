@@ -18,7 +18,7 @@ class TimeSeries(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.covjson["coverages"].append(new_coverage)
+        self.pydantic_coverage.coverages.append(new_coverage)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
