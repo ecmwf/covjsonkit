@@ -19,9 +19,11 @@ class Encoder(ABC):
             self.domaintype = DomainType.multi_point
         elif domaintype == "wkt":
             self.domaintype = DomainType.multi_point
-        elif domaintype == "boundingbox":
+        elif domaintype == "BoundingBox":
             self.domaintype = DomainType.multi_point
         elif domaintype == "shapefile":
+            self.domaintype = DomainType.multi_point
+        elif domaintype == "Frame":
             self.domaintype = DomainType.multi_point
 
         self.pydantic_coverage = CoverageCollection(type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[])
