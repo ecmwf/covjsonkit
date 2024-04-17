@@ -1,7 +1,8 @@
-from eccovjson.api import Eccovjson
-
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
+
+from eccovjson.api import Eccovjson
+
 
 def get_timestamps(start_dt, end_dt, delta):
     dates = []
@@ -143,7 +144,9 @@ class TestEncoder:
 
     def test_standard_Coverage(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
-        covjson = CoverageCollection(type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[])
+        covjson = CoverageCollection(
+            type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[]
+        )
 
         assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
 
@@ -166,17 +169,7 @@ class TestEncoder:
                 },
             }
         )
-        encoder_obj.add_reference(
-            {
-                "coordinates": [
-                    "t"
-                ],
-                "system": {
-                    "type": "TemporalRS",
-                    "calendar": "Gregorian"
-                }
-            }
-        )
+        encoder_obj.add_reference({"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}})
 
         json_string = encoder_obj.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         assert CoverageCollection.model_validate_json(json_string)
