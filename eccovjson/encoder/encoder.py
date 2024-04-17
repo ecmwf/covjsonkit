@@ -15,6 +15,10 @@ class Encoder(ABC):
 
         if domaintype == "PointSeries":
             self.domaintype = DomainType.point_series
+        elif domaintype == "MultiPoint":
+            self.domaintype = DomainType.multi_point
+        elif domaintype == "wkt":
+            self.domaintype = DomainType.multi_point
 
         self.pydantic_coverage = CoverageCollection(type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[])
         #self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True)
@@ -45,7 +49,6 @@ class Encoder(ABC):
             },
         }
         self.parameters.append(param)
-        #self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True)
 
     def add_reference(self, reference):
         self.pydantic_coverage.referencing.append(reference)
@@ -59,7 +62,7 @@ class Encoder(ABC):
         return param_dict["shortname"]
     
     def get_json(self):
-        self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True)
+        self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         return self.covjson
 
     @abstractmethod

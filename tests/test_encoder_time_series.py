@@ -157,7 +157,7 @@ class TestEncoder:
         encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
         covjson = CoverageCollection(type="CoverageCollection", coverages=[], domainType=DomainType.point_series, parameters={}, referencing=[])
 
-        assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True)
+        assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
 
     def test_add_parameter(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
