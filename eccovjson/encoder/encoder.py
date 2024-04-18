@@ -13,6 +13,8 @@ class Encoder(ABC):
 
         self.type = type
 
+        self.referencing = []
+
         domaintype = domaintype.lower()
 
         if domaintype == "pointseries":
@@ -27,6 +29,8 @@ class Encoder(ABC):
             self.domaintype = DomainType.multi_point
         elif domaintype == "frame":
             self.domaintype = DomainType.multi_point
+        elif domaintype == "path":
+            self.domaintype = DomainType.trajectory
 
         self.pydantic_coverage = CoverageCollection(
             type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
@@ -62,6 +66,9 @@ class Encoder(ABC):
 
     def add_reference(self, reference):
         self.pydantic_coverage.referencing.append(reference)
+        for ref in reference["coordinates"]:
+            if ref not in self.referencing:
+                self.referencing.append(ref)
 
     def convert_param_id_to_param(self, paramid):
         try:

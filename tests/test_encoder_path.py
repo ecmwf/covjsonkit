@@ -123,11 +123,11 @@ class TestEncoder:
                 }
             ],
             "parameters": {
-                "t": {
+                "2t": {
                     "type": "Parameter",
                     "description": "Temperature",
                     "unit": {"symbol": "K"},
-                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+                    "observedProperty": {"id": "2t", "label": {"en": "Temperature"}},
                 },
                 "p": {
                     "type": "Parameter",
@@ -139,19 +139,19 @@ class TestEncoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "shapefile")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         assert encoder_obj.type == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "shapefile")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         covjson = CoverageCollection(
-            type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[]
+            type="CoverageCollection", coverages=[], domainType=DomainType.trajectory, parameters={}, referencing=[]
         )
 
         assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
 
     def test_add_parameter(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "shapefile")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         encoder_obj.add_parameter(167)
         encoder_obj.add_parameter(166)
 
@@ -159,7 +159,7 @@ class TestEncoder:
         assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_reference(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "shapefile")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -175,11 +175,12 @@ class TestEncoder:
         assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_coverage(self):
-        encoder = Eccovjson().encode("CoverageCollection", "shapefile")
+        encoder = Eccovjson().encode("CoverageCollection", "Path")
         encoder.add_parameter(167)
+        encoder.add_reference({"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}})
         encoder.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["x", "y"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -200,8 +201,7 @@ class TestEncoder:
             "number": 0,
         }
         coords = {}
-        coords["t"] = ["2017-01-01T00:00:00Z"]
-        coords["composite"] = [[1, 20, 1], [2, 21, 3], [3, 17, 7]]
+        coords["composite"] = [["2017-01-01T00:00:00Z", 20, 1], ["2017-01-01T00:00:00Z", 21, 3], ["2017-01-01T00:00:00Z", 17, 7]]
         value = {"2t": [111, 222, 333]}
         encoder.add_coverage(metadata, coords, value)
 
