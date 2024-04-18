@@ -3,6 +3,8 @@ from covjson_pydantic.domain import DomainType
 
 from eccovjson.api import Eccovjson
 
+import pytest
+
 
 def get_timestamps(start_dt, end_dt, delta):
     dates = []
@@ -138,10 +140,12 @@ class TestEncoder:
             },
         }
 
+    @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_CoverageCollection(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         assert encoder_obj.type == "CoverageCollection"
 
+    @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_standard_Coverage(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         covjson = CoverageCollection(
@@ -150,6 +154,7 @@ class TestEncoder:
 
         assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
 
+    @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_add_parameter(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         encoder_obj.add_parameter(167)
@@ -158,6 +163,7 @@ class TestEncoder:
         json_string = encoder_obj.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         assert CoverageCollection.model_validate_json(json_string)
 
+    @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_add_reference(self):
         encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
         encoder_obj.add_reference(
@@ -174,6 +180,7 @@ class TestEncoder:
         json_string = encoder_obj.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         assert CoverageCollection.model_validate_json(json_string)
 
+    @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_add_coverage(self):
         encoder = Eccovjson().encode("CoverageCollection", "Path")
         encoder.add_parameter(167)
