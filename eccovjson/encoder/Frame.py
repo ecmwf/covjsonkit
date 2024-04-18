@@ -1,4 +1,7 @@
+import json
+
 import pandas as pd
+from covjson_pydantic.coverage import Coverage
 
 from .encoder import Encoder
 
@@ -17,7 +20,8 @@ class Frame(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.pydantic_coverage.coverages.append(new_coverage)
+        cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        self.pydantic_coverage.coverages.append(cov)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -26,7 +30,7 @@ class Frame(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.pydantic_coverage.referencing[0]["coordinates"]
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.pydantic_coverage.referencing[0].coordinates
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):

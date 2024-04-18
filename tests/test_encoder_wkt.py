@@ -208,6 +208,7 @@ class TestEncoder:
 
         json_string = encoder.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         assert CoverageCollection.model_validate_json(json_string)
+        print(json_string)
 
     """
 

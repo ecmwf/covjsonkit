@@ -1,7 +1,10 @@
+import json
 from abc import ABC, abstractmethod
 
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
+from covjson_pydantic.parameter import Parameter
+from covjson_pydantic.reference_system import ReferenceSystemConnectionObject
 
 # from eccovjson.CoverageCollection import CoverageCollection
 from eccovjson.param_db import get_param_from_db, get_unit_from_db
@@ -53,7 +56,7 @@ class Encoder(ABC):
     def add_parameter(self, param):
         param_dict = get_param_from_db(param)
         unit = get_unit_from_db(param_dict["unit_id"])
-        self.pydantic_coverage.parameters[param_dict["shortname"]] = {
+        parameter = {
             "type": "Parameter",
             "description": {"en": param_dict["description"]},
             "unit": {"symbol": unit["name"]},
@@ -62,10 +65,16 @@ class Encoder(ABC):
                 "label": {"en": param_dict["name"]},
             },
         }
+        self.pydantic_coverage.parameters[param_dict["shortname"]] = Parameter.model_validate_json(
+            json.dumps(parameter)
+        )
         self.parameters.append(param)
 
     def add_reference(self, reference):
-        self.pydantic_coverage.referencing.append(reference)
+        self.pydantic_coverage.referencing.append(
+            ReferenceSystemConnectionObject.model_validate_json(json.dumps(reference))
+        )
+        # self.pydantic_coverage.referencing.append(reference)
         for ref in reference["coordinates"]:
             if ref not in self.referencing:
                 self.referencing.append(ref)

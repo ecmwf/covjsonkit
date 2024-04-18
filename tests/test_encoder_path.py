@@ -201,7 +201,11 @@ class TestEncoder:
             "number": 0,
         }
         coords = {}
-        coords["composite"] = [["2017-01-01T00:00:00Z", 20, 1], ["2017-01-01T00:00:00Z", 21, 3], ["2017-01-01T00:00:00Z", 17, 7]]
+        coords["composite"] = [
+            ["2017-01-01T00:00:00Z", 20, 1],
+            ["2017-01-01T00:00:00Z", 21, 3],
+            ["2017-01-01T00:00:00Z", 17, 7],
+        ]
         value = {"2t": [111, 222, 333]}
         encoder.add_coverage(metadata, coords, value)
 

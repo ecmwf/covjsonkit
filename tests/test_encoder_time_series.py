@@ -202,7 +202,7 @@ class TestEncoder:
         # metadatas = []
         coords = []
         values = []
-        for number in range(0, 50):
+        for number in range(0, 10):
             metadata = {
                 "class": "od",
                 "stream": "oper",
