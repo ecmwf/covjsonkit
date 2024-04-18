@@ -1,9 +1,8 @@
+import pytest
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
 from eccovjson.api import Eccovjson
-
-import pytest
 
 
 def get_timestamps(start_dt, end_dt, delta):
