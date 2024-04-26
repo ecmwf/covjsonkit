@@ -124,7 +124,7 @@ class Shapefile(Encoder):
         range_dict = {}
         coords = {}
         coords["composite"] = []
-        coords["t"] = df["date"].unique()[0]
+        coords["t"] = [df["date"].unique()[0] + "Z"]
 
         for param in params:
             df_param = df[df["param"] == param]
