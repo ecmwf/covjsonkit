@@ -1,5 +1,5 @@
 import pandas as pd
-
+import json
 from .encoder import Encoder
 
 
@@ -148,4 +148,4 @@ class VerticalProfile(Encoder):
                     range_dict[param] = df_param["values"].values.tolist()
                 self.add_coverage(new_metadata, coords, range_dict)
 
-        return self.covjson
+        return json.loads(self.get_json())

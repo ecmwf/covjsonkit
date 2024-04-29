@@ -135,4 +135,4 @@ class BoundingBox(Encoder):
             coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
 
         self.add_coverage(mars_metadata, coords, range_dict)
-        return self.covjson
+        return json.loads(self.get_json())

@@ -124,7 +124,7 @@ class Wkt(Encoder):
         range_dict = {}
         coords = {}
         coords["composite"] = []
-        coords["t"] = df["date"].unique()[0]
+        coords["t"] = [df["date"].unique()[0] + "Z"]
 
         for param in params:
             df_param = df[df["param"] == param]
@@ -135,4 +135,4 @@ class Wkt(Encoder):
             coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
 
         self.add_coverage(mars_metadata, coords, range_dict)
-        return self.covjson
+        return json.loads(self.get_json())
