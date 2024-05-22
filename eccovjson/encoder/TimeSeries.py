@@ -1,6 +1,8 @@
+import json
 from datetime import datetime, timedelta
 
 import pandas as pd
+from covjson_pydantic.coverage import Coverage
 
 from .encoder import Encoder
 
@@ -18,7 +20,8 @@ class TimeSeries(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.covjson["coverages"].append(new_coverage)
+        cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        self.pydantic_coverage.coverages.append(cov)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -135,7 +138,7 @@ class TimeSeries(Encoder):
         for step in steps:
             # add current date to list by converting it to iso format
             stamp = start_time + timedelta(hours=int(step))
-            coords["t"].append(stamp.isoformat())
+            coords["t"].append(stamp.isoformat() + "Z")
             # increment start date by timedelta
 
         if "number" not in df.columns:
@@ -156,4 +159,4 @@ class TimeSeries(Encoder):
                     range_dict[param] = df_param["values"].values.tolist()
                 self.add_coverage(new_metadata, coords, range_dict)
 
-        return self.covjson
+        return json.loads(self.get_json())
