@@ -7,7 +7,7 @@ from covjson_pydantic.parameter import Parameter
 from covjson_pydantic.reference_system import ReferenceSystemConnectionObject
 
 # from eccovjson.CoverageCollection import CoverageCollection
-from eccovjson.param_db import get_param_from_db, get_unit_from_db
+from covjsonkit.param_db import get_param_from_db, get_unit_from_db
 
 
 class Encoder(ABC):

@@ -1,8 +1,8 @@
 import json
 from abc import ABC, abstractmethod
 
-from eccovjson.Coverage import Coverage
-from eccovjson.CoverageCollection import CoverageCollection
+from covjsonkit.Coverage import Coverage
+from covjsonkit.CoverageCollection import CoverageCollection
 
 
 class Decoder(ABC):

@@ -1,6 +1,6 @@
 # from earthkit import data
 
-from eccovjson.decoder import Shapefile
+from covjsonkit.decoder import Shapefile
 
 
 class TestDecoder:

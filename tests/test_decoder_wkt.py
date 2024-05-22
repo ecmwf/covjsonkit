@@ -1,6 +1,6 @@
 # from earthkit import data
 
-from eccovjson.decoder import Wkt
+from covjsonkit.decoder import Wkt
 
 
 class TestDecoder:

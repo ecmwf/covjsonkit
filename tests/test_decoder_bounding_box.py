@@ -1,6 +1,6 @@
 # from earthkit import data
 
-from eccovjson.decoder import BoundingBox
+from covjsonkit.decoder import BoundingBox
 
 
 class TestDecoder:

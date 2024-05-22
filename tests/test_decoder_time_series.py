@@ -1,6 +1,6 @@
 # from earthkit import data
 
-from eccovjson.api import Eccovjson
+from covjsonkit.api import Eccovjson
 
 
 class TestDecoder:
