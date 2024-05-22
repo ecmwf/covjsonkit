@@ -10,12 +10,12 @@ __version__ = re.search(
 
 
 setup(
-    name="eccovjson",
+    name="covjsonkit",
     version=__version__,
     description="""ECMWF library for encoding and decoding coerageJSON files/objects of meteorlogical features such as
                    vertical profiles and time series.""",
     long_description="",
-    url="https://github.com/ecmwf/eccovjson",
+    url="https://github.com/ecmwf/covjsonkit",
     author="ECMWF",
     author_email="James.Hawkes@ecmwf.int, Adam.Warde@ecmwf.int, Mathilde.Leuridan@ecmwf.int",
     packages=find_packages(),
