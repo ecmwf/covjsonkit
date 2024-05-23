@@ -1,9 +1,13 @@
+import json
+from datetime import datetime, timedelta
+
 import pandas as pd
+from covjson_pydantic.coverage import Coverage
 
 from .encoder import Encoder
 
 
-class VerticalProfile(Encoder):
+class TimeSeries(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
 
@@ -16,7 +20,8 @@ class VerticalProfile(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.covjson["coverages"].append(new_coverage)
+        cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        self.pydantic_coverage.coverages.append(cov)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -31,23 +36,21 @@ class VerticalProfile(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
 
     def add_range(self, coverage, values):
-        for parameter in self.parameters:
-            coverage["ranges"][parameter] = {}
-            coverage["ranges"][parameter]["type"] = "NdArray"
-            coverage["ranges"][parameter]["dataType"] = "float"
-            coverage["ranges"][parameter]["shape"] = [len(values[parameter])]
-            coverage["ranges"][parameter]["axisNames"] = ["z"]
-            coverage["ranges"][parameter]["values"] = values[parameter]  # [values[parameter]]
+        for parameter in values.keys():
+            param = self.convert_param_id_to_param(parameter)
+            coverage["ranges"][param] = {}
+            coverage["ranges"][param]["type"] = "NdArray"
+            coverage["ranges"][param]["dataType"] = "float"
+            coverage["ranges"][param]["shape"] = [len(values[parameter])]
+            coverage["ranges"][param]["axisNames"] = [str(param)]
+            coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        for parameter in dataset.data_vars:
-            if parameter == "Temperature":
-                self.add_parameter("t")
-            elif parameter == "Pressure":
-                self.add_parameter("p")
+        for data_var in dataset.data_vars:
+            self.add_parameter(data_var)
 
         self.add_reference(
             {
@@ -59,25 +62,22 @@ class VerticalProfile(Encoder):
             }
         )
         for num in dataset["number"].values:
+            dv_dict = {}
+            for dv in dataset.data_vars:
+                dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
+            mars_metadata = {}
+            for metadata in dataset.attrs:
+                mars_metadata[metadata] = dataset.attrs[metadata]
+            mars_metadata["number"] = num
             self.add_coverage(
-                {
-                    # "date": fc_time.values.astype("M8[ms]")
-                    # .astype("O")
-                    # .strftime("%m/%d/%Y"),
-                    "number": num,
-                    "type": "forecast",
-                    "step": 0,
-                },
+                mars_metadata,
                 {
                     "x": list(dataset["x"].values),
                     "y": list(dataset["y"].values),
                     "z": list(dataset["z"].values),
                     "t": [str(x) for x in dataset["t"].values],
                 },
-                {
-                    "t": list(dataset["Temperature"].sel(number=num).values[0][0][0]),
-                    "p": dataset["Pressure"].sel(number=num).values[0][0][0],
-                },
+                dv_dict,
             )
         return self.covjson
 
@@ -114,6 +114,7 @@ class VerticalProfile(Encoder):
                 },
             }
         )
+        steps = df["step"].unique()
 
         mars_metadata = {}
         mars_metadata["class"] = df["class"].unique()[0]
@@ -127,8 +128,18 @@ class VerticalProfile(Encoder):
         coords = {}
         coords["x"] = list(df["latitude"].unique())
         coords["y"] = list(df["longitude"].unique())
-        coords["z"] = list(df["level"].unique())
-        coords["t"] = list(df["date"].unique())
+        coords["z"] = ["sfc"]
+        coords["t"] = []
+
+        # convert step into datetime
+        date_format = "%Y%m%dT%H%M%S"
+        date = pd.Timestamp(mars_metadata["date"]).strftime(date_format)
+        start_time = datetime.strptime(date, date_format)
+        for step in steps:
+            # add current date to list by converting it to iso format
+            stamp = start_time + timedelta(hours=int(step))
+            coords["t"].append(stamp.isoformat() + "Z")
+            # increment start date by timedelta
 
         if "number" not in df.columns:
             new_metadata = mars_metadata.copy()
@@ -148,4 +159,4 @@ class VerticalProfile(Encoder):
                     range_dict[param] = df_param["values"].values.tolist()
                 self.add_coverage(new_metadata, coords, range_dict)
 
-        return self.covjson
+        return json.loads(self.get_json())

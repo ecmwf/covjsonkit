@@ -4,7 +4,7 @@
 # import xarray as xr
 # from earthkit import data
 
-from eccovjson.decoder import Frame
+from covjsonkit.decoder import Frame
 
 
 class TestDecoder:

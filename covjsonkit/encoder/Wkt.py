@@ -1,9 +1,12 @@
+import json
+
 import pandas as pd
+from covjson_pydantic.coverage import Coverage
 
 from .encoder import Encoder
 
 
-class Frame(Encoder):
+class Wkt(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
         self.covjson["domainType"] = "MultiPoint"
@@ -17,7 +20,8 @@ class Frame(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.covjson["coverages"].append(new_coverage)
+        cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        self.pydantic_coverage.coverages.append(cov)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -26,7 +30,7 @@ class Frame(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0]["coordinates"]
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.pydantic_coverage.referencing[0].coordinates
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):
@@ -43,7 +47,37 @@ class Frame(Encoder):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        pass
+        range_dicts = {}
+
+        for data_var in dataset.data_vars:
+            self.add_parameter(data_var)
+            range_dicts[data_var] = dataset[data_var].values.tolist()
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        mars_metadata = {}
+
+        for metadata in dataset.attrs:
+            mars_metadata[metadata] = dataset.attrs[metadata]
+
+        coords = {}
+        coords["composite"] = []
+        coords["t"] = dataset.attrs["date"]
+
+        xy = zip(dataset.x.values, dataset.y.values)
+        for x, y in xy:
+            coords["composite"].append([x, y])
+
+        self.add_coverage(mars_metadata, coords, range_dicts)
+        return self.covjson
 
     def from_polytope(self, result):
         ancestors = [val.get_ancestors() for val in result.leaves]
@@ -90,7 +124,7 @@ class Frame(Encoder):
         range_dict = {}
         coords = {}
         coords["composite"] = []
-        coords["t"] = df["date"].unique()[0]
+        coords["t"] = [df["date"].unique()[0] + "Z"]
 
         for param in params:
             df_param = df[df["param"] == param]
@@ -101,4 +135,4 @@ class Frame(Encoder):
             coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
 
         self.add_coverage(mars_metadata, coords, range_dict)
-        return self.covjson
+        return json.loads(self.get_json())

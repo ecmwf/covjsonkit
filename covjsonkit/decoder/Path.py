@@ -3,7 +3,7 @@ import xarray as xr
 from .decoder import Decoder
 
 
-class BoundingBox(Decoder):
+class Path(Decoder):
     def __init__(self, covjson):
         super().__init__(covjson)
         self.domains = self.get_domains()
@@ -27,9 +27,6 @@ class BoundingBox(Decoder):
             values[parameter] = []
             for range in self.ranges:
                 values[parameter].append(range[parameter]["values"])
-            # values[parameter] = [
-            #    value for sublist in values[parameter] for value in sublist
-            # ]
         return values
 
     def get_coordinates(self):
@@ -45,21 +42,25 @@ class BoundingBox(Decoder):
         # Get coordinates
         x = []
         y = []
+        t = []
         for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[0]))
-            y.append(float(coord[1]))
+            x.append(float(coord[1]))
+            y.append(float(coord[2]))
+            t.append(coord[0])
 
         # Get values
         for parameter in self.parameters:
             dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
             dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["description"]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
             dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(
             dataarraydict,
-            coords=dict(points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
+            coords=dict(
+                points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y), t=(["points"], t)
+            ),
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]

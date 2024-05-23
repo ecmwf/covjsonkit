@@ -1,4 +1,7 @@
-from eccovjson.api import Eccovjson
+from covjson_pydantic.coverage import CoverageCollection
+from covjson_pydantic.domain import DomainType
+
+from covjsonkit.api import Eccovjson
 
 
 def get_timestamps(start_dt, end_dt, delta):
@@ -136,53 +139,27 @@ class TestEncoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Frame")
         assert encoder_obj.type == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
-        covjson = {
-            "type": "CoverageCollection",
-            "domainType": "MultiPoint",
-            "coverages": [],
-            "referencing": [],
-            "parameters": {},
-        }
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Frame")
+        covjson = CoverageCollection(
+            type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[]
+        )
 
-        assert encoder_obj.covjson == covjson
+        assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
 
     def test_add_parameter(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
-        encoder_obj.add_parameter("t")
-        encoder_obj.add_parameter("tp")
-        covjson = {
-            "type": "CoverageCollection",
-            "domainType": "MultiPoint",
-            "coverages": [],
-            "referencing": [],
-            "parameters": {
-                "t": {
-                    "type": "Parameter",
-                    "description": "Temperature",
-                    "unit": {"symbol": "K"},
-                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
-                },
-                "tp": {
-                    "type": "Parameter",
-                    "description": "Total Precipitation",
-                    "unit": {"symbol": "m"},
-                    "observedProperty": {
-                        "id": "tp",
-                        "label": {"en": "Total Precipitation"},
-                    },
-                },
-            },
-        }
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Frame")
+        encoder_obj.add_parameter(167)
+        encoder_obj.add_parameter(166)
 
-        assert encoder_obj.covjson == covjson
+        json_string = encoder_obj.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
+        assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_reference(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "BoundingBox")
+        encoder_obj = Eccovjson().encode("CoverageCollection", "Frame")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -192,27 +169,14 @@ class TestEncoder:
                 },
             }
         )
-        covjson = {
-            "type": "CoverageCollection",
-            "domainType": "MultiPoint",
-            "coverages": [],
-            "referencing": [
-                {
-                    "coordinates": ["x", "y", "z"],
-                    "system": {
-                        "type": "GeographicCRS",
-                        "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                    },
-                }
-            ],
-            "parameters": {},
-        }
+        encoder_obj.add_reference({"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}})
 
-        assert encoder_obj.covjson == covjson
+        json_string = encoder_obj.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
+        assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_coverage(self):
-        encoder = Eccovjson().encode("CoverageCollection", "BoundingBox")
-        encoder.add_parameter("t")
+        encoder = Eccovjson().encode("CoverageCollection", "Frame")
+        encoder.add_parameter(167)
         encoder.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -236,13 +200,14 @@ class TestEncoder:
             "number": 0,
         }
         coords = {}
-        coords["t"] = ["2017-01-01T00:00:00"]
+        coords["t"] = ["2017-01-01T00:00:00Z"]
         coords["composite"] = [[1, 20, 1], [2, 21, 3], [3, 17, 7]]
-        value = {"t": [111, 222, 333]}
+        value = {"2t": [111, 222, 333]}
         encoder.add_coverage(metadata, coords, value)
-        # print(encoder.covjson)
 
-        print(encoder.covjson)
+        json_string = encoder.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
+        assert CoverageCollection.model_validate_json(json_string)
+        print(json_string)
 
     """
 

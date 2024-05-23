@@ -1,13 +1,15 @@
-from datetime import datetime, timedelta
+import json
 
 import pandas as pd
+from covjson_pydantic.coverage import Coverage
 
 from .encoder import Encoder
 
 
-class TimeSeries(Encoder):
+class Frame(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
+        self.covjson["domainType"] = "MultiPoint"
 
     def add_coverage(self, mars_metadata, coords, values):
         new_coverage = {}
@@ -18,19 +20,18 @@ class TimeSeries(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.covjson["coverages"].append(new_coverage)
+        cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        self.pydantic_coverage.coverages.append(cov)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["x"] = {}
-        coverage["domain"]["axes"]["y"] = {}
-        coverage["domain"]["axes"]["z"] = {}
         coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["x"]["values"] = coords["x"]
-        coverage["domain"]["axes"]["y"]["values"] = coords["y"]
-        coverage["domain"]["axes"]["z"]["values"] = coords["z"]
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
+        coverage["domain"]["axes"]["composite"] = {}
+        coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.pydantic_coverage.referencing[0].coordinates
+        coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -40,17 +41,18 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = values[parameter]
+            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        for parameter in dataset.data_vars:
-            if parameter == "Temperature":
-                self.add_parameter("t")
-            elif parameter == "Pressure":
-                self.add_parameter("p")
+        range_dicts = {}
+
+        for data_var in dataset.data_vars:
+            self.add_parameter(data_var)
+            range_dicts[data_var] = dataset[data_var].values.tolist()
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -60,24 +62,21 @@ class TimeSeries(Encoder):
                 },
             }
         )
-        for num in dataset["number"].values:
-            dv_dict = {}
-            for dv in dataset.data_vars:
-                dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
-            self.add_coverage(
-                {
-                    "number": num,
-                    "type": "forecast",
-                    "step": 0,
-                },
-                {
-                    "x": list(dataset["x"].values),
-                    "y": list(dataset["y"].values),
-                    "z": list(dataset["z"].values),
-                    "t": [str(x) for x in dataset["t"].values],
-                },
-                dv_dict,
-            )
+
+        mars_metadata = {}
+
+        for metadata in dataset.attrs:
+            mars_metadata[metadata] = dataset.attrs[metadata]
+
+        coords = {}
+        coords["composite"] = []
+        coords["t"] = dataset.attrs["date"]
+
+        xy = zip(dataset.x.values, dataset.y.values)
+        for x, y in xy:
+            coords["composite"].append([x, y])
+
+        self.add_coverage(mars_metadata, coords, range_dicts)
         return self.covjson
 
     def from_polytope(self, result):
@@ -113,49 +112,27 @@ class TimeSeries(Encoder):
                 },
             }
         )
-        steps = df["step"].unique()
 
         mars_metadata = {}
         mars_metadata["class"] = df["class"].unique()[0]
         mars_metadata["expver"] = df["expver"].unique()[0]
         mars_metadata["levtype"] = df["levtype"].unique()[0]
         mars_metadata["type"] = df["type"].unique()[0]
-        mars_metadata["date"] = df["date"].unique()[0]
         mars_metadata["domain"] = df["domain"].unique()[0]
         mars_metadata["stream"] = df["stream"].unique()[0]
 
+        range_dict = {}
         coords = {}
-        coords["x"] = list(df["latitude"].unique())
-        coords["y"] = list(df["longitude"].unique())
-        coords["z"] = ["sfc"]
-        coords["t"] = []
+        coords["composite"] = []
+        coords["t"] = [df["date"].unique()[0] + "Z"]
 
-        # convert step into datetime
-        date_format = "%Y%m%dT%H%M%S"
-        date = pd.Timestamp(mars_metadata["date"]).strftime(date_format)
-        start_time = datetime.strptime(date, date_format)
-        for step in steps:
-            # add current date to list by converting it to iso format
-            stamp = start_time + timedelta(hours=int(step))
-            coords["t"].append(stamp.isoformat())
-            # increment start date by timedelta
+        for param in params:
+            df_param = df[df["param"] == param]
+            range_dict[param] = df_param["values"].values.tolist()
 
-        if "number" not in df.columns:
-            new_metadata = mars_metadata.copy()
-            range_dict = {}
-            for param in params:
-                df_param = df[df["param"] == param]
-                range_dict[param] = df_param["values"].values.tolist()
-            self.add_coverage(new_metadata, coords, range_dict)
-        else:
-            for number in df["number"].unique():
-                new_metadata = mars_metadata.copy()
-                new_metadata["number"] = number
-                df_number = df[df["number"] == number]
-                range_dict = {}
-                for param in params:
-                    df_param = df_number[df_number["param"] == param]
-                    range_dict[param] = df_param["values"].values.tolist()
-                self.add_coverage(new_metadata, coords, range_dict)
+        df_param = df[df["param"] == params[0]]
+        for row in df_param.iterrows():
+            coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
 
-        return self.covjson
+        self.add_coverage(mars_metadata, coords, range_dict)
+        return json.loads(self.get_json())
