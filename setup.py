@@ -21,5 +21,5 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
-    package_data={"": ["*.json"], "covjsonkit": ["data/*.json"]},
+    package_data={"covjsonkit": ["data/*.json"]},
 )
