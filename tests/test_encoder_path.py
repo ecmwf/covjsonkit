@@ -2,7 +2,7 @@ import pytest
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
-from covjsonkit.api import Eccovjson
+from covjsonkit.api import Covjsonkit
 
 
 def get_timestamps(start_dt, end_dt, delta):
@@ -141,12 +141,12 @@ class TestEncoder:
 
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_CoverageCollection(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "Path")
         assert encoder_obj.type == "CoverageCollection"
 
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_standard_Coverage(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "Path")
         covjson = CoverageCollection(
             type="CoverageCollection", coverages=[], domainType=DomainType.trajectory, parameters={}, referencing=[]
         )
@@ -155,7 +155,7 @@ class TestEncoder:
 
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_add_parameter(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "Path")
         encoder_obj.add_parameter(167)
         encoder_obj.add_parameter(166)
 
@@ -164,7 +164,7 @@ class TestEncoder:
 
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_add_reference(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "Path")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "Path")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -181,7 +181,7 @@ class TestEncoder:
 
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_add_coverage(self):
-        encoder = Eccovjson().encode("CoverageCollection", "Path")
+        encoder = Covjsonkit().encode("CoverageCollection", "Path")
         encoder.add_parameter(167)
         encoder.add_reference({"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}})
         encoder.add_reference(
@@ -223,7 +223,7 @@ class TestEncoder:
 
     def test_from_xarray(self):
         ds = xr.open_dataset("new_timeseries.nc")
-        encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder = Covjsonkit().encode("CoverageCollection", "PointSeries")
         encoder.from_xarray(ds)
 
         """

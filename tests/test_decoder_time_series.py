@@ -1,6 +1,6 @@
 # from earthkit import data
 
-from covjsonkit.api import Eccovjson
+from covjsonkit.api import Covjsonkit
 
 
 class TestDecoder:
@@ -138,19 +138,19 @@ class TestDecoder:
     def test_timeseries_type(self):
         # decoder = TimeSeries.TimeSeries(self.covjson)
         # assert decoder.type == "CoverageCollection"
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         assert decoder.type == "CoverageCollection"
 
     def test_timeseries_parameters(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         assert decoder.parameters == ["t", "p"]
 
     def test_timeseries_referencing(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         assert decoder.get_referencing() == ["x", "y", "z"]
 
     def test_timeseries_mars_metadata(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         metadata1 = {
             "class": "od",
             "stream": "oper",
@@ -170,7 +170,7 @@ class TestDecoder:
         assert decoder.mars_metadata == [metadata1, metadata2]
 
     def test_timeseries_domains(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         domain1 = {
             "type": "Domain",
             "axes": {
@@ -205,7 +205,7 @@ class TestDecoder:
         assert decoder.domains[1] == domain2
 
     def test_timeseries_ranges(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         range1 = {
             "t": {
                 "type": "NdArray",
@@ -242,7 +242,7 @@ class TestDecoder:
         assert decoder.ranges[1] == range2
 
     def test_timeseries_values(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         values = {
             "t": [
                 [264.93115234375, 263.83115234375, 265.12313132266],
@@ -256,7 +256,7 @@ class TestDecoder:
         assert decoder.get_values() == values
 
     def test_timeseries_coordinates(self):
-        decoder = Eccovjson().decode(self.covjson)
+        decoder = Covjsonkit().decode(self.covjson)
         coordinates = {
             "t": [
                 [
@@ -287,7 +287,7 @@ class TestDecoder:
         assert decoder.get_coordinates() == coordinates
 
     def test_timeseries_to_xarray(self):
-        # decoder = Eccovjson().decode(self.covjson)
+        # decoder = Covjsonkit().decode(self.covjson)
         # ds = decoder.to_xarray()
         # print(ds)
         # print(ds["Temperature"])
@@ -298,30 +298,3 @@ class TestDecoder:
         # print(type(ekds))
         # print(ekds.ls())
         pass
-
-
-"""
-[<xarray.DataArray 't' (x: 1, y: 1, z: 1, t: 6)>
-array([[[[264.93115234, 263.83115234, 265.12313132, 263.83115234,
-          265.12313132, 264.93115234]]]])
-Coordinates:
-  * x        (x) int64 3
-  * y        (y) int64 7
-  * z        (z) int64 1
-  * t        (t) datetime64[ns] 2017-01-01 ... 2017-01-02T12:00:00
-Attributes:
-    type:       Parameter
-    units:      K
-    long_name:  Temperature, <xarray.DataArray 'p' (x: 1, y: 1, z: 1, t: 6)>
-array([[[[ 9.93115234,  7.83115234, 14.12313132, 13.83115234,
-          14.12313132,  7.93115234]]]])
-Coordinates:
-  * x        (x) int64 3
-  * y        (y) int64 7
-  * z        (z) int64 1
-  * t        (t) datetime64[ns] 2017-01-01 ... 2017-01-02T12:00:00
-Attributes:
-    type:       Parameter
-    units:      pa
-    long_name:  Pressure]
-    """
