@@ -33,7 +33,7 @@ features_decoder = {
 }
 
 
-class Eccovjson:
+class Covjsonkit:
     def __init__(self):
         pass
 

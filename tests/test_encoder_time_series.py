@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
-from covjsonkit.api import Eccovjson
+from covjsonkit.api import Covjsonkit
 
 
 def get_timestamps(start_dt, end_dt, delta):
@@ -150,11 +150,11 @@ class TestEncoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "PointSeries")
         assert encoder_obj.type == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "PointSeries")
         covjson = CoverageCollection(
             type="CoverageCollection", coverages=[], domainType=DomainType.point_series, parameters={}, referencing=[]
         )
@@ -162,7 +162,7 @@ class TestEncoder:
         assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
 
     def test_add_parameter(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "PointSeries")
         encoder_obj.add_parameter(167)
         encoder_obj.add_parameter(166)
 
@@ -170,7 +170,7 @@ class TestEncoder:
         assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_reference(self):
-        encoder_obj = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "PointSeries")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -186,7 +186,7 @@ class TestEncoder:
         assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_coverage(self):
-        encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
+        encoder = Covjsonkit().encode("CoverageCollection", "PointSeries")
         encoder.add_parameter(167)
         encoder.add_reference(
             {
@@ -235,5 +235,5 @@ class TestEncoder:
     # @pytest.mark.data
     # def test_from_xarray(self):
     #    ds = xr.open_dataset("new_timeseries.nc")
-    #    encoder = Eccovjson().encode("CoverageCollection", "PointSeries")
+    #    encoder = Covjsonkit().encode("CoverageCollection", "PointSeries")
     #    encoder.from_xarray(ds)
