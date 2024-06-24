@@ -80,21 +80,21 @@ class BoundingBox(Encoder):
         return self.covjson
 
     def from_polytope(self, result):
-        ancestors = [val.get_ancestors() for val in result.leaves]
-        values = [val.result for val in result.leaves]
+        ancestors = []
+        values = []
+        for val in result.leaves:
+            ancestors.append(val.get_ancestors())
+            values.append(val.result)
 
-        columns = []
         df_dict = {}
         # Create empty dataframe
         for feature in ancestors[0]:
-            columns.append(str(feature).split("=")[0])
-            df_dict[str(feature).split("=")[0]] = []
+            df_dict[feature.axis.name] = []
 
         # populate dataframe
         for ancestor in ancestors:
             for feature in ancestor:
-                df_dict[str(feature).split("=")[0]].append(str(feature).split("=")[1])
-        values = [val.result for val in result.leaves]
+                df_dict[feature.axis.name].append(feature.value)
         df_dict["values"] = values
         df = pd.DataFrame(df_dict)
 
@@ -124,15 +124,18 @@ class BoundingBox(Encoder):
         range_dict = {}
         coords = {}
         coords["composite"] = []
-        coords["t"] = [df["date"].unique()[0] + "Z"]
+        coords["t"] = [str(df["date"].unique()[0]) + "Z"]
 
         for param in params:
             df_param = df[df["param"] == param]
             range_dict[param] = df_param["values"].values.tolist()
 
         df_param = df[df["param"] == params[0]]
-        for row in df_param.iterrows():
-            coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
+        lat = df_param["latitude"].values.tolist()
+        long = df_param["longitude"].values.tolist()
+        latlong = zip(lat, long)
+        for lat, long in latlong:
+            coords["composite"].append([lat, long])
 
         self.add_coverage(mars_metadata, coords, range_dict)
         return json.loads(self.get_json())
