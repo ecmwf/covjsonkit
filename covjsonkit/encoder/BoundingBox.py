@@ -10,6 +10,7 @@ class BoundingBox(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
         self.covjson["domainType"] = "MultiPoint"
+        self.covjson['coverages'] = []
 
     def add_coverage(self, mars_metadata, coords, values):
         new_coverage = {}
@@ -20,8 +21,9 @@ class BoundingBox(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        cov = Coverage.model_validate_json(json.dumps(new_coverage))
-        self.pydantic_coverage.coverages.append(cov)
+        self.covjson['coverages'].append(new_coverage)
+        #cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        #self.pydantic_coverage.coverages.append(json.dumps(new_coverage))
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -30,7 +32,7 @@ class BoundingBox(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.pydantic_coverage.referencing[0].coordinates
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson['referencing'][0]['coordinates'] #self.pydantic_coverage.referencing[0].coordinates
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):
@@ -148,9 +150,6 @@ class BoundingBox(Encoder):
         number = 0
 
         self.func(result, lat, coords, mars_metadata, param, range_dict, number)
-        print(coords)
-        print(mars_metadata)
-        print(range_dict)
 
         self.add_reference(
             {
@@ -170,7 +169,7 @@ class BoundingBox(Encoder):
             self.add_coverage(mars_metadata, coords, range_dict[num])
 
         #self.add_coverage(mars_metadata, coords, range_dict)
-        return json.loads(self.get_json())
+        return self.covjson
 
 
     def func(self, tree, lat, coords, mars_metadata, param, range_dict, number):
