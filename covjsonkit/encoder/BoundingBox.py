@@ -1,4 +1,5 @@
 import json
+import orjson
 
 import pandas as pd
 from covjson_pydantic.coverage import Coverage
@@ -148,8 +149,10 @@ class BoundingBox(Encoder):
         lat = 0
         param = 0
         number = 0
+        step = 0
 
-        self.func(result, lat, coords, mars_metadata, param, range_dict, number)
+        self.func(result, lat, coords, mars_metadata, param, range_dict, number, step)
+        #print(range_dict)
 
         self.add_reference(
             {
@@ -165,13 +168,70 @@ class BoundingBox(Encoder):
             self.add_parameter(param)
 
         for num in range_dict.keys():
-            mars_metadata["number"] = num
-            self.add_coverage(mars_metadata, coords, range_dict[num])
+            val_dict = {}
+            for step in range_dict[1][self.parameters[0]].keys():
+                val_dict[step] = {}
+            for para in range_dict[num].keys():
+                for step in range_dict[num][para].keys():
+                    val_dict[step][para] = range_dict[num][para][step]
+            for step in val_dict.keys():
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm['step'] = step
+                self.add_coverage(mm, coords, val_dict[step])
 
         #self.add_coverage(mars_metadata, coords, range_dict)
+        #return self.covjson
+        #with open('data.json', 'w') as f:
+        #    json.dump(self.covjson, f)
         return self.covjson
 
 
+    def func(self, tree, lat, coords, mars_metadata, param, range_dict, number, step):
+        if len(tree.children) != 0:
+        # recurse while we are not a leaf
+            for c in tree.children:
+                if c.axis.name != "latitude" and c.axis.name != "longitude" and c.axis.name != "param" and c.axis.name != "date":
+                    mars_metadata[c.axis.name] = c.values[0]
+                if c.axis.name == "latitude":
+                    lat = c.values[0]
+                if c.axis.name == "param":
+                    param = c.values
+                    for num in range_dict:
+                        for para in param:
+                            range_dict[num][para] = {}
+                if c.axis.name == "date":
+                    coords['t'] = [str(c.values[0]) + "Z"]
+                if c.axis.name == "number":
+                    number = c.values
+                    for num in number:
+                        range_dict[num] = {}
+                if c.axis.name == "step":
+                    step = c.values
+                    for num in number:
+                        for para in param:
+                            for s in step:
+                                range_dict[num][para][s] = []
+
+                self.func(c, lat, coords, mars_metadata, param, range_dict, number, step)
+        else:
+            vals = len(tree.values)
+            tree.values = [float(val) for val in tree.values]
+            tree.result = [float(val) for val in tree.result]
+            num_intervals = int(len(tree.result)/len(number))
+            para_intervals = int(num_intervals/len(step))
+
+            for val in tree.values:
+                coords['composite'].append([lat, val])
+
+            for num in range_dict:
+                for i, para in enumerate(range_dict[num]):
+                    for s in range_dict[num][para]:
+                        start = ((int(num)-1)*num_intervals)+(vals*int(s))+((i*para_intervals))
+                        end = ((int(num)-1)*num_intervals)+((vals)*int(s+1))+((i)*(para_intervals))
+                        range_dict[num][para][s].extend(tree.result[start:end])
+
+    """
     def func(self, tree, lat, coords, mars_metadata, param, range_dict, number):
         if len(tree.children) != 0:
         # recurse while we are not a leaf
@@ -195,13 +255,16 @@ class BoundingBox(Encoder):
                 self.func(c, lat, coords, mars_metadata, param, range_dict, number)
         else:
             vals = len(tree.values)
-            intervals = int(len(tree.result)/len(number))
+            tree.values = [float(val) for val in tree.values]
+            tree.result = [float(val) for val in tree.result]
+            num_intervals = int(len(tree.result)/len(number))
+            step_intervals = 0
             for val in tree.values:
                 coords['composite'].append([lat, val])
-            for key in range_dict:
+            for num in range_dict:
                 for i, para in enumerate(param):
-                    range_dict[key][para].extend(tree.result[((int(key)-1)*intervals)+((i*vals)):((int(key)-1)*intervals)+((i+1)*(vals))])
-
+                    range_dict[num][para].extend(tree.result[((int(num)-1)*num_intervals)+((i*vals)):((int(num)-1)*num_intervals)+((i+1)*(vals))])
+    """
     """       
     def func(self, tree, lat, coords, mars_metadata, param, range_dict, number):
         if len(tree.children) != 0:

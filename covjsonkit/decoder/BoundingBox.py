@@ -39,16 +39,29 @@ class BoundingBox(Decoder):
         pass
 
     def to_xarray(self):
-        dims = ["points"]
+        dims = ["number", "points"]
         dataarraydict = {}
 
         # Get coordinates
+        """
         x = []
         y = []
         for coord in self.get_coordinates()["composite"]["values"]:
             x.append(float(coord[0]))
             y.append(float(coord[1]))
+        """
+        xs=[]
+        ys=[]
+        for coverage in self.domains:
+            x = []
+            y = []
+            for coord in coverage["axes"]["composite"]["values"]:
+                x.append(float(coord[0]))
+                y.append(float(coord[1]))
+            xs.append(x)
+            ys.append(y)
 
+        """
         # Get values
         for parameter in self.parameters:
             dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
@@ -56,15 +69,34 @@ class BoundingBox(Decoder):
             dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
             dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
             dataarraydict[dataarray.attrs["long_name"]] = dataarray
+        """
+        values = {}
+        for parameter in self.parameters:  
+            values[parameter] = [] 
+
+        for coverage in self.ranges:
+            for parameter in self.parameters:
+                values[parameter].append(coverage[parameter]["values"])
+
+        for parameter in self.parameters:
+            dataarray = xr.DataArray(values[parameter], dims=dims)
+            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+            dataarraydict[dataarray.attrs["long_name"]] = dataarray
+
+        numbers = []
+        for mm in self.mars_metadata:
+            numbers.append(mm['number'])
 
         ds = xr.Dataset(
             dataarraydict,
-            coords=dict(points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
+            coords=dict(number=(['number'], numbers), points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
         # Add date attribute
-        ds.attrs["date"] = self.get_coordinates()["t"]["values"]
+        ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
 
         return ds

@@ -1,4 +1,5 @@
 import json
+import orjson
 from abc import ABC, abstractmethod
 
 from covjson_pydantic.coverage import CoverageCollection
@@ -58,9 +59,14 @@ class Encoder(ABC):
                 "label": {"en": param_dict["name"]},
             },
         }
-        self.pydantic_coverage.parameters[param_dict["shortname"]] = Parameter.model_validate_json(
-            json.dumps(parameter)
-        )
+        #self.pydantic_coverage.parameters[param_dict["shortname"]] = Parameter.model_validate_json(
+        #    json.dumps(parameter)
+        #)
+        if 'parameters' not in self.covjson:
+            self.covjson["parameters"] = {}
+            self.covjson["parameters"][param_dict["shortname"]] = parameter
+        else:
+            self.covjson["parameters"][param_dict["shortname"]] = parameter
         self.parameters.append(param)
 
     def add_reference(self, reference):
@@ -83,8 +89,8 @@ class Encoder(ABC):
         return param_dict["shortname"]
 
     def get_json(self):
-        self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
-        return self.covjson
+        #self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
+        return orjson.dumps(self.covjson)
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
