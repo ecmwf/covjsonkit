@@ -219,7 +219,7 @@ class BoundingBox(Encoder):
             tree.values = [float(val) for val in tree.values]
             tree.result = [float(val) for val in tree.result]
             num_intervals = int(len(tree.result)/len(number))
-            para_intervals = int(num_intervals/len(step))
+            para_intervals = int(num_intervals/len(param))
 
             for val in tree.values:
                 coords['composite'].append([lat, val])
