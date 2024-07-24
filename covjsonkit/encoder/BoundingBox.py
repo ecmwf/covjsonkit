@@ -87,7 +87,7 @@ class BoundingBox(Encoder):
         coords  = {}
         #coords['composite'] = []
         mars_metadata = {}
-        range_dict = {0:{}}
+        range_dict = {}
         lat = 0
         param = 0
         number = [0]
@@ -111,15 +111,15 @@ class BoundingBox(Encoder):
         #for para in range_dict[1][dates[0]].keys():
         #    self.add_parameter(para)               
 
-
-        for num in range_dict.keys():
-            for date in range_dict[num].keys():
+        for date in range_dict.keys():
+            print(date)
+            for num in range_dict[date].keys():
                 val_dict = {}
-                for step in range_dict[0][date][self.parameters[0]].keys():
+                for step in range_dict[date][num][self.parameters[0]].keys():
                     val_dict[step] = {}
-                for para in range_dict[num][date].keys():
-                    for step in range_dict[num][date][para].keys():
-                        val_dict[step][para] = range_dict[num][date][para][step]
+                for para in range_dict[date][num].keys():
+                    for step in range_dict[date][num][para].keys():
+                        val_dict[step][para] = range_dict[date][num][para][step]
                 for step in val_dict.keys():
                     mm = mars_metadata.copy()
                     mm["number"] = num
@@ -137,39 +137,40 @@ class BoundingBox(Encoder):
         if len(tree.children) != 0:
         # recurse while we are not a leaf
             for c in tree.children:
-                print(c.axis.name)
                 if c.axis.name != "latitude" and c.axis.name != "longitude" and c.axis.name != "param" and c.axis.name != "date":
                     mars_metadata[c.axis.name] = c.values[0]
                 if c.axis.name == "latitude":
                     lat = c.values[0]
                 if c.axis.name == "param":
                     param = c.values
-                    print(range_dict)
-                    for num in range_dict.keys():
-                        for date in dates:
+                    for date in range_dict.keys():
+                        if range_dict[date] == {}:
+                            range_dict[date] = {0: {}}
+                        for num in number:
                             for para in param:
-                                range_dict[num][date][para] = {}
-                                self.add_parameter(para)
+                                if para not in range_dict[date][num]:
+                                    range_dict[date][num][para] = {}
+                                    self.add_parameter(para)
                 if c.axis.name == "date":
                     dates = [str(date)+ "Z" for date in c.values]
                     for date in dates:
                         coords[date] = {}
                         coords[date]['composite'] = []
                         coords[date]['t'] = [date]
-                    for num in range_dict.keys():
-                        for date in dates:
-                            range_dict[num][date] = {}
+                        if date not in range_dict:
+                            range_dict[date] = {}
                 if c.axis.name == "number":
                     number = c.values
-                    for num in number:
-                        range_dict[num] = {}
+                    for date in dates:
+                        for num in number:
+                            range_dict[date][num] = {}
                 if c.axis.name == "step":
                     step = c.values
-                    for num in number:
-                        for date in dates:
+                    for date in dates:
+                        for num in number:
                             for para in param:
                                 for s in step:
-                                    range_dict[num][date][para][s] = []
+                                    range_dict[date][num][para][s] = []
 
                 self.func(c, lat, coords, mars_metadata, param, range_dict, number, step, dates)
         else:
@@ -179,27 +180,28 @@ class BoundingBox(Encoder):
             num_intervals = int(len(tree.result)/len(number))
             #para_intervals = int(num_intervals/len(param))
             num_len = len(tree.result)/len(number)
-            para_len = len(tree.result)/len(param)
+            para_len = num_len/len(param)
             step_len = para_len/len(step)
 
             for date in dates:
                 for val in tree.values:
                     coords[date]['composite'].append([lat, val])
             
-            #print(lat)
-            #print(number)
-            #print(dates)
-            #print(param)
-            #print(step)
+            print(lat)
+            print(number)
+            print(dates)
+            print(param)
+            print(step)
             #print(tree.values)
             print(para_len)
             print(step_len)
             print(tree.result)
 
-            for i, para in enumerate(param):
-                for j, s in enumerate(step):
-                    range_dict[number[0]][dates[0]][para][s].extend(tree.result[int(i*para_len)+ int((j)*step_len): int(i*para_len) + int((j+1)*step_len)])
-
+            for i, num in enumerate(number):
+                for j, para in enumerate(param):
+                    for k, s in enumerate(step):
+                        range_dict[dates[0]][num][para][s].extend(tree.result[int(i*num_len) + int(j*para_len)+ int(k*step_len): int(i*num_len) + int(j*para_len) + int((k+1)*step_len)])
+                print(range_dict)
 
             #for i, num in enumerate(range_dict):
             #    for j, date in enumerate(dates):
