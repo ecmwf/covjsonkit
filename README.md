@@ -2,7 +2,7 @@
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 
 <h3 align="center">
-<img src="./docs/images/Logo_Destination_Earth_Colours.png" width=60%>
+<img src="./docs/images/ECMWF_logo.svg.png" width=60%>
 </br>
 
 # covjsonkit
@@ -56,24 +56,29 @@ The library consists of an encoder and a decoder element. The decoder can be use
 
 ### Decoder
 
-    from covjsonkit.api import Covjsonkit
+```Python
+from covjsonkit.api import Covjsonkit
 
-    decoder = Covjsonkit().decode(coverage.covjson)
+decoder = Covjsonkit().decode(coverage.covjson)
 
-    print(decoder.type)
-    print(decoder.parameters)
-    print(decoder.get_referencing())
+print(decoder.type)
+print(decoder.parameters)
+print(decoder.get_referencing())
 
-    ds = decoder.to_xarray()
+ds = decoder.to_xarray()
+```
+
 
 ### Encoder
 
 The following example encodes data output from the polytope feature extraction library assuming polytope_output is a valid output from polytope.
 
-    from covjsonkit.api import Covjsonkit
+```Python
+from covjsonkit.api import Covjsonkit
 
-    encoder = Covjsonkit().encode("CoverageCollection", "BoundingBox")
-    res = encoder.from_polytope(polytope_output)
+encoder = Covjsonkit().encode("CoverageCollection", "BoundingBox")
+res = encoder.from_polytope(polytope_output)
+```
 
 ## Testing
 
