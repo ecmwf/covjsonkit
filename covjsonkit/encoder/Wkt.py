@@ -10,6 +10,7 @@ class Wkt(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
         self.covjson["domainType"] = "MultiPoint"
+        self.covjson['coverages'] = []
 
     def add_coverage(self, mars_metadata, coords, values):
         new_coverage = {}
@@ -20,8 +21,9 @@ class Wkt(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        cov = Coverage.model_validate_json(json.dumps(new_coverage))
-        self.pydantic_coverage.coverages.append(cov)
+        self.covjson['coverages'].append(new_coverage)
+        #cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        #self.pydantic_coverage.coverages.append(cov)
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -30,7 +32,7 @@ class Wkt(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.pydantic_coverage.referencing[0].coordinates
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson['referencing'][0]['coordinates'] #self.pydantic_coverage.referencing[0].coordinates
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):

@@ -144,11 +144,16 @@ class TestEncoder:
 
     def test_standard_Coverage(self):
         encoder_obj = Covjsonkit().encode("CoverageCollection", "BoundingBox")
-        covjson = CoverageCollection(
-            type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[]
-        )
+        #covjson = CoverageCollection(
+        #    type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[]
+        #)
 
-        assert encoder_obj.get_json() == covjson.model_dump_json(exclude_none=True, indent=4)
+        covjson = {
+                        "type":"CoverageCollection",
+                        "domainType":"MultiPoint",
+                        "coverages":[]
+                }
+        assert encoder_obj.covjson == covjson
 
     def test_add_parameter(self):
         encoder_obj = Covjsonkit().encode("CoverageCollection", "BoundingBox")

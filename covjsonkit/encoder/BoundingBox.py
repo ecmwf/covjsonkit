@@ -95,8 +95,6 @@ class BoundingBox(Encoder):
         dates = [0]
 
         self.func(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
-        print(coords)
-        print(range_dict)
 
         self.add_reference(
             {
@@ -107,12 +105,9 @@ class BoundingBox(Encoder):
                 },
             }
         )
-        
-        #for para in range_dict[1][dates[0]].keys():
-        #    self.add_parameter(para)               
+                    
 
         for date in range_dict.keys():
-            print(date)
             for num in range_dict[date].keys():
                 val_dict = {}
                 for step in range_dict[date][num][self.parameters[0]].keys():
@@ -177,8 +172,6 @@ class BoundingBox(Encoder):
             vals = len(tree.values)
             tree.values = [float(val) for val in tree.values]
             tree.result = [float(val) for val in tree.result]
-            num_intervals = int(len(tree.result)/len(number))
-            #para_intervals = int(num_intervals/len(param))
             num_len = len(tree.result)/len(number)
             para_len = num_len/len(param)
             step_len = para_len/len(step)
@@ -187,30 +180,17 @@ class BoundingBox(Encoder):
                 for val in tree.values:
                     coords[date]['composite'].append([lat, val])
             
-            print(lat)
-            print(number)
-            print(dates)
-            print(param)
-            print(step)
+            #print(lat)
+            #print(number)
+            #print(dates)
+            #print(param)
+            #print(step)
             #print(tree.values)
-            print(para_len)
-            print(step_len)
-            print(tree.result)
+            #print(para_len)
+            #print(step_len)
+            #print(tree.result)
 
             for i, num in enumerate(number):
                 for j, para in enumerate(param):
                     for k, s in enumerate(step):
                         range_dict[dates[0]][num][para][s].extend(tree.result[int(i*num_len) + int(j*para_len)+ int(k*step_len): int(i*num_len) + int(j*para_len) + int((k+1)*step_len)])
-                print(range_dict)
-
-            #for i, num in enumerate(range_dict):
-            #    for j, date in enumerate(dates):
-            #        for k, para in enumerate(param):
-            #            for s in step:
-            #                start = ((int(num)-1)*num_intervals)+(vals*int(s))+((i*para_intervals))
-            #                end = ((int(num)-1)*num_intervals)+((vals)*int(s+1))+((i)*(para_intervals))
-            #                range_dict[num][date][para][s].extend(tree.result[start:end])
-            #        for s in range_dict[num][para]:
-            #            start = ((int(num)-1)*num_intervals)+(vals*int(s))+((i*para_intervals))
-            #            end = ((int(num)-1)*num_intervals)+((vals)*int(s+1))+((i)*(para_intervals))
-            #            range_dict[num][para][s].extend(tree.result[start:end])
