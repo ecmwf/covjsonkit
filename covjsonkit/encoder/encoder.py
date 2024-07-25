@@ -7,7 +7,8 @@ from covjson_pydantic.domain import DomainType
 from covjson_pydantic.parameter import Parameter
 from covjson_pydantic.reference_system import ReferenceSystemConnectionObject
 
-from covjsonkit.param_db import get_param_from_db, get_param_ids, get_params, get_unit_from_db, get_units
+from covjsonkit.param_db import (get_param_from_db, get_param_ids, get_params,
+                                 get_unit_from_db, get_units)
 
 
 class Encoder(ABC):
