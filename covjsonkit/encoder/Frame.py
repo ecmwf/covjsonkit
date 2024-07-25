@@ -1,8 +1,3 @@
-import json
-
-import pandas as pd
-from covjson_pydantic.coverage import Coverage
-
 from .encoder import Encoder
 
 

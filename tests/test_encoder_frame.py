@@ -1,5 +1,4 @@
 from covjson_pydantic.coverage import CoverageCollection
-from covjson_pydantic.domain import DomainType
 
 from covjsonkit.api import Covjsonkit
 

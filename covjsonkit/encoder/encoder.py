@@ -1,11 +1,8 @@
-import json
 from abc import ABC, abstractmethod
 
 import orjson
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
-from covjson_pydantic.parameter import Parameter
-from covjson_pydantic.reference_system import ReferenceSystemConnectionObject
 
 from covjsonkit.param_db import get_param_ids, get_params, get_units
 
@@ -138,7 +135,7 @@ class Encoder(ABC):
 
                 self.walk_tree(c, lat, coords, mars_metadata, param, range_dict, number, step, dates)
         else:
-            vals = len(tree.values)
+            # vals = len(tree.values)
             tree.values = [float(val) for val in tree.values]
             if all(val is None for val in tree.result):
                 range_dict.pop(dates[0], None)
