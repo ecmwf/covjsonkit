@@ -42,7 +42,7 @@ Current features implemented:
 
 ## Installation
 
-Install the polytope software with Python 3 (>=3.7) from GitHub directly with the command
+Install the covjsonkit with Python 3 (>=3.7) from GitHub directly with the command
 
     python3 -m pip install git+ssh://git@github.com/ecmwf/covjsonkit.git@develop
 
