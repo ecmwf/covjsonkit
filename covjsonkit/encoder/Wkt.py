@@ -82,28 +82,18 @@ class Wkt(Encoder):
         return self.covjson
 
     def from_polytope(self, result):
-        ancestors = [val.get_ancestors() for val in result.leaves]
-        values = [val.result for val in result.leaves]
 
-        columns = []
-        df_dict = {}
-        # Create empty dataframe
-        for feature in ancestors[0]:
-            columns.append(str(feature).split("=")[0])
-            df_dict[str(feature).split("=")[0]] = []
+        coords  = {}
+        #coords['composite'] = []
+        mars_metadata = {}
+        range_dict = {}
+        lat = 0
+        param = 0
+        number = [0]
+        step = 0
+        dates = [0]
 
-        # populate dataframe
-        for ancestor in ancestors:
-            for feature in ancestor:
-                df_dict[str(feature).split("=")[0]].append(str(feature).split("=")[1])
-        values = [val.result for val in result.leaves]
-        df_dict["values"] = values
-        df = pd.DataFrame(df_dict)
-
-        params = df["param"].unique()
-
-        for param in params:
-            self.add_parameter(param)
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
 
         self.add_reference(
             {
@@ -114,27 +104,24 @@ class Wkt(Encoder):
                 },
             }
         )
+                    
 
-        mars_metadata = {}
-        mars_metadata["class"] = df["class"].unique()[0]
-        mars_metadata["expver"] = df["expver"].unique()[0]
-        mars_metadata["levtype"] = df["levtype"].unique()[0]
-        mars_metadata["type"] = df["type"].unique()[0]
-        mars_metadata["domain"] = df["domain"].unique()[0]
-        mars_metadata["stream"] = df["stream"].unique()[0]
+        for date in range_dict.keys():
+            for num in range_dict[date].keys():
+                val_dict = {}
+                for step in range_dict[date][num][self.parameters[0]].keys():
+                    val_dict[step] = {}
+                for para in range_dict[date][num].keys():
+                    for step in range_dict[date][num][para].keys():
+                        val_dict[step][para] = range_dict[date][num][para][step]
+                for step in val_dict.keys():
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm['step'] = step
+                    self.add_coverage(mm, coords[date], val_dict[step])
 
-        range_dict = {}
-        coords = {}
-        coords["composite"] = []
-        coords["t"] = [df["date"].unique()[0] + "Z"]
-
-        for param in params:
-            df_param = df[df["param"] == param]
-            range_dict[param] = df_param["values"].values.tolist()
-
-        df_param = df[df["param"] == params[0]]
-        for row in df_param.iterrows():
-            coords["composite"].append([row[1]["latitude"], row[1]["longitude"]])
-
-        self.add_coverage(mars_metadata, coords, range_dict)
-        return json.loads(self.get_json())
+        #self.add_coverage(mars_metadata, coords, range_dict)
+        #return self.covjson
+        #with open('data.json', 'w') as f:
+        #    json.dump(self.covjson, f)
+        return self.covjson
