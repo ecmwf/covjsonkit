@@ -7,8 +7,7 @@ from covjson_pydantic.domain import DomainType
 from covjson_pydantic.parameter import Parameter
 from covjson_pydantic.reference_system import ReferenceSystemConnectionObject
 
-from covjsonkit.param_db import (get_param_from_db, get_param_ids, get_params,
-                                 get_unit_from_db, get_units)
+from covjsonkit.param_db import get_param_from_db, get_param_ids, get_params, get_unit_from_db, get_units
 
 
 class Encoder(ABC):
@@ -47,8 +46,8 @@ class Encoder(ABC):
         self.parameters = []
 
     def add_parameter(self, param):
-        #param_dict = get_param_from_db(param)
-        #unit = get_unit_from_db(param_dict["unit_id"])
+        # param_dict = get_param_from_db(param)
+        # unit = get_unit_from_db(param_dict["unit_id"])
         param_dict = self.params[str(param)]
         unit = self.units[str(param_dict["unit_id"])]
         parameter = {
@@ -60,10 +59,10 @@ class Encoder(ABC):
                 "label": {"en": param_dict["name"]},
             },
         }
-        #self.pydantic_coverage.parameters[param_dict["shortname"]] = Parameter.model_validate_json(
+        # self.pydantic_coverage.parameters[param_dict["shortname"]] = Parameter.model_validate_json(
         #    json.dumps(parameter)
-        #)
-        if 'parameters' not in self.covjson:
+        # )
+        if "parameters" not in self.covjson:
             self.covjson["parameters"] = {}
             self.covjson["parameters"][param_dict["shortname"]] = parameter
         else:
@@ -71,33 +70,38 @@ class Encoder(ABC):
         self.parameters.append(param)
 
     def add_reference(self, reference):
-        #self.pydantic_coverage.referencing.append(
+        # self.pydantic_coverage.referencing.append(
         #    ReferenceSystemConnectionObject.model_validate_json(json.dumps(reference))
-        #)
-        #self.pydantic_coverage.referencing.append(reference)
-        #for ref in reference["coordinates"]:
+        # )
+        # self.pydantic_coverage.referencing.append(reference)
+        # for ref in reference["coordinates"]:
         #    if ref not in self.referencing:
-                #self.referencing.append(ref)
-        self.covjson['referencing'] = [reference]
+        # self.referencing.append(ref)
+        self.covjson["referencing"] = [reference]
 
     def convert_param_id_to_param(self, paramid):
         try:
             param = int(paramid)
         except BaseException:
             return paramid
-        #param_dict = get_param_from_db(int(param))
+        # param_dict = get_param_from_db(int(param))
         param_dict = self.params[str(param)]
         return param_dict["shortname"]
 
     def get_json(self):
-        #self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
+        # self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         return orjson.dumps(self.covjson)
-    
+
     def walk_tree(self, tree, lat, coords, mars_metadata, param, range_dict, number, step, dates):
         if len(tree.children) != 0:
-        # recurse while we are not a leaf
+            # recurse while we are not a leaf
             for c in tree.children:
-                if c.axis.name != "latitude" and c.axis.name != "longitude" and c.axis.name != "param" and c.axis.name != "date":
+                if (
+                    c.axis.name != "latitude"
+                    and c.axis.name != "longitude"
+                    and c.axis.name != "param"
+                    and c.axis.name != "date"
+                ):
                     mars_metadata[c.axis.name] = c.values[0]
                 if c.axis.name == "latitude":
                     lat = c.values[0]
@@ -112,11 +116,11 @@ class Encoder(ABC):
                                     range_dict[date][num][para] = {}
                                     self.add_parameter(para)
                 if c.axis.name == "date":
-                    dates = [str(date)+ "Z" for date in c.values]
+                    dates = [str(date) + "Z" for date in c.values]
                     for date in dates:
                         coords[date] = {}
-                        coords[date]['composite'] = []
-                        coords[date]['t'] = [date]
+                        coords[date]["composite"] = []
+                        coords[date]["t"] = [date]
                         if date not in range_dict:
                             range_dict[date] = {}
                 if c.axis.name == "number":
@@ -140,28 +144,36 @@ class Encoder(ABC):
                 range_dict.pop(dates[0], None)
             else:
                 tree.result = [float(val) if val is not None else val for val in tree.result]
-                num_len = len(tree.result)/len(number)
-                para_len = num_len/len(param)
-                step_len = para_len/len(step)
+                num_len = len(tree.result) / len(number)
+                para_len = num_len / len(param)
+                step_len = para_len / len(step)
 
                 for date in dates:
                     for val in tree.values:
-                        coords[date]['composite'].append([lat, val])
-                
-                #print(lat)
-                #print(number)
-                #print(dates)
-                #print(param)
-                #print(step)
-                #print(tree.values)
-                #print(para_len)
-                #print(step_len)
-                #print(tree.result)
+                        coords[date]["composite"].append([lat, val])
+
+                # print(lat)
+                # print(number)
+                # print(dates)
+                # print(param)
+                # print(step)
+                # print(tree.values)
+                # print(para_len)
+                # print(step_len)
+                # print(tree.result)
 
                 for i, num in enumerate(number):
                     for j, para in enumerate(param):
                         for k, s in enumerate(step):
-                            range_dict[dates[0]][num][para][s].extend(tree.result[int(i*num_len) + int(j*para_len)+ int(k*step_len): int(i*num_len) + int(j*para_len) + int((k+1)*step_len)])    
+                            range_dict[dates[0]][num][para][s].extend(
+                                tree.result[
+                                    int(i * num_len)
+                                    + int(j * para_len)
+                                    + int(k * step_len) : int(i * num_len)
+                                    + int(j * para_len)
+                                    + int((k + 1) * step_len)
+                                ]
+                            )
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):

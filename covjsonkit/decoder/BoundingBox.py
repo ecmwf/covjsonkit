@@ -60,16 +60,16 @@ class BoundingBox(Decoder):
         """
 
         values = {}
-        for parameter in self.parameters:  
-            values[parameter] = [] 
+        for parameter in self.parameters:
+            values[parameter] = []
 
         numbers = []
         steps = []
         for coverage in self.coverages:
-            numbers.append(coverage['mars:metadata']["number"])
-            steps.append(coverage['mars:metadata']["step"])
+            numbers.append(coverage["mars:metadata"]["number"])
+            steps.append(coverage["mars:metadata"]["step"])
             for parameter in self.parameters:
-                values[parameter].append(coverage['ranges'][parameter]["values"])
+                values[parameter].append(coverage["ranges"][parameter]["values"])
 
         numbers = list(set(numbers))
         steps = list(set(steps))
@@ -80,8 +80,7 @@ class BoundingBox(Decoder):
             for i, num in enumerate(numbers):
                 new_values[parameter].append([])
                 for j, step in enumerate(steps):
-                    new_values[parameter][i].append(values[parameter][i*len(steps) + j])
-
+                    new_values[parameter][i].append(values[parameter][i * len(steps) + j])
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)
@@ -92,7 +91,13 @@ class BoundingBox(Decoder):
 
         ds = xr.Dataset(
             dataarraydict,
-            coords=dict(number=(['number'], numbers), steps=(['steps'], steps), points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
+            coords=dict(
+                number=(["number"], numbers),
+                steps=(["steps"], steps),
+                points=(["points"], list(range(0, len(x)))),
+                x=(["points"], x),
+                y=(["points"], y),
+            ),
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]

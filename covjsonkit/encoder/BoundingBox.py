@@ -11,7 +11,7 @@ class BoundingBox(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
         self.covjson["domainType"] = "MultiPoint"
-        self.covjson['coverages'] = []
+        self.covjson["coverages"] = []
 
     def add_coverage(self, mars_metadata, coords, values):
         new_coverage = {}
@@ -22,9 +22,9 @@ class BoundingBox(Encoder):
         self.add_mars_metadata(new_coverage, mars_metadata)
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
-        self.covjson['coverages'].append(new_coverage)
-        #cov = Coverage.model_validate_json(json.dumps(new_coverage))
-        #self.pydantic_coverage.coverages.append(json.dumps(new_coverage))
+        self.covjson["coverages"].append(new_coverage)
+        # cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        # self.pydantic_coverage.coverages.append(json.dumps(new_coverage))
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -33,7 +33,9 @@ class BoundingBox(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson['referencing'][0]['coordinates'] #self.pydantic_coverage.referencing[0].coordinates
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0][
+            "coordinates"
+        ]  # self.pydantic_coverage.referencing[0].coordinates
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):
@@ -84,8 +86,8 @@ class BoundingBox(Encoder):
 
     def from_polytope(self, result):
 
-        coords  = {}
-        #coords['composite'] = []
+        coords = {}
+        # coords['composite'] = []
         mars_metadata = {}
         range_dict = {}
         lat = 0
@@ -105,7 +107,6 @@ class BoundingBox(Encoder):
                 },
             }
         )
-                    
 
         for date in range_dict.keys():
             for num in range_dict[date].keys():
@@ -118,11 +119,11 @@ class BoundingBox(Encoder):
                 for step in val_dict.keys():
                     mm = mars_metadata.copy()
                     mm["number"] = num
-                    mm['step'] = step
+                    mm["step"] = step
                     self.add_coverage(mm, coords[date], val_dict[step])
 
-        #self.add_coverage(mars_metadata, coords, range_dict)
-        #return self.covjson
-        #with open('data.json', 'w') as f:
+        # self.add_coverage(mars_metadata, coords, range_dict)
+        # return self.covjson
+        # with open('data.json', 'w') as f:
         #    json.dump(self.covjson, f)
         return self.covjson

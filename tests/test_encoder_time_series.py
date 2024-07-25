@@ -155,15 +155,11 @@ class TestEncoder:
 
     def test_standard_Coverage(self):
         encoder_obj = Covjsonkit().encode("CoverageCollection", "PointSeries")
-        #covjson = CoverageCollection(
+        # covjson = CoverageCollection(
         #    type="CoverageCollection", coverages=[], domainType=DomainType.point_series, parameters={}, referencing=[]
-        #)
+        # )
 
-        covjson = {
-                "type":"CoverageCollection",
-                "domainType":"PointSeries",
-                "coverages":[]
-        }
+        covjson = {"type": "CoverageCollection", "domainType": "PointSeries", "coverages": []}
         assert encoder_obj.covjson == covjson
 
     def test_add_parameter(self):
