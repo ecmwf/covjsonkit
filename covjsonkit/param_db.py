@@ -38,3 +38,24 @@ def get_unit_from_db(unit_id):
     with open(unit_path) as f:
         units = json.load(f)
     return units[str(unit_id)]
+
+
+def get_param_ids():
+    param_id_path = os.path.join(dirname(__file__), "data/param_id.json")
+    with open(param_id_path) as f:
+        param_ids = json.load(f)
+    return param_ids
+
+
+def get_params():
+    param_path = os.path.join(dirname(__file__), "data/param.json")
+    with open(param_path) as f:
+        params = json.load(f)
+    return params
+
+
+def get_units():
+    unit_path = os.path.join(dirname(__file__), "data/unit.json")
+    with open(unit_path) as f:
+        units = json.load(f)
+    return units

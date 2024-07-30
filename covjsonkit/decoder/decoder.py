@@ -28,6 +28,7 @@ class Decoder(ABC):
         self.parameters = self.get_parameters()
         self.coordinates = self.get_referencing()
         self.mars_metadata = self.get_mars_metadata()
+        self.coverages = self.coverage.coverages
 
     def get_type(self):
         return self.covjson["type"]
