@@ -18,6 +18,8 @@ on:
   # Trigger after public PR approved for CI
   pull_request_target:
     types: [labeled]
+  release:
+    types: [created]
 
 jobs:
   # Run CI including downstream packages on self-hosted runners
