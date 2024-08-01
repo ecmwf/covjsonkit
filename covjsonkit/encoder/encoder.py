@@ -112,7 +112,7 @@ class Encoder(ABC):
                                 if para not in range_dict[date][num]:
                                     range_dict[date][num][para] = {}
                                     self.add_parameter(para)
-                if c.axis.name == "date":
+                if c.axis.name == "date" or c.axis.name == "time":
                     dates = [str(date) + "Z" for date in c.values]
                     for date in dates:
                         coords[date] = {}
