@@ -64,13 +64,19 @@ class BoundingBox(Decoder):
             steps.append(coverage["mars:metadata"]["step"])
             datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
             for parameter in self.parameters:
-                #values[parameter].append(coverage["ranges"][parameter]["values"])
+                # values[parameter].append(coverage["ranges"][parameter]["values"])
                 if coverage["domain"]["axes"]["t"]["values"][0] not in values[parameter]:
                     values[parameter][coverage["domain"]["axes"]["t"]["values"][0]] = {}
-                if coverage["mars:metadata"]["number"] not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]:
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]] = {}
-                #if coverage["mars:metadata"]["step"] not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]]:
-                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][coverage["mars:metadata"]["step"]] = coverage["ranges"][parameter]["values"]
+                if (
+                    coverage["mars:metadata"]["number"]
+                    not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]
+                ):
+                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][
+                        coverage["mars:metadata"]["number"]
+                    ] = {}
+                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][
+                    coverage["mars:metadata"]["step"]
+                ] = coverage["ranges"][parameter]["values"]
 
         datetimes = list(set(datetimes))
         numbers = list(set(numbers))
@@ -86,14 +92,13 @@ class BoundingBox(Decoder):
                     for k, step in enumerate(steps):
                         new_values[parameter][i][j].append(values[parameter][datetime][number][step])
 
-        #new_values = {}
-        #for parameter in self.parameters:
+        # new_values = {}
+        # for parameter in self.parameters:
         #    new_values[parameter] = []
         #    for i, num in enumerate(numbers):
         #        new_values[parameter].append([])
         #        for j, step in enumerate(steps):
         #            new_values[parameter][i].append(values[parameter][i * len(steps) + j])
-
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)
