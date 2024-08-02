@@ -61,13 +61,11 @@ class BoundingBox(Decoder):
         steps = []
         for coverage in self.coverages:
             if "number" not in coverage["mars:metadata"]:
-                numbers = [0]
-            else:
-                numbers.append(coverage["mars:metadata"]["number"])
+                coverage["mars:metadata"]["number"] = 0
+            numbers.append(coverage["mars:metadata"]["number"])
             if "step" not in coverage["mars:metadata"]:
-                steps = [0]
-            else:
-                steps.append(coverage["mars:metadata"]["step"])
+                coverage["mars:metadata"]["step"] = 0
+            steps.append(coverage["mars:metadata"]["step"])
             datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
             for parameter in self.parameters:
                 # values[parameter].append(coverage["ranges"][parameter]["values"])
