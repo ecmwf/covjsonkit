@@ -40,9 +40,12 @@ class TimeSeries(Decoder):
             x = domain["axes"]["x"]["values"][0]
             y = domain["axes"]["y"]["values"][0]
             z = domain["axes"]["z"]["values"][0]
-            fct = self.mars_metadata[ind]["date"]
+            fct = domain["axes"]["t"]["values"][0]
             ts = domain["axes"]["t"]["values"]
-            num = self.mars_metadata[ind]["number"]
+            if "number" in self.mars_metadata[ind]:
+                num = self.mars_metadata[ind]["number"]
+            else:  
+                num=0
             for param in self.parameters:
                 coords = []
                 for t in ts:

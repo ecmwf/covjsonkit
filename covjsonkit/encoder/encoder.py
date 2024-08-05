@@ -135,7 +135,6 @@ class Encoder(ABC):
 
                 self.walk_tree(c, lat, coords, mars_metadata, param, range_dict, number, step, dates)
         else:
-            # vals = len(tree.values)
             tree.values = [float(val) for val in tree.values]
             if all(val is None for val in tree.result):
                 range_dict.pop(dates[0], None)
