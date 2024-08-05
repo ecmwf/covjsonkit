@@ -44,8 +44,8 @@ class TimeSeries(Decoder):
             ts = domain["axes"]["t"]["values"]
             if "number" in self.mars_metadata[ind]:
                 num = self.mars_metadata[ind]["number"]
-            else:  
-                num=0
+            else:
+                num = 0
             for param in self.parameters:
                 coords = []
                 for t in ts:

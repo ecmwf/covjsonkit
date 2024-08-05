@@ -44,7 +44,9 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = [values[parameter][val][0] for val in values[parameter].keys()] #values[parameter]
+            coverage["ranges"][param]["values"] = [
+                values[parameter][val][0] for val in values[parameter].keys()
+            ]  # values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
@@ -105,8 +107,8 @@ class TimeSeries(Encoder):
             }
         )
 
-        #val_dict = {}
-        #for num in range_dict.keys():
+        # val_dict = {}
+        # for num in range_dict.keys():
         #    val_dict[num] = {}
         #    for para in range_dict[1].keys():
         #        val_dict[num][para] = []
@@ -119,8 +121,8 @@ class TimeSeries(Encoder):
         #    self.add_coverage(mm, coords, val_dict[num])
 
         for date in range_dict.keys():
-            coordinates = {"x": [coords[date]['composite'][0][0]], "y": [coords[date]['composite'][0][1]], "z": 'sfc'}
-            coordinates['t'] = []
+            coordinates = {"x": [coords[date]["composite"][0][0]], "y": [coords[date]["composite"][0][1]], "z": "sfc"}
+            coordinates["t"] = []
             for num in range_dict[date].keys():
                 for para in range_dict[date][num].keys():
                     for step in range_dict[date][num][para].keys():
