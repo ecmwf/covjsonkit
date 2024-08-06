@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 import orjson
-from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
 from covjsonkit.param_db import get_param_ids, get_params, get_units
@@ -35,11 +34,11 @@ class Encoder(ABC):
         elif domaintype == "frame":
             self.domaintype = DomainType.multi_point
         elif domaintype == "path":
-            self.domaintype = DomainType.trajectory
+            self.domaintype = "Trajectory"
 
-        self.pydantic_coverage = CoverageCollection(
-            type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
-        )
+        # self.pydantic_coverage = CoverageCollection(
+        #    type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
+        # )
         self.parameters = []
 
     def add_parameter(self, param):

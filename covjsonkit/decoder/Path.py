@@ -44,8 +44,8 @@ class Path(Decoder):
         y = []
         t = []
         for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[1]))
-            y.append(float(coord[2]))
+            x.append(float(coord[0]))
+            y.append(float(coord[1]))
             t.append(coord[0])
 
         # Get values
