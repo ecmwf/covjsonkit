@@ -223,7 +223,7 @@ class TestEncoder:
                 "t": timestamps,
             }
             coords.append(coord)
-            value = {"2t": [random.uniform(230, 270) for _ in range(0, len(timestamps))]}
+            value = {"2t": {0 : [random.uniform(230, 270) for _ in range(0, len(timestamps))]}}
             values.append(value)
             encoder.add_coverage(metadata, coord, value)
 
