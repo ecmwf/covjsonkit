@@ -95,7 +95,6 @@ class TimeSeries(Encoder):
         dates = [0]
 
         self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
-        # print(range_dict)
 
         self.add_reference(
             {
@@ -119,10 +118,14 @@ class TimeSeries(Encoder):
         #    mm = mars_metadata.copy()
         #    mm["number"] = num
         #    self.add_coverage(mm, coords, val_dict[num])
-
+        coordinates = {}
         for date in range_dict.keys():
-            coordinates = {"x": [coords[date]["composite"][0][0]], "y": [coords[date]["composite"][0][1]], "z": "sfc"}
-            coordinates["t"] = []
+            coordinates[date] = {
+                "x": [coords[date]["composite"][0][0]],
+                "y": [coords[date]["composite"][0][1]],
+                "z": "sfc",
+            }
+            coordinates[date]["t"] = []
             for num in range_dict[date].keys():
                 for para in range_dict[date][num].keys():
                     for step in range_dict[date][num][para].keys():
@@ -131,11 +134,15 @@ class TimeSeries(Encoder):
                         start_time = datetime.strptime(new_date, date_format)
                         # add current date to list by converting it to iso format
                         stamp = start_time + timedelta(hours=int(step))
-                        coordinates["t"].append(stamp.isoformat() + "Z")
+                        coordinates[date]["t"].append(stamp.isoformat() + "Z")
                     break
+                break
 
         for date in range_dict.keys():
             for num in range_dict[date].keys():
-                self.add_coverage(mars_metadata, coordinates, range_dict[date][num])
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["Forecast date"] = date
+                self.add_coverage(mm, coordinates[date], range_dict[date][num])
 
         return self.covjson

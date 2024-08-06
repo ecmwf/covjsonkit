@@ -114,6 +114,7 @@ class Encoder(ABC):
                                     self.add_parameter(para)
                 if c.axis.name == "date" or c.axis.name == "time":
                     dates = [str(date) + "Z" for date in c.values]
+                    mars_metadata["Forecast date"] = str(c.values[0])
                     for date in dates:
                         coords[date] = {}
                         coords[date]["composite"] = []
