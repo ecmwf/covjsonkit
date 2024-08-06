@@ -40,7 +40,7 @@ class Encoder(ABC):
         # Trajectory not yet implemented in covjson-pydantic
         if self.domaintype != "Trajectory":
             self.pydantic_coverage = CoverageCollection(
-            type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
+                type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
             )
         self.parameters = []
 
