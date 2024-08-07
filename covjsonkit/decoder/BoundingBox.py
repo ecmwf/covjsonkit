@@ -96,14 +96,6 @@ class BoundingBox(Decoder):
                     for k, step in enumerate(steps):
                         new_values[parameter][i][j].append(values[parameter][datetime][number][step])
 
-        # new_values = {}
-        # for parameter in self.parameters:
-        #    new_values[parameter] = []
-        #    for i, num in enumerate(numbers):
-        #        new_values[parameter].append([])
-        #        for j, step in enumerate(steps):
-        #            new_values[parameter][i].append(values[parameter][i * len(steps) + j])
-
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]

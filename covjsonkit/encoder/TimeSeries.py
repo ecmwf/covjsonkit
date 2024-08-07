@@ -106,18 +106,6 @@ class TimeSeries(Encoder):
             }
         )
 
-        # val_dict = {}
-        # for num in range_dict.keys():
-        #    val_dict[num] = {}
-        #    for para in range_dict[1].keys():
-        #        val_dict[num][para] = []
-        #    for para in range_dict[num].keys():
-        #        # for step in range_dict[num][para].keys():
-        #        for step in range_dict[num][para]:
-        #            val_dict[num][para].extend(range_dict[num][para][step])
-        #    mm = mars_metadata.copy()
-        #    mm["number"] = num
-        #    self.add_coverage(mm, coords, val_dict[num])
         coordinates = {}
         for date in range_dict.keys():
             coordinates[date] = {
@@ -143,6 +131,74 @@ class TimeSeries(Encoder):
                 mm = mars_metadata.copy()
                 mm["number"] = num
                 mm["Forecast date"] = date
+                del mm["step"]
                 self.add_coverage(mm, coordinates[date], range_dict[date][num])
+
+        return self.covjson
+
+    def from_polytope_step(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        lat = 0
+        param = 0
+        number = [0]
+        step = 0
+        dates = [0]
+
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+        print(coords)
+        print(range_dict)
+
+        coordinates = {}
+        for date in range_dict.keys():
+            for num in range_dict[date].keys():
+                for para in range_dict[date][num].keys():
+                    for step in range_dict[date][num][para].keys():
+                        for dt in range_dict.keys():
+                            date_format = "%Y%m%dT%H%M%S"
+                            new_date = pd.Timestamp(dt).strftime(date_format)
+                            start_time = datetime.strptime(new_date, date_format)
+                            # add current date to list by converting it to iso format
+                            stamp = start_time + timedelta(hours=int(step))
+                            if step not in coordinates:
+                                coordinates[step] = {
+                                    "x": [coords[date]["composite"][0][0]],
+                                    "y": [coords[date]["composite"][0][1]],
+                                    "z": "sfc",
+                                }
+                            if "t" not in coordinates[step]:
+                                coordinates[step]["t"] = [stamp.isoformat() + "Z"]
+                            else:
+                                coordinates[step]["t"].append(stamp.isoformat() + "Z")
+                    break
+                break
+            break
+
+        print(coordinates)
+        for date in range_dict.keys():
+            for num in range_dict[date].keys():
+                for param in range_dict[date][num].keys():
+                    step_dict = {}
+                    for step in range_dict[date][num][param].keys():
+                        if step not in step_dict:
+                            step_dict[step] = []
+                        step_dict[step].append(range_dict[date][num][param][step])
+                    for step in range_dict[date][num][param].keys():
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        mm["step"] = step
+                        self.add_coverage(mm, coordinates[step], range_dict[date][num])
 
         return self.covjson
