@@ -25,7 +25,7 @@ class Path(Encoder):
         coverage["domain"]["axes"] = {}
         coverage["domain"]["axes"]["composite"] = {}
         coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"]
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0]["coordinates"]
         coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):
@@ -50,7 +50,7 @@ class Path(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["t", "x", "y", "z"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -89,17 +89,21 @@ class Path(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["t", "x", "y", "z"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
             }
         )
-        print(coords)
-        print(range_dict)
 
         for date in range_dict.keys():
+            new_coords = []
+            for val in coords[date]["composite"]:
+                val.insert(0, date)
+                new_coords.append(val)
+            coords[date]["composite"] = new_coords
+
             for num in range_dict[date].keys():
                 val_dict = {}
                 for step in range_dict[date][num][self.parameters[0]].keys():
