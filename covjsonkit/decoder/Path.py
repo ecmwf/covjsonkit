@@ -36,7 +36,7 @@ class Path(Decoder):
         pass
 
     def to_xarray(self):
-        dims = ["points"]
+        dims = ["datetimes", "number", "steps", "points"]
         dataarraydict = {}
 
         # Get coordinates
@@ -48,9 +48,52 @@ class Path(Decoder):
             y.append(float(coord[2]))
             t.append(coord[0])
 
-        # Get values
+        values = {}
         for parameter in self.parameters:
-            dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
+            values[parameter] = {}
+
+        datetimes = []
+        numbers = []
+        steps = []
+        for coverage in self.coverages:
+            if "number" not in coverage["mars:metadata"]:
+                coverage["mars:metadata"]["number"] = 0
+            numbers.append(coverage["mars:metadata"]["number"])
+            if "step" not in coverage["mars:metadata"]:
+                coverage["mars:metadata"]["step"] = 0
+            steps.append(coverage["mars:metadata"]["step"])
+            datetimes.append(coverage["mars:metadata"]["Forecast date"])
+            for parameter in self.parameters:
+                # values[parameter].append(coverage["ranges"][parameter]["values"])
+                if coverage["mars:metadata"]["Forecast date"] not in values[parameter]:
+                    values[parameter][coverage["mars:metadata"]["Forecast date"]] = {}
+                if (
+                    coverage["mars:metadata"]["number"]
+                    not in values[parameter][coverage["mars:metadata"]["Forecast date"]]
+                ):
+                    values[parameter][coverage["mars:metadata"]["Forecast date"]][
+                        coverage["mars:metadata"]["number"]
+                    ] = {}
+                values[parameter][coverage["mars:metadata"]["Forecast date"]][coverage["mars:metadata"]["number"]][
+                    coverage["mars:metadata"]["step"]
+                ] = coverage["ranges"][parameter]["values"]
+
+        datetimes = list(set(datetimes))
+        numbers = list(set(numbers))
+        steps = list(set(steps))
+
+        new_values = {}
+        for parameter in values.keys():
+            new_values[parameter] = []
+            for i, datetime in enumerate(datetimes):
+                new_values[parameter].append([])
+                for j, number in enumerate(numbers):
+                    new_values[parameter][i].append([])
+                    for k, step in enumerate(steps):
+                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
+
+        for parameter in self.parameters:
+            dataarray = xr.DataArray(new_values[parameter], dims=dims)
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
             dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
             dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
@@ -59,10 +102,19 @@ class Path(Decoder):
         ds = xr.Dataset(
             dataarraydict,
             coords=dict(
-                points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y), t=(["points"], t)
+                datetimes=(["datetimes"], datetimes),
+                number=(["number"], numbers),
+                steps=(["steps"], steps),
+                points=(["points"], list(range(0, len(x)))),
+                x=(["points"], x),
+                y=(["points"], y),
+                t=(["points"], t),
             ),
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+
+        # Add date attribute
+        # ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
 
         return ds

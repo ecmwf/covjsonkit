@@ -44,7 +44,9 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = values[parameter]
+            coverage["ranges"][param]["values"] = [
+                values[parameter][val][0] for val in values[parameter].keys()
+            ]  # values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
@@ -83,102 +85,16 @@ class TimeSeries(Encoder):
         return self.covjson
 
     def from_polytope(self, result):
-        """
-        ancestors = [val.get_ancestors() for val in result.leaves]
-        values = [val.result for val in result.leaves]
-
-        columns = []
-        df_dict = {}
-        # Create empty dataframe
-        for feature in ancestors[0]:
-            columns.append(str(feature).split("=")[0])
-            df_dict[str(feature).split("=")[0]] = []
-
-        # populate dataframe
-        for ancestor in ancestors:
-            for feature in ancestor:
-                df_dict[str(feature).split("=")[0]].append(str(feature).split("=")[1])
-        values = [val.result for val in result.leaves]
-        df_dict["values"] = values
-        df = pd.DataFrame(df_dict)
-
-        params = df["param"].unique()
-
-        for param in params:
-            self.add_parameter(param)
-
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
-        steps = df["step"].unique()
-
-        mars_metadata = {}
-        mars_metadata["class"] = df["class"].unique()[0]
-        mars_metadata["expver"] = df["expver"].unique()[0]
-        mars_metadata["levtype"] = df["levtype"].unique()[0]
-        mars_metadata["type"] = df["type"].unique()[0]
-        mars_metadata["date"] = df["date"].unique()[0]
-        mars_metadata["domain"] = df["domain"].unique()[0]
-        mars_metadata["stream"] = df["stream"].unique()[0]
-
         coords = {}
-        coords["x"] = list(df["latitude"].unique())
-        coords["y"] = list(df["longitude"].unique())
-        coords["z"] = ["sfc"]
-        coords["t"] = []
-
-        # convert step into datetime
-        date_format = "%Y%m%dT%H%M%S"
-        date = pd.Timestamp(mars_metadata["date"]).strftime(date_format)
-        start_time = datetime.strptime(date, date_format)
-        for step in steps:
-            # add current date to list by converting it to iso format
-            stamp = start_time + timedelta(hours=int(step))
-            coords["t"].append(stamp.isoformat() + "Z")
-            # increment start date by timedelta
-
-        if "number" not in df.columns:
-            new_metadata = mars_metadata.copy()
-            range_dict = {}
-            for param in params:
-                df_param = df[df["param"] == param]
-                range_dict[param] = df_param["values"].values.tolist()
-            self.add_coverage(new_metadata, coords, range_dict)
-        else:
-            for number in df["number"].unique():
-                new_metadata = mars_metadata.copy()
-                new_metadata["number"] = number
-                df_number = df[df["number"] == number]
-                range_dict = {}
-                for param in params:
-                    df_param = df_number[df_number["param"] == param]
-                    range_dict[param] = df_param["values"].values.tolist()
-                self.add_coverage(new_metadata, coords, range_dict)
-
-        return json.loads(self.get_json())
-        """
-
-        coords = {}
-        coords["x"] = []
-        coords["y"] = []
-        coords["z"] = []
-        coords["t"] = []
         mars_metadata = {}
         range_dict = {}
         lat = 0
         param = 0
-        number = 0
+        number = [0]
         step = 0
-        long = 0
+        dates = [0]
 
-        self.func(result, lat, long, coords, mars_metadata, param, range_dict, number, step)
-        # print(range_dict)
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
 
         self.add_reference(
             {
@@ -190,80 +106,99 @@ class TimeSeries(Encoder):
             }
         )
 
-        for param in range_dict[1].keys():
-            self.add_parameter(param)
+        coordinates = {}
+        for date in range_dict.keys():
+            coordinates[date] = {
+                "x": [coords[date]["composite"][0][0]],
+                "y": [coords[date]["composite"][0][1]],
+                "z": "sfc",
+            }
+            coordinates[date]["t"] = []
+            for num in range_dict[date].keys():
+                for para in range_dict[date][num].keys():
+                    for step in range_dict[date][num][para].keys():
+                        date_format = "%Y%m%dT%H%M%S"
+                        new_date = pd.Timestamp(date).strftime(date_format)
+                        start_time = datetime.strptime(new_date, date_format)
+                        # add current date to list by converting it to iso format
+                        stamp = start_time + timedelta(hours=int(step))
+                        coordinates[date]["t"].append(stamp.isoformat() + "Z")
+                    break
+                break
 
-        for step in range_dict[1][self.parameters[0]].keys():
-            date_format = "%Y%m%dT%H%M%S"
-            date = pd.Timestamp(coords["t"][0]).strftime(date_format)
-            start_time = datetime.strptime(date, date_format)
-            # add current date to list by converting it to iso format
-            stamp = start_time + timedelta(hours=int(step))
-            coords["t"].append(stamp.isoformat() + "Z")
-
-        val_dict = {}
-        for num in range_dict.keys():
-            val_dict[num] = {}
-            for para in range_dict[1].keys():
-                val_dict[num][para] = []
-            for para in range_dict[num].keys():
-                # for step in range_dict[num][para].keys():
-                for step in range_dict[num][para]:
-                    val_dict[num][para].extend(range_dict[num][para][step])
-            mm = mars_metadata.copy()
-            mm["number"] = num
-            self.add_coverage(mm, coords, val_dict[num])
+        for date in range_dict.keys():
+            for num in range_dict[date].keys():
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["Forecast date"] = date
+                del mm["step"]
+                self.add_coverage(mm, coordinates[date], range_dict[date][num])
 
         return self.covjson
 
-    def func(self, tree, lat, long, coords, mars_metadata, param, range_dict, number, step):
-        if len(tree.children) != 0:
-            # recurse while we are not a leaf
-            for c in tree.children:
-                if (
-                    c.axis.name != "latitude"
-                    and c.axis.name != "longitude"
-                    and c.axis.name != "param"
-                    and c.axis.name != "step"
-                    and c.axis.name != "date"
-                ):
-                    mars_metadata[c.axis.name] = c.values[0]
-                if c.axis.name == "latitude":
-                    lat = c.values[0]
-                if c.axis.name == "param":
-                    param = c.values
-                    for num in range_dict:
-                        for para in param:
-                            range_dict[num][para] = {}
-                if c.axis.name == "date":
-                    coords["t"] = [str(c.values[0]) + "Z"]
-                    mars_metadata[c.axis.name] = str(c.values[0]) + "Z"
-                if c.axis.name == "number":
-                    number = c.values
-                    for num in number:
-                        range_dict[num] = {}
-                if c.axis.name == "step":
-                    step = c.values
-                    for num in number:
-                        for para in param:
-                            for s in step:
-                                range_dict[num][para][s] = []
+    def from_polytope_step(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        lat = 0
+        param = 0
+        number = [0]
+        step = 0
+        dates = [0]
 
-                self.func(c, lat, long, coords, mars_metadata, param, range_dict, number, step)
-        else:
-            vals = len(tree.values)
-            tree.values = [float(val) for val in tree.values]
-            tree.result = [float(val) for val in tree.result]
-            num_intervals = int(len(tree.result) / len(number))
-            para_intervals = int(num_intervals / len(param))
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
 
-            coords["x"] = [lat]
-            coords["y"] = [long]
-            coords["z"] = ["sfc"]
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+        print(coords)
+        print(range_dict)
 
-            for num in range_dict:
-                for i, para in enumerate(range_dict[num]):
-                    for s in range_dict[num][para]:
-                        start = ((int(num) - 1) * num_intervals) + (vals * int(s)) + ((i * para_intervals))
-                        end = ((int(num) - 1) * num_intervals) + ((vals) * int(s + 1)) + ((i) * (para_intervals))
-                        range_dict[num][para][s].extend(tree.result[start:end])
+        coordinates = {}
+        for date in range_dict.keys():
+            for num in range_dict[date].keys():
+                for para in range_dict[date][num].keys():
+                    for step in range_dict[date][num][para].keys():
+                        for dt in range_dict.keys():
+                            date_format = "%Y%m%dT%H%M%S"
+                            new_date = pd.Timestamp(dt).strftime(date_format)
+                            start_time = datetime.strptime(new_date, date_format)
+                            # add current date to list by converting it to iso format
+                            stamp = start_time + timedelta(hours=int(step))
+                            if step not in coordinates:
+                                coordinates[step] = {
+                                    "x": [coords[date]["composite"][0][0]],
+                                    "y": [coords[date]["composite"][0][1]],
+                                    "z": "sfc",
+                                }
+                            if "t" not in coordinates[step]:
+                                coordinates[step]["t"] = [stamp.isoformat() + "Z"]
+                            else:
+                                coordinates[step]["t"].append(stamp.isoformat() + "Z")
+                    break
+                break
+            break
+
+        print(coordinates)
+        for date in range_dict.keys():
+            for num in range_dict[date].keys():
+                for param in range_dict[date][num].keys():
+                    step_dict = {}
+                    for step in range_dict[date][num][param].keys():
+                        if step not in step_dict:
+                            step_dict[step] = []
+                        step_dict[step].append(range_dict[date][num][param][step])
+                    for step in range_dict[date][num][param].keys():
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        mm["step"] = step
+                        self.add_coverage(mm, coordinates[step], range_dict[date][num])
+
+        return self.covjson

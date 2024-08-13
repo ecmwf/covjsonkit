@@ -35,11 +35,13 @@ class Encoder(ABC):
         elif domaintype == "frame":
             self.domaintype = DomainType.multi_point
         elif domaintype == "path":
-            self.domaintype = DomainType.trajectory
+            self.domaintype = "Trajectory"
 
-        self.pydantic_coverage = CoverageCollection(
-            type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
-        )
+        # Trajectory not yet implemented in covjson-pydantic
+        if self.domaintype != "Trajectory":
+            self.pydantic_coverage = CoverageCollection(
+                type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
+            )
         self.parameters = []
 
     def add_parameter(self, param):
@@ -112,8 +114,9 @@ class Encoder(ABC):
                                 if para not in range_dict[date][num]:
                                     range_dict[date][num][para] = {}
                                     self.add_parameter(para)
-                if c.axis.name == "date":
+                if c.axis.name == "date" or c.axis.name == "time":
                     dates = [str(date) + "Z" for date in c.values]
+                    mars_metadata["Forecast date"] = str(c.values[0])
                     for date in dates:
                         coords[date] = {}
                         coords[date]["composite"] = []
@@ -135,7 +138,6 @@ class Encoder(ABC):
 
                 self.walk_tree(c, lat, coords, mars_metadata, param, range_dict, number, step, dates)
         else:
-            # vals = len(tree.values)
             tree.values = [float(val) for val in tree.values]
             if all(val is None for val in tree.result):
                 range_dict.pop(dates[0], None)

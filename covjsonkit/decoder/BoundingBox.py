@@ -39,48 +39,62 @@ class BoundingBox(Decoder):
         pass
 
     def to_xarray(self):
-        dims = ["number", "steps", "points"]
+        dims = ["datetimes", "number", "steps", "points"]
         dataarraydict = {}
 
         # Get coordinates
         x = []
         y = []
+        datetimes = []
         for coord in self.get_coordinates()["composite"]["values"]:
             x.append(float(coord[0]))
             y.append(float(coord[1]))
-
-        """
-        # Get values
-        for parameter in self.parameters:
-            dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
-            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
-            dataarraydict[dataarray.attrs["long_name"]] = dataarray
-        """
+        for datetime in self.get_coordinates()["t"]["values"]:
+            datetimes.append(datetime)
 
         values = {}
         for parameter in self.parameters:
-            values[parameter] = []
+            values[parameter] = {}
 
+        datetimes = []
         numbers = []
         steps = []
         for coverage in self.coverages:
+            if "number" not in coverage["mars:metadata"]:
+                coverage["mars:metadata"]["number"] = 0
             numbers.append(coverage["mars:metadata"]["number"])
+            if "step" not in coverage["mars:metadata"]:
+                coverage["mars:metadata"]["step"] = 0
             steps.append(coverage["mars:metadata"]["step"])
+            datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
             for parameter in self.parameters:
-                values[parameter].append(coverage["ranges"][parameter]["values"])
+                # values[parameter].append(coverage["ranges"][parameter]["values"])
+                if coverage["domain"]["axes"]["t"]["values"][0] not in values[parameter]:
+                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]] = {}
+                if (
+                    coverage["mars:metadata"]["number"]
+                    not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]
+                ):
+                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][
+                        coverage["mars:metadata"]["number"]
+                    ] = {}
+                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][
+                    coverage["mars:metadata"]["step"]
+                ] = coverage["ranges"][parameter]["values"]
 
+        datetimes = list(set(datetimes))
         numbers = list(set(numbers))
         steps = list(set(steps))
 
         new_values = {}
-        for parameter in self.parameters:
+        for parameter in values.keys():
             new_values[parameter] = []
-            for i, num in enumerate(numbers):
+            for i, datetime in enumerate(datetimes):
                 new_values[parameter].append([])
-                for j, step in enumerate(steps):
-                    new_values[parameter][i].append(values[parameter][i * len(steps) + j])
+                for j, number in enumerate(numbers):
+                    new_values[parameter][i].append([])
+                    for k, step in enumerate(steps):
+                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)
@@ -92,6 +106,7 @@ class BoundingBox(Decoder):
         ds = xr.Dataset(
             dataarraydict,
             coords=dict(
+                datetimes=(["datetimes"], datetimes),
                 number=(["number"], numbers),
                 steps=(["steps"], steps),
                 points=(["points"], list(range(0, len(x)))),

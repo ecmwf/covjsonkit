@@ -1,5 +1,3 @@
-import datetime as dt
-
 import xarray as xr
 
 from .decoder import Decoder
@@ -40,9 +38,12 @@ class TimeSeries(Decoder):
             x = domain["axes"]["x"]["values"][0]
             y = domain["axes"]["y"]["values"][0]
             z = domain["axes"]["z"]["values"][0]
-            fct = self.mars_metadata[ind]["date"]
+            fct = domain["axes"]["t"]["values"][0]
             ts = domain["axes"]["t"]["values"]
-            num = self.mars_metadata[ind]["number"]
+            if "number" in self.mars_metadata[ind]:
+                num = self.mars_metadata[ind]["number"]
+            else:
+                num = 0
             for param in self.parameters:
                 coords = []
                 for t in ts:
@@ -57,37 +58,55 @@ class TimeSeries(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
-        dims = ["x", "y", "z", "number", "t"]
+        dims = ["x", "y", "z", "number", "datetime", "t"]
         dataarraydict = {}
 
         # Get coordinates
+        coords = self.get_domains()
+        x = coords[0]["axes"]["x"]["values"]
+        y = coords[0]["axes"]["y"]["values"]
+        z = coords[0]["axes"]["z"]["values"]
+        steps = coords[0]["axes"]["t"]["values"]
+        steps = list(range(len(steps)))
+
+        num = []
+        datetime = []
+        for coverage in self.covjson["coverages"]:
+            num.append(coverage["mars:metadata"]["number"])
+            datetime.append(coverage["mars:metadata"]["Forecast date"])
+
+        nums = list(set(num))
+        datetime = list(set(datetime))
+
+        param_values = {}
+
+        for parameter in ["ssrd", "2t"]:
+            param_values[parameter] = []
+            for i, num in enumerate(nums):
+                param_values[parameter].append([])
+                for j, date in enumerate(datetime):
+                    param_values[parameter][i].append([])
+                    for k, step in enumerate(steps):
+                        for coverage in self.covjson["coverages"]:
+                            if (
+                                coverage["mars:metadata"]["number"] == num
+                                and coverage["mars:metadata"]["Forecast date"] == date
+                            ):
+                                param_values[parameter][i][j] = coverage["ranges"][parameter]["values"]
+
         for parameter in self.parameters:
-            param_values = [[[self.get_values()[parameter]]]]
-            for ind, fc_time_vals in enumerate(self.get_values()[parameter]):
-                coords = self.get_coordinates()[parameter]
-                x = [coords[ind][0][0]]
-                y = [coords[ind][0][1]]
-                z = [coords[ind][0][2]]
+            param_coords = {"x": x, "y": y, "z": [z], "number": nums, "datetime": datetime, "t": steps}
+            dataarray = xr.DataArray(
+                [[[param_values[parameter]]]],
+                dims=dims,
+                coords=param_coords,
+                name=parameter,
+            )
 
-                num = [int(coord[0][5]) for coord in coords]
-                coords_fc = coords[ind]
-                try:
-                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%d %H:%M:%S") for coord in coords_fc]
-                except ValueError:
-                    t = [dt.datetime.strptime(coord[4], "%Y-%m-%dT%H:%M:%SZ") for coord in coords_fc]
-
-                param_coords = {"x": x, "y": y, "z": z, "number": num, "t": t}
-                dataarray = xr.DataArray(
-                    param_values,
-                    dims=dims,
-                    coords=param_coords,
-                    name=parameter,
-                )
-
-                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
-                dataarraydict[dataarray.attrs["long_name"]] = dataarray
+            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+            dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(dataarraydict)
         for mars_metadata in self.mars_metadata[0]:
