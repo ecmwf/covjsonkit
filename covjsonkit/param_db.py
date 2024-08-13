@@ -2,8 +2,9 @@ import json
 import os
 from os.path import dirname
 
-#param_dir = os.environ['PARAM_DIR']
-param_dir = os.getenv('PARAM_DIR', 'ecmwf')
+# param_dir = os.environ['PARAM_DIR']
+param_dir = os.getenv("PARAM_DIR", "ecmwf")
+
 
 def get_param_from_db(param_id):
     """
