@@ -2,8 +2,13 @@ import json
 import os
 from os.path import dirname
 
-# param_dir = os.environ['PARAM_DIR']
+from conflator import Conflator
+
+from .config import CovjsonKitConfig
+
 param_dir = os.getenv("PARAM_DIR", "ecmwf")
+conf = Conflator(app_name="covjsonkit", model=CovjsonKitConfig).load()
+param_dir = conf.param_db
 
 
 def get_param_from_db(param_id):
