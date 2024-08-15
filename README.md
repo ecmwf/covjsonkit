@@ -80,6 +80,17 @@ encoder = Covjsonkit().encode("CoverageCollection", "BoundingBox")
 res = encoder.from_polytope(polytope_output)
 ```
 
+### Config
+
+Covjsonkit uses a config to determine what parameter metadata to use, an example can be found in [example_config.json](example_config.json). This will automatically be loaded at runtime to point to the correct parameter metadata files. 
+
+The example config has to be stored in one of the following places:
+
+1. System-wide configuration in /etc/covjsonkit/config.json (and yaml)
+2. User configuration in ~/.covjsonkit.json (and yaml)
+
+Users can add their own parameter metadata in the [data directory](covjsonkit/data/) by add ing a new directory containing a param.json, param_id.json, and units.json in a format the same as can be found in [ecmwf directory](covjsonkit/data/ecmwf/). Then edit the config to point to your newly named directory.
+
 ## Testing
 
 Python unit tests can be run with pytest:
