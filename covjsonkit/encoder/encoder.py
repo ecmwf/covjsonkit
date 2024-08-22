@@ -100,6 +100,7 @@ class Encoder(ABC):
                     and c.axis.name != "longitude"
                     and c.axis.name != "param"
                     and c.axis.name != "date"
+                    and c.axis.name != "levelist"
                 ):
                     mars_metadata[c.axis.name] = c.values[0]
                 if c.axis.name == "latitude":
@@ -162,16 +163,6 @@ class Encoder(ABC):
                 for date in dates:
                     for val in tree.values:
                         coords[date]["composite"].append([lat, val])
-
-                # print(lat)
-                # print(number)
-                # print(dates)
-                # print(param)
-                # print(step)
-                # print(tree.values)
-                # print(para_len)
-                # print(step_len)
-                # print(tree.result)
 
                 for l, level in enumerate(levels):
                     for i, num in enumerate(number):

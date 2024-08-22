@@ -92,9 +92,10 @@ class TimeSeries(Encoder):
         param = 0
         number = [0]
         step = 0
+        levels = [0]
         dates = [0]
 
-        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels)
 
         self.add_reference(
             {
@@ -107,32 +108,43 @@ class TimeSeries(Encoder):
         )
 
         coordinates = {}
+        print(range_dict)
+        print(coords)
+        levels = []
+        for date in range_dict.keys():
+            for level in range_dict[date].keys():
+                levels.append(level)
+            break
+
         for date in range_dict.keys():
             coordinates[date] = {
                 "x": [coords[date]["composite"][0][0]],
                 "y": [coords[date]["composite"][0][1]],
-                "z": "sfc",
+                "z": [levels[0]],
             }
             coordinates[date]["t"] = []
-            for num in range_dict[date].keys():
-                for para in range_dict[date][num].keys():
-                    for step in range_dict[date][num][para].keys():
-                        date_format = "%Y%m%dT%H%M%S"
-                        new_date = pd.Timestamp(date).strftime(date_format)
-                        start_time = datetime.strptime(new_date, date_format)
-                        # add current date to list by converting it to iso format
-                        stamp = start_time + timedelta(hours=int(step))
-                        coordinates[date]["t"].append(stamp.isoformat() + "Z")
+            for level in range_dict[date].keys():
+                for num in range_dict[date][level].keys():
+                    for para in range_dict[date][level][num].keys():
+                        for step in range_dict[date][level][num][para].keys():
+                            date_format = "%Y%m%dT%H%M%S"
+                            new_date = pd.Timestamp(date).strftime(date_format)
+                            start_time = datetime.strptime(new_date, date_format)
+                            # add current date to list by converting it to iso format
+                            stamp = start_time + timedelta(hours=int(step))
+                            coordinates[date]["t"].append(stamp.isoformat() + "Z")
+                        break
                     break
                 break
 
         for date in range_dict.keys():
-            for num in range_dict[date].keys():
-                mm = mars_metadata.copy()
-                mm["number"] = num
-                mm["Forecast date"] = date
-                del mm["step"]
-                self.add_coverage(mm, coordinates[date], range_dict[date][num])
+            for level in range_dict[date].keys():
+                for num in range_dict[date][level].keys():
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["Forecast date"] = date
+                    del mm["step"]
+                    self.add_coverage(mm, coordinates[date], range_dict[date][level][num])
 
         return self.covjson
 
@@ -144,9 +156,10 @@ class TimeSeries(Encoder):
         param = 0
         number = [0]
         step = 0
+        levels = [0]
         dates = [0]
 
-        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels)
 
         self.add_reference(
             {

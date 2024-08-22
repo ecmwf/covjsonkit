@@ -146,7 +146,7 @@ class BoundingBox(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["step"] = step
-                    print(date, level, num, val_dict[step])
+                    mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 
         # self.add_coverage(mars_metadata, coords, range_dict)
