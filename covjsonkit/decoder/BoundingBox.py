@@ -45,10 +45,12 @@ class BoundingBox(Decoder):
         # Get coordinates
         x = []
         y = []
+        z = []
         datetimes = []
         for coord in self.get_coordinates()["composite"]["values"]:
             x.append(float(coord[0]))
             y.append(float(coord[1]))
+            z.append(float(coord[2]))
         for datetime in self.get_coordinates()["t"]["values"]:
             datetimes.append(datetime)
 
@@ -112,6 +114,7 @@ class BoundingBox(Decoder):
                 points=(["points"], list(range(0, len(x)))),
                 x=(["points"], x),
                 y=(["points"], y),
+                z=(["points"], z),
             ),
         )
         for mars_metadata in self.mars_metadata[0]:

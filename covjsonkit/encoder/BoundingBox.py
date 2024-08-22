@@ -81,7 +81,6 @@ class BoundingBox(Encoder):
     def from_polytope(self, result):
 
         coords = {}
-        # coords['composite'] = []
         mars_metadata = {}
         range_dict = {}
         lat = 0
@@ -102,8 +101,6 @@ class BoundingBox(Encoder):
                 },
             }
         )
-        print(coords)
-        print(range_dict)
 
         combined_dict = {}
 
