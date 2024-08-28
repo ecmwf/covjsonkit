@@ -139,7 +139,7 @@ class TestEncoder:
 
     def test_CoverageCollection(self):
         encoder_obj = Covjsonkit().encode("CoverageCollection", "wkt")
-        assert encoder_obj.type == "CoverageCollection"
+        assert encoder_obj.covjson["type"] == "CoverageCollection"
 
     def test_standard_Coverage(self):
         encoder_obj = Covjsonkit().encode("CoverageCollection", "wkt")
