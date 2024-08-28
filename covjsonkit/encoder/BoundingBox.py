@@ -81,7 +81,6 @@ class BoundingBox(Encoder):
     def from_polytope(self, result):
 
         coords = {}
-        # coords['composite'] = []
         mars_metadata = {}
         range_dict = {}
         lat = 0
@@ -89,8 +88,9 @@ class BoundingBox(Encoder):
         number = [0]
         step = 0
         dates = [0]
+        levels = [0]
 
-        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates)
+        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels)
 
         self.add_reference(
             {
@@ -102,18 +102,51 @@ class BoundingBox(Encoder):
             }
         )
 
+        combined_dict = {}
+
+        for date in range_dict:
+            if date not in combined_dict:
+                combined_dict[date] = {}
+            for level in range_dict[date]:
+                for num in range_dict[date][level]:
+                    if num not in combined_dict[date]:
+                        combined_dict[date][num] = {}
+                    for para in range_dict[date][level][num]:
+                        if para not in combined_dict[date][num]:
+                            combined_dict[date][num][para] = {}
+                        for s, value in range_dict[date][level][num][para].items():
+                            if s not in combined_dict[date][num][para]:
+                                combined_dict[date][num][para][s] = value
+                            else:
+                                # Cocatenate arrays
+                                combined_dict[date][num][para][s] += value
+
+        levels = []
         for date in range_dict.keys():
-            for num in range_dict[date].keys():
+            for level in range_dict[date].keys():
+                levels.append(level)
+            break
+
+        for date in coords.keys():
+            coord = coords[date]["composite"]
+            coords[date]["composite"] = []
+            for level in levels:
+                for cor in coord:
+                    coords[date]["composite"].append([cor[0], cor[1], level])
+
+        for date in combined_dict.keys():
+            for num in combined_dict[date].keys():
                 val_dict = {}
-                for step in range_dict[date][num][self.parameters[0]].keys():
+                for step in combined_dict[date][num][self.parameters[0]].keys():
                     val_dict[step] = {}
-                for para in range_dict[date][num].keys():
-                    for step in range_dict[date][num][para].keys():
-                        val_dict[step][para] = range_dict[date][num][para][step]
+                for para in combined_dict[date][num].keys():
+                    for step in combined_dict[date][num][para].keys():
+                        val_dict[step][para] = combined_dict[date][num][para][step]
                 for step in val_dict.keys():
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["step"] = step
+                    mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 
         # self.add_coverage(mars_metadata, coords, range_dict)
