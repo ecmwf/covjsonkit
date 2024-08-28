@@ -137,6 +137,8 @@ class Encoder(ABC):
                     number = c.values
                     for date in dates:
                         for level in levels:
+                            if level not in range_dict[date]:
+                                range_dict[date][level] = {}
                             for num in number:
                                 range_dict[date][level][num] = {}
                 if c.axis.name == "step":
