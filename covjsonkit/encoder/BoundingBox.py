@@ -128,11 +128,11 @@ class BoundingBox(Encoder):
             break
 
         for date in coords.keys():
-            coord = coords[date]['composite']
-            coords[date]['composite'] = []
+            coord = coords[date]["composite"]
+            coords[date]["composite"] = []
             for level in levels:
                 for cor in coord:
-                    coords[date]['composite'].append([cor[0], cor[1], level])
+                    coords[date]["composite"].append([cor[0], cor[1], level])
 
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():

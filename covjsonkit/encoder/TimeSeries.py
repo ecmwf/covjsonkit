@@ -108,8 +108,7 @@ class TimeSeries(Encoder):
         )
 
         coordinates = {}
-        print(range_dict)
-        print(coords)
+
         levels = []
         for date in range_dict.keys():
             for level in range_dict[date].keys():
@@ -170,8 +169,6 @@ class TimeSeries(Encoder):
                 },
             }
         )
-        print(coords)
-        print(range_dict)
 
         coordinates = {}
         for date in range_dict.keys():
@@ -198,7 +195,6 @@ class TimeSeries(Encoder):
                 break
             break
 
-        print(coordinates)
         for date in range_dict.keys():
             for num in range_dict[date].keys():
                 for param in range_dict[date][num].keys():

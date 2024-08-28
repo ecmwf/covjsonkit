@@ -16,9 +16,9 @@ class Encoder(ABC):
 
         self.referencing = []
 
-        self.units = get_units()
-        self.params = get_params()
-        self.param_ids = get_param_ids()
+        self.units = get_units(self.type)
+        self.params = get_params(self.type)
+        self.param_ids = get_param_ids(self.type)
 
         domaintype = domaintype.lower()
 
@@ -40,7 +40,7 @@ class Encoder(ABC):
         # Trajectory not yet implemented in covjson-pydantic
         if self.domaintype != "Trajectory":
             self.pydantic_coverage = CoverageCollection(
-                type=type, coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
+                type="CoverageCollection", coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
             )
         self.parameters = []
 
@@ -164,18 +164,17 @@ class Encoder(ABC):
                     for val in tree.values:
                         coords[date]["composite"].append([lat, val])
 
-                for l, level in enumerate(levels):
+                for l, level in enumerate(levels):  # noqa: E741
                     for i, num in enumerate(number):
                         for j, para in enumerate(param):
                             for k, s in enumerate(step):
                                 range_dict[dates[0]][level][num][para][s].extend(
                                     tree.result[
-                                        int(l * level_len) +
-                                        int(i * num_len)
+                                        int(l * level_len)
+                                        + int(i * num_len)
                                         + int(j * para_len)
-                                        + int(k * step_len) : 
-                                        int(l * level_len) +
-                                        int(i * num_len)
+                                        + int(k * step_len) : int(l * level_len)
+                                        + int(i * num_len)
                                         + int(j * para_len)
                                         + int((k + 1) * step_len)
                                     ]
