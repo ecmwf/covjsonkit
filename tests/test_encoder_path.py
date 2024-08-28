@@ -142,7 +142,7 @@ class TestEncoder:
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_CoverageCollection(self):
         encoder_obj = Covjsonkit().encode("CoverageCollection", "Path")
-        assert encoder_obj.type == "CoverageCollection"
+        assert encoder_obj.covjson["type"] == "CoverageCollection"
 
     @pytest.mark.skip(reason="Trajecotry not implemented in covjson-pydantic yet")
     def test_standard_Coverage(self):

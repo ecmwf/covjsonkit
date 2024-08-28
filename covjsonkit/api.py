@@ -1,3 +1,5 @@
+from conflator import Conflator
+
 import covjsonkit.decoder.BoundingBox
 import covjsonkit.decoder.Frame
 import covjsonkit.decoder.Path
@@ -12,6 +14,8 @@ import covjsonkit.encoder.Shapefile
 import covjsonkit.encoder.TimeSeries
 import covjsonkit.encoder.VerticalProfile
 import covjsonkit.encoder.Wkt
+
+from .config import CovjsonKitConfig
 
 features_encoder = {
     "pointseries": covjsonkit.encoder.TimeSeries.TimeSeries,
@@ -34,8 +38,13 @@ features_decoder = {
 
 
 class Covjsonkit:
-    def __init__(self):
-        pass
+    def __init__(self, config=None):
+        # If no config check default locations
+        if config is None:
+            self.conf = Conflator(app_name="covjsonkit", model=CovjsonKitConfig).load()
+        # else initialise with provided config
+        else:
+            self.conf = CovjsonKitConfig.model_validate(config)
 
     def encode(self, type, domaintype):
         if domaintype == "timeseries":
@@ -43,7 +52,7 @@ class Covjsonkit:
         elif domaintype == "trajectory":
             domaintype = "path"
         feature = self._feature_factory(domaintype.lower(), "encoder")
-        return feature(type, domaintype)
+        return feature(self.conf, domaintype)
 
     def decode(self, covjson):
         requesttype = covjson["domainType"]

@@ -95,7 +95,7 @@ class TimeSeries(Decoder):
                                 param_values[parameter][i][j] = coverage["ranges"][parameter]["values"]
 
         for parameter in self.parameters:
-            param_coords = {"x": x, "y": y, "z": [z], "number": nums, "datetime": datetime, "t": steps}
+            param_coords = {"x": x, "y": y, "z": z, "number": nums, "datetime": datetime, "t": steps}
             dataarray = xr.DataArray(
                 [[[param_values[parameter]]]],
                 dims=dims,

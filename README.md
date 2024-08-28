@@ -91,6 +91,13 @@ The example config has to be stored in one of the following places:
 
 Users can add their own parameter metadata in the [data directory](covjsonkit/data/) by add ing a new directory containing a param.json, param_id.json, and units.json in a format the same as can be found in [ecmwf directory](covjsonkit/data/ecmwf/). Then edit the config to point to your newly named directory.
 
+If users want to pass in their own config tehy can do this as a python dictioanry in the following way:
+
+```Python
+encoder = Covjsonkit(cf).encode("CoverageCollection", "BoundingBox")
+```
+
+Where `cf` is a valid covjsonkit config.
 ## Testing
 
 Python unit tests can be run with pytest:

@@ -48,21 +48,24 @@ def get_unit_from_db(unit_id):
     return units[str(unit_id)]
 
 
-def get_param_ids():
+def get_param_ids(conf):
+    param_dir = conf.param_db
     param_id_path = os.path.join(dirname(__file__), f"data/{param_dir}/param_id.json")
     with open(param_id_path) as f:
         param_ids = json.load(f)
     return param_ids
 
 
-def get_params():
+def get_params(conf):
+    param_dir = conf.param_db
     param_path = os.path.join(dirname(__file__), f"data/{param_dir}/param.json")
     with open(param_path) as f:
         params = json.load(f)
     return params
 
 
-def get_units():
+def get_units(conf):
+    param_dir = conf.param_db
     unit_path = os.path.join(dirname(__file__), f"data/{param_dir}/unit.json")
     with open(unit_path) as f:
         units = json.load(f)
