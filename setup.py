@@ -8,6 +8,8 @@ __version__ = re.search(
     io.open("covjsonkit/version.py", encoding="utf_8_sig").read(),
 ).group(1)
 
+with open("requirements.txt") as f:
+    requirements = f.read().splitlines()
 
 setup(
     name="covjsonkit",
@@ -21,5 +23,6 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
+    install_requires=requirements,
     package_data={"covjsonkit": ["data/*.json"]},
 )
