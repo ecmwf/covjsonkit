@@ -1,1 +1,2 @@
-include covjsonkit/data/*.json
+include covjsonkit/data/ecmwf/*.json
+include covjsonkit/data/dwd/*.json
