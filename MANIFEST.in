@@ -1,2 +1,3 @@
 include covjsonkit/data/ecmwf/*.json
 include covjsonkit/data/dwd/*.json
+include requirements.txt
