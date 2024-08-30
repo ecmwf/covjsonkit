@@ -80,7 +80,7 @@ class TimeSeries(Decoder):
 
         param_values = {}
 
-        for parameter in ["ssrd", "2t"]:
+        for parameter in self.parameters:
             param_values[parameter] = []
             for i, num in enumerate(nums):
                 param_values[parameter].append([])
