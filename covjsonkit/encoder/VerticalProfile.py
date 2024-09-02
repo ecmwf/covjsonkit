@@ -1,3 +1,5 @@
+import logging
+
 from .encoder import Encoder
 
 
@@ -121,6 +123,9 @@ class VerticalProfile(Encoder):
             }
         )
 
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+
         for date in range_dict.keys():
             for param in range_dict[date].keys():
                 # self.coord_length = len(range_dict[date][param])
@@ -128,7 +133,11 @@ class VerticalProfile(Encoder):
             break
 
         for date in range_dict.keys():
-            self.add_coverage(mars_metadata, coords[date], range_dict[date])
+            mm = mars_metadata.copy()
+            # mm["number"] = num
+            # mm["Forecast date"] = date
+            del mm["date"]
+            self.add_coverage(mm, coords[date], range_dict[date])
 
         # return json.loads(self.get_json())
         return self.covjson
@@ -197,7 +206,7 @@ class VerticalProfile(Encoder):
             for date in dates:
 
                 coords[date]["x"] = [lat]
-                coords[date]["y"] = [long]
+                coords[date]["y"] = [tree.values[0]]
                 coords[date]["z"] = list(levels)
                 coords[date]["t"] = date
 
