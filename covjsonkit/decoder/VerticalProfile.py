@@ -29,7 +29,7 @@ class VerticalProfile(Decoder):
         for ind, domain in enumerate(self.domains):
             x = domain["axes"]["x"]["values"][0]
             y = domain["axes"]["y"]["values"][0]
-            t = domain["axes"]["t"]["values"][0]
+            t = domain["axes"]["t"]["values"]
             zs = domain["axes"]["z"]["values"]
             num = self.mars_metadata[ind]["number"]
             for param in self.parameters:
@@ -85,7 +85,7 @@ class VerticalProfile(Decoder):
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(dataarraydict)
-        print(ds)
+        
         for mars_metadata in self.mars_metadata[0]:
             if mars_metadata != "date" and mars_metadata != "step":
                 ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
