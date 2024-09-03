@@ -53,7 +53,7 @@ class VerticalProfile(Decoder):
         pass
 
     def to_xarray(self):
-        dims = ["x", "y", "t", "number", "z"]
+        dims = ["x", "y","number", "t", "z"]
         dataarraydict = {}
 
         for parameter in self.parameters:
@@ -62,15 +62,15 @@ class VerticalProfile(Decoder):
                 coords = self.get_coordinates()[parameter]
                 x = [coords[ind][0][0]]
                 y = [coords[ind][0][1]]
-                t = [coords[ind][0][4]]
-                num = [int(coord[0][3]) for coord in coords]
+                t = [coord[0][4] for coord in coords]
+                num = [coords[ind][0][3]]
                 coords_z = coords[ind]
                 z = [int(coord[2]) for coord in coords_z]
                 param_coords = {
                     "x": x,
                     "y": y,
-                    "t": t,
                     "number": num,
+                    "t": t,
                     "z": z,
                 }
                 dataarray = xr.DataArray(
