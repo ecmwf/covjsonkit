@@ -1,3 +1,5 @@
+import logging
+
 from .encoder import Encoder
 
 
@@ -92,7 +94,7 @@ class VerticalProfile(Encoder):
         range_dict = {}
         lat = 0
         param = 0
-        # number = 0
+        number = 0
         step = 0
         long = 0
         levels = 0
@@ -109,6 +111,7 @@ class VerticalProfile(Encoder):
             step,
             levels,
             dates,
+            number,
         )
 
         self.add_reference(
@@ -121,14 +124,24 @@ class VerticalProfile(Encoder):
             }
         )
 
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+
         for date in range_dict.keys():
-            for param in range_dict[date].keys():
-                # self.coord_length = len(range_dict[date][param])
-                self.add_parameter(param)
+            for num in range_dict[date].keys():
+                for param in range_dict[date][num].keys():
+                    # self.coord_length = len(range_dict[date][param])
+                    self.add_parameter(param)
+                break
             break
 
         for date in range_dict.keys():
-            self.add_coverage(mars_metadata, coords[date], range_dict[date])
+            for num in range_dict[date].keys():
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                # mm["Forecast date"] = date
+                del mm["date"]
+                self.add_coverage(mm, coords[date], range_dict[date][num])
 
         # return json.loads(self.get_json())
         return self.covjson
@@ -145,6 +158,7 @@ class VerticalProfile(Encoder):
         step,
         levels,
         dates,
+        number,
     ):
         if len(tree.children) != 0:
             # recurse while we are not a leaf
@@ -163,8 +177,14 @@ class VerticalProfile(Encoder):
                 if c.axis.name == "param":
                     param = c.values
                     for date in dates:
-                        for para in param:
-                            range_dict[date][para] = []
+                        for num in number:
+                            for para in param:
+                                range_dict[date][num][para] = []
+                if c.axis.name == "number":
+                    number = c.values
+                    for date in dates:
+                        for num in number:
+                            range_dict[date][num] = {}
                 if c.axis.name == "date":
                     dates = [str(date) + "Z" for date in c.values]
                     for date in dates:
@@ -174,34 +194,26 @@ class VerticalProfile(Encoder):
                 if c.axis.name == "levelist":
                     levels = c.values
 
-                self.func(
-                    c,
-                    lat,
-                    long,
-                    coords,
-                    mars_metadata,
-                    param,
-                    range_dict,
-                    step,
-                    levels,
-                    dates,
-                )
+                self.func(c, lat, long, coords, mars_metadata, param, range_dict, step, levels, dates, number)
         else:
             tree.values = [float(val) for val in tree.values]
             tree.result = [float(val) for val in tree.result]
-            # num_intervals = int(len(tree.result)/len(number))
             # para_intervals = int(num_intervals/len(param))
-            len_paras = len(param) * len(levels)
+            len_paras = len(param)
             len_levels = len(param)
+            len_nums = len_paras * len(levels)
 
             for date in dates:
 
                 coords[date]["x"] = [lat]
-                coords[date]["y"] = [long]
+                coords[date]["y"] = [tree.values[0]]
                 coords[date]["z"] = list(levels)
                 coords[date]["t"] = date
 
             for i, date in enumerate(dates):
-                for j, level in enumerate(list(levels)):
-                    for k, para in enumerate(param):
-                        range_dict[date][para].append(tree.result[i * len_paras + j * len_levels + k])
+                for j, num in enumerate(number):
+                    for l, level in enumerate(list(levels)):  # noqa: E741
+                        for k, para in enumerate(param):
+                            range_dict[date][num][para].append(
+                                tree.result[i * len_paras + l * len_levels + j * len_nums + k]
+                            )
