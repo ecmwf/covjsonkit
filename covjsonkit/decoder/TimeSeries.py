@@ -68,7 +68,7 @@ class TimeSeries(Decoder):
         y = coords[0]["axes"]["y"]["values"]
         z = coords[0]["axes"]["z"]["values"]
         steps = coords[0]["axes"]["t"]["values"]
-        steps = [step.replace('Z', '') for step in steps]
+        steps = [step.replace("Z", "") for step in steps]
         steps = pd.to_datetime(steps)
         # steps = list(range(len(steps)))
 
