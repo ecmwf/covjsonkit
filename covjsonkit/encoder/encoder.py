@@ -93,7 +93,7 @@ class Encoder(ABC):
         # self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         return orjson.dumps(self.covjson)
 
-    def walk_tree(self, tree, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels):
+    def walk_trees(self, tree, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels):
         if len(tree.children) != 0:
             # recurse while we are not a leaf
             for c in tree.children:
@@ -183,6 +183,97 @@ class Encoder(ABC):
                                         + int((k + 1) * step_len)
                                     ]
                                 )
+
+    def walk_tree(self, tree, fields, coords, mars_metadata, range_dict):
+        def create_composite_key(date, level, num, para, s):
+            return (date, level, num, para, s)
+
+        def handle_non_leaf_node(child):
+            non_leaf_axes = ["latitude", "longitude", "param", "date"]
+            if child.axis.name not in non_leaf_axes:
+                mars_metadata[child.axis.name] = child.values[0]
+
+        def handle_specific_axes(child):
+            if child.axis.name == "latitude":
+                return child.values[0]
+            if child.axis.name == "levelist":
+                return child.values
+            if child.axis.name == "param":
+                return child.values
+            if child.axis.name in ["date", "time"]:
+                dates = [f"{date}Z" for date in child.values]
+                mars_metadata["Forecast date"] = str(child.values[0])
+                for date in dates:
+                    coords[date] = {}
+                    coords[date]["composite"] = []
+                    coords[date]["t"] = [date]
+                return dates
+            if child.axis.name == "number":
+                return child.values
+            if child.axis.name == "step":
+                return child.values
+            return None
+
+        def calculate_index_bounds(level_len, num_len, para_len, step_len, l, i, j, k):  # noqa: E741
+            start_index = int(l * level_len) + int(i * num_len) + int(j * para_len) + int(k * step_len)
+            end_index = start_index + int(step_len)
+            return start_index, end_index
+
+        def append_composite_coords(dates, tree_values, lat, coords):
+            # for date in dates:
+            for value in tree_values:
+                coords[dates]["composite"].append([lat, value])
+
+        if len(tree.children) != 0:
+            for child in tree.children:
+                handle_non_leaf_node(child)
+                result = handle_specific_axes(child)
+                if result is not None:
+                    if child.axis.name == "latitude":
+                        fields["lat"] = result
+                    elif child.axis.name == "levelist":
+                        fields["levels"] = result
+                    elif child.axis.name == "param":
+                        fields["param"] = result
+                    elif child.axis.name in ["date", "time"]:
+                        fields["dates"].extend(result)
+                    elif child.axis.name == "number":
+                        fields["number"] = result
+                    elif child.axis.name == "step":
+                        fields["step"] = result
+
+                self.walk_tree(child, fields, coords, mars_metadata, range_dict)
+        else:
+            tree.values = [float(val) for val in tree.values]
+            if all(val is None for val in tree.result):
+                for date in fields["dates"]:
+                    for level in fields["levels"]:
+                        for num in fields["number"]:
+                            for para in fields["param"]:
+                                for s in fields["step"]:
+                                    key = create_composite_key(date, level, num, para, s)
+                                    if key in range_dict:
+                                        del range_dict[key]
+            else:
+                tree.result = [float(val) if val is not None else val for val in tree.result]
+                level_len = len(tree.result) / len(fields["levels"])
+                num_len = level_len / len(fields["number"])
+                para_len = num_len / len(fields["param"])
+                step_len = para_len / len(fields["step"])
+
+                append_composite_coords(fields["dates"][-1], tree.values, fields["lat"], coords)
+
+                for l, level in enumerate(fields["levels"]):  # noqa: E741
+                    for i, num in enumerate(fields["number"]):
+                        for j, para in enumerate(fields["param"]):
+                            for k, s in enumerate(fields["step"]):
+                                start_index, end_index = calculate_index_bounds(
+                                    level_len, num_len, para_len, step_len, l, i, j, k
+                                )
+                                key = create_composite_key(fields["dates"][-1], level, num, para, s)
+                                if key not in range_dict:
+                                    range_dict[key] = []
+                                range_dict[key].extend(tree.result[start_index:end_index])
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
