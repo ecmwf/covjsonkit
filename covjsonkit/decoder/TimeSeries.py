@@ -1,3 +1,4 @@
+import pandas as pd
 import xarray as xr
 
 from .decoder import Decoder
@@ -67,7 +68,9 @@ class TimeSeries(Decoder):
         y = coords[0]["axes"]["y"]["values"]
         z = coords[0]["axes"]["z"]["values"]
         steps = coords[0]["axes"]["t"]["values"]
-        steps = list(range(len(steps)))
+        steps = [step.replace("Z", "") for step in steps]
+        steps = pd.to_datetime(steps)
+        # steps = list(range(len(steps)))
 
         num = []
         datetime = []
