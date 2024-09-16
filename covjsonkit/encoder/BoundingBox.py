@@ -1,3 +1,5 @@
+import logging
+
 from .encoder import Encoder
 
 
@@ -93,6 +95,9 @@ class BoundingBox(Encoder):
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -129,10 +134,8 @@ class BoundingBox(Encoder):
         levels = fields["levels"]
         for para in fields["param"]:
             self.add_parameter(para)
-        # for date in range_dict.keys():
-        #    for level in range_dict[date].keys():
-        #        levels.append(level)
-        #    break
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
         for date in coords.keys():
             coord = coords[date]["composite"]
@@ -141,7 +144,6 @@ class BoundingBox(Encoder):
                 for cor in coord:
                     coords[date]["composite"].append([cor[0], cor[1], level])
 
-        print(combined_dict)
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}

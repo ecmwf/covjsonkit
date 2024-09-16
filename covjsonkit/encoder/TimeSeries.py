@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -114,6 +115,8 @@ class TimeSeries(Encoder):
         for para in fields["param"]:
             self.add_parameter(para)
 
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
         for date in fields["dates"]:
             coordinates[date] = {
                 "x": [coords[date]["composite"][0][0]],
@@ -134,6 +137,9 @@ class TimeSeries(Encoder):
                         break
                     break
                 break
+
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
 
         for date in fields["dates"]:
             for level in fields["levels"]:

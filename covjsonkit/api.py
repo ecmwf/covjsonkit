@@ -1,3 +1,5 @@
+import logging
+
 from conflator import Conflator
 
 import covjsonkit.decoder.BoundingBox
@@ -42,9 +44,11 @@ class Covjsonkit:
         # If no config check default locations
         if config is None:
             self.conf = Conflator(app_name="covjsonkit", model=CovjsonKitConfig).load()
+            logging.debug("Config loaded from file: %s", self.conf)  # noqa: E501
         # else initialise with provided config
         else:
             self.conf = CovjsonKitConfig.model_validate(config)
+            logging.debug("Config loaded from dictionary: %s", self.conf)  # noqa: E501
 
     def encode(self, type, domaintype):
         if domaintype == "timeseries":
