@@ -44,9 +44,9 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
             coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = [
-                values[parameter][val][0] for val in values[parameter].keys()
-            ]  # values[parameter]
+            coverage["ranges"][param]["values"] = values[
+                parameter
+            ]  # [values[parameter][val][0] for val in values[parameter].keys()]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
@@ -88,14 +88,15 @@ class TimeSeries(Encoder):
         coords = {}
         mars_metadata = {}
         range_dict = {}
-        lat = 0
-        param = 0
-        number = [0]
-        step = 0
-        levels = [0]
-        dates = [0]
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["step"] = 0
+        fields["dates"] = []
+        fields["levels"] = [0]
 
-        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
         self.add_reference(
             {
@@ -109,23 +110,21 @@ class TimeSeries(Encoder):
 
         coordinates = {}
 
-        levels = []
-        for date in range_dict.keys():
-            for level in range_dict[date].keys():
-                levels.append(level)
-            break
+        levels = fields["levels"]
+        for para in fields["param"]:
+            self.add_parameter(para)
 
-        for date in range_dict.keys():
+        for date in fields["dates"]:
             coordinates[date] = {
                 "x": [coords[date]["composite"][0][0]],
                 "y": [coords[date]["composite"][0][1]],
                 "z": [levels[0]],
             }
             coordinates[date]["t"] = []
-            for level in range_dict[date].keys():
-                for num in range_dict[date][level].keys():
-                    for para in range_dict[date][level][num].keys():
-                        for step in range_dict[date][level][num][para].keys():
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    for para in fields["param"]:
+                        for step in fields["step"]:
                             date_format = "%Y%m%dT%H%M%S"
                             new_date = pd.Timestamp(date).strftime(date_format)
                             start_time = datetime.strptime(new_date, date_format)
@@ -136,14 +135,22 @@ class TimeSeries(Encoder):
                     break
                 break
 
-        for date in range_dict.keys():
-            for level in range_dict[date].keys():
-                for num in range_dict[date][level].keys():
+        for date in fields["dates"]:
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for step in fields["step"]:
+                            key = (date, level, num, para, step)
+                            for k, v in range_dict.items():
+                                if k == key:
+                                    val_dict[para].append(v[0])
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
                     del mm["step"]
-                    self.add_coverage(mm, coordinates[date], range_dict[date][level][num])
+                    self.add_coverage(mm, coordinates[date], val_dict)
 
         return self.covjson
 
