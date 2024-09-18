@@ -1,3 +1,5 @@
+import logging
+
 from .encoder import Encoder
 
 
@@ -83,14 +85,18 @@ class Shapefile(Encoder):
         coords = {}
         mars_metadata = {}
         range_dict = {}
-        lat = 0
-        param = 0
-        number = [0]
-        step = 0
-        dates = [0]
-        levels = [0]
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["step"] = 0
+        fields["dates"] = []
+        fields["levels"] = [0]
 
-        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
         self.add_reference(
             {
@@ -104,28 +110,32 @@ class Shapefile(Encoder):
 
         combined_dict = {}
 
-        for date in range_dict:
+        for date in fields["dates"]:
             if date not in combined_dict:
                 combined_dict[date] = {}
-            for level in range_dict[date]:
-                for num in range_dict[date][level]:
+            for level in fields["levels"]:
+                for num in fields["number"]:
                     if num not in combined_dict[date]:
                         combined_dict[date][num] = {}
-                    for para in range_dict[date][level][num]:
+                    for para in fields["param"]:
                         if para not in combined_dict[date][num]:
                             combined_dict[date][num][para] = {}
-                        for s, value in range_dict[date][level][num][para].items():
-                            if s not in combined_dict[date][num][para]:
-                                combined_dict[date][num][para][s] = value
-                            else:
-                                # Cocatenate arrays
-                                combined_dict[date][num][para][s] += value
+                        # for s, value in range_dict[date][level][num][para].items():
+                        for s in fields["step"]:
+                            key = (date, level, num, para, s)
+                            for k, v in range_dict.items():
+                                if k == key:
+                                    if s not in combined_dict[date][num][para]:
+                                        combined_dict[date][num][para][s] = v
+                                    else:
+                                        # Cocatenate arrays
+                                        combined_dict[date][num][para][s] += v
 
-        levels = []
-        for date in range_dict.keys():
-            for level in range_dict[date].keys():
-                levels.append(level)
-            break
+        levels = fields["levels"]
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
         for date in coords.keys():
             coord = coords[date]["composite"]
