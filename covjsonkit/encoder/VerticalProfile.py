@@ -64,9 +64,6 @@ class VerticalProfile(Encoder):
         for num in dataset["number"].values:
             self.add_coverage(
                 {
-                    # "date": fc_time.values.astype("M8[ms]")
-                    # .astype("O")
-                    # .strftime("%m/%d/%Y"),
                     "number": num,
                     "type": "forecast",
                     "step": 0,
@@ -86,10 +83,6 @@ class VerticalProfile(Encoder):
 
     def from_polytope(self, result):
         coords = {}
-        # coords['x'] = []
-        # coords['y'] = []
-        # coords['z'] = []
-        # coords['t'] = []
         mars_metadata = {}
         range_dict = {}
         lat = 0
@@ -130,16 +123,16 @@ class VerticalProfile(Encoder):
         for date in range_dict.keys():
             for num in range_dict[date].keys():
                 for param in range_dict[date][num].keys():
-                    # self.coord_length = len(range_dict[date][param])
                     self.add_parameter(param)
                 break
             break
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
         for date in range_dict.keys():
             for num in range_dict[date].keys():
                 mm = mars_metadata.copy()
                 mm["number"] = num
-                # mm["Forecast date"] = date
                 del mm["date"]
                 self.add_coverage(mm, coords[date], range_dict[date][num])
 
