@@ -123,15 +123,17 @@ class BoundingBox(Encoder):
                         # for s, value in range_dict[date][level][num][para].items():
                         for s in fields["step"]:
                             key = (date, level, num, para, s)
-                            for k, v in range_dict.items():
-                                if k == key:
-                                    if s not in combined_dict[date][num][para]:
-                                        combined_dict[date][num][para][s] = v
-                                    else:
-                                        # Cocatenate arrays
-                                        combined_dict[date][num][para][s] += v
+                            # for k, v in range_dict.items():
+                            # if k == key:
+                            if s not in combined_dict[date][num][para]:
+                                combined_dict[date][num][para][s] = range_dict[key]
+                            else:
+                                # Cocatenate arrays
+                                combined_dict[date][num][para][s] += range_dict[key]
 
         levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No parameters were returned, date requested may be out of range")
         for para in fields["param"]:
             self.add_parameter(para)
 

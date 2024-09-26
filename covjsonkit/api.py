@@ -26,7 +26,7 @@ features_encoder = {
     "shapefile": covjsonkit.encoder.Shapefile.Shapefile,
     "frame": covjsonkit.encoder.Frame.Frame,
     "path": covjsonkit.encoder.Path.Path,
-    "wkt": covjsonkit.encoder.Wkt.Wkt,
+    "polygon": covjsonkit.encoder.Wkt.Wkt,
 }
 features_decoder = {
     "pointseries": covjsonkit.decoder.TimeSeries.TimeSeries,
@@ -35,7 +35,7 @@ features_decoder = {
     "shapefile": covjsonkit.decoder.Shapefile.Shapefile,
     "frame": covjsonkit.decoder.Frame.Frame,
     "path": covjsonkit.decoder.Path.Path,
-    "wkt": covjsonkit.decoder.Wkt.Wkt,
+    "polygon": covjsonkit.decoder.Wkt.Wkt,
 }
 
 

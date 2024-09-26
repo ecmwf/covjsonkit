@@ -138,11 +138,11 @@ class TestEncoder:
         }
 
     def test_CoverageCollection(self):
-        encoder_obj = Covjsonkit().encode("CoverageCollection", "wkt")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "polygon")
         assert encoder_obj.covjson["type"] == "CoverageCollection"
 
     def test_standard_Coverage(self):
-        encoder_obj = Covjsonkit().encode("CoverageCollection", "wkt")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "polygon")
         # covjson = CoverageCollection(
         #    type="CoverageCollection", coverages=[], domainType=DomainType.multi_point, parameters={}, referencing=[]
         # )
@@ -151,7 +151,7 @@ class TestEncoder:
         assert encoder_obj.covjson == covjson
 
     def test_add_parameter(self):
-        encoder_obj = Covjsonkit().encode("CoverageCollection", "wkt")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "polygon")
         encoder_obj.add_parameter(167)
         encoder_obj.add_parameter(166)
 
@@ -159,7 +159,7 @@ class TestEncoder:
         assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_reference(self):
-        encoder_obj = Covjsonkit().encode("CoverageCollection", "wkt")
+        encoder_obj = Covjsonkit().encode("CoverageCollection", "polygon")
         encoder_obj.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -175,7 +175,7 @@ class TestEncoder:
         assert CoverageCollection.model_validate_json(json_string)
 
     def test_add_coverage(self):
-        encoder = Covjsonkit().encode("CoverageCollection", "wkt")
+        encoder = Covjsonkit().encode("CoverageCollection", "polygon")
         encoder.add_parameter(167)
         encoder.add_reference(
             {

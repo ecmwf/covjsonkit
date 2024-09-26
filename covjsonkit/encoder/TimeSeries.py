@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -97,7 +98,16 @@ class TimeSeries(Encoder):
         fields["dates"] = []
         fields["levels"] = [0]
 
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        delta = end - start
+        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
+        logging.debug("Tree walking takes: %s", delta)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)  # noqa: E501
 
         self.add_reference(
             {
@@ -112,6 +122,8 @@ class TimeSeries(Encoder):
         coordinates = {}
 
         levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No parameters were returned, date requested may be out of range")
         for para in fields["param"]:
             self.add_parameter(para)
 
@@ -138,8 +150,16 @@ class TimeSeries(Encoder):
                     break
                 break
 
-        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
-        logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
+        end = time.time()
+        delta = end - start
+        logging.debug("Coords creation: %s", end)  # noqa: E501
+        logging.debug("Coords creation: %s", delta)  # noqa: E501
+
+        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)  # noqa: E501
 
         for date in fields["dates"]:
             for level in fields["levels"]:
@@ -149,14 +169,20 @@ class TimeSeries(Encoder):
                         val_dict[para] = []
                         for step in fields["step"]:
                             key = (date, level, num, para, step)
-                            for k, v in range_dict.items():
-                                if k == key:
-                                    val_dict[para].append(v[0])
+                            # for k, v in range_dict.items():
+                            #    if k == key:
+                            # val_dict[para].append(v[0])
+                            val_dict[para].append(range_dict[key][0])
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
                     del mm["step"]
                     self.add_coverage(mm, coordinates[date], val_dict)
+
+        end = time.time()
+        delta = end - start
+        logging.debug("Coverage creation: %s", end)  # noqa: E501
+        logging.debug("Coverage creation: %s", delta)  # noqa: E501
 
         return self.covjson
 
