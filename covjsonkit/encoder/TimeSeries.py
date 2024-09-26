@@ -1,8 +1,8 @@
 import logging
+import time
 from datetime import datetime, timedelta
 
 import pandas as pd
-import time
 
 from .encoder import Encoder
 
@@ -122,6 +122,8 @@ class TimeSeries(Encoder):
         coordinates = {}
 
         levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No parameters were returned, date requested may be out of range")
         for para in fields["param"]:
             self.add_parameter(para)
 
@@ -153,8 +155,8 @@ class TimeSeries(Encoder):
         logging.debug("Coords creation: %s", end)  # noqa: E501
         logging.debug("Coords creation: %s", delta)  # noqa: E501
 
-        #logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
-        #logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
+        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
 
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
@@ -167,9 +169,9 @@ class TimeSeries(Encoder):
                         val_dict[para] = []
                         for step in fields["step"]:
                             key = (date, level, num, para, step)
-                            #for k, v in range_dict.items():
+                            # for k, v in range_dict.items():
                             #    if k == key:
-                                    #val_dict[para].append(v[0])
+                            # val_dict[para].append(v[0])
                             val_dict[para].append(range_dict[key][0])
                     mm = mars_metadata.copy()
                     mm["number"] = num
