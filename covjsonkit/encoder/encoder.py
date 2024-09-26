@@ -26,7 +26,7 @@ class Encoder(ABC):
             self.domaintype = DomainType.point_series
         elif domaintype == "multipoint":
             self.domaintype = DomainType.multi_point
-        elif domaintype == "wkt":
+        elif domaintype == "polygon":
             self.domaintype = DomainType.multi_point
         elif domaintype == "boundingbox":
             self.domaintype = DomainType.multi_point
