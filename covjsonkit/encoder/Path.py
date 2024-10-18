@@ -1,6 +1,7 @@
+import logging
+
 from .encoder import Encoder
 
-import logging
 
 class Path(Encoder):
     def __init__(self, type, domaintype):
