@@ -1,9 +1,8 @@
 pandas
 orjson
 datetime
-polytope-python
 numpy
-xarray==2022.12.0
+xarray
 pandas==2.2.0
 covjson-pydantic
 conflator
