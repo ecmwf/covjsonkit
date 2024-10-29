@@ -128,16 +128,14 @@ class Path(Encoder):
                             if s not in combined_dict[date][num][para]:
                                 if key in range_dict:
                                     combined_dict[date][num][para][s] = range_dict[key]
-                                #combined_dict[date][num][para][s] = range_dict[key]
+                                # combined_dict[date][num][para][s] = range_dict[key]
                             else:
                                 # Cocatenate arrays
                                 if key in range_dict:
                                     combined_dict[date][num][para][s] += range_dict[key]
-                        #for s in fields["s"]:
-
+                        # for s in fields["s"]:
 
         logging.debug("The values returned from combined dicts: %s", combined_dict)  # noqa: E501
-
 
         levels = fields["levels"]
         if fields["param"] == 0:
@@ -153,8 +151,8 @@ class Path(Encoder):
             for level in levels:
                 start = 0
                 for i, s in enumerate(fields["s"]):
-                    end = start + len(coord)/len(fields["s"])
-                    for cor in coord[int(start):int(end)]:
+                    end = start + len(coord) / len(fields["s"])
+                    for cor in coord[int(start) : int(end)]:
                         if len(fields["l"]) == 1:
                             coords[date]["composite"].append([s, cor[0], cor[1], fields["l"][0]])
                         else:
@@ -165,21 +163,21 @@ class Path(Encoder):
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
-                #for step in combined_dict[date][num][self.parameters[0]].keys():
+                # for step in combined_dict[date][num][self.parameters[0]].keys():
                 #    val_dict[step] = {}
                 for para in combined_dict[date][num].keys():
                     if para not in val_dict:
                         val_dict[para] = []
                     for step in combined_dict[date][num][para].keys():
                         val_dict[para].extend(combined_dict[date][num][para][step])
-                #for step in val_dict.keys():
+                # for step in val_dict.keys():
                 mm = mars_metadata.copy()
                 mm["number"] = num
-                #mm["step"] = step
-                #temp = []
-                #for coord in coords[date]["composite"]:
+                # mm["step"] = step
+                # temp = []
+                # for coord in coords[date]["composite"]:
                 #    temp.append([step] + coord)
-                #coords[date]["composite"] = temp
+                # coords[date]["composite"] = temp
                 mm["Forecast date"] = date
                 self.add_coverage(mm, coords[date], val_dict)
 
