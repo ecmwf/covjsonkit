@@ -87,11 +87,14 @@ class Path(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["s"] = []
+        fields["l"] = []
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+        logging.debug("The fields: %s", fields)
 
         self.add_reference(
             {
@@ -104,11 +107,13 @@ class Path(Encoder):
         )
 
         combined_dict = {}
+        for k in range_dict.keys():
+            print(k, range_dict[k])
 
         for date in fields["dates"]:
             if date not in combined_dict:
                 combined_dict[date] = {}
-            for level in fields["levels"]:
+            for level in fields["l"]:
                 for num in fields["number"]:
                     if num not in combined_dict[date]:
                         combined_dict[date][num] = {}
@@ -116,15 +121,23 @@ class Path(Encoder):
                         if para not in combined_dict[date][num]:
                             combined_dict[date][num][para] = {}
                         # for s, value in range_dict[date][level][num][para].items():
-                        for s in fields["step"]:
+                        for s in fields["s"]:
                             key = (date, level, num, para, s)
                             # for k, v in range_dict.items():
                             # if k == key:
                             if s not in combined_dict[date][num][para]:
-                                combined_dict[date][num][para][s] = range_dict[key]
+                                if key in range_dict:
+                                    combined_dict[date][num][para][s] = range_dict[key]
+                                #combined_dict[date][num][para][s] = range_dict[key]
                             else:
                                 # Cocatenate arrays
-                                combined_dict[date][num][para][s] += range_dict[key]
+                                if key in range_dict:
+                                    combined_dict[date][num][para][s] += range_dict[key]
+                        #for s in fields["s"]:
+
+
+        logging.debug("The values returned from combined dicts: %s", combined_dict)  # noqa: E501
+
 
         levels = fields["levels"]
         if fields["param"] == 0:
@@ -138,27 +151,37 @@ class Path(Encoder):
             coord = coords[date]["composite"]
             coords[date]["composite"] = []
             for level in levels:
-                for cor in coord:
-                    coords[date]["composite"].append([cor[0], cor[1], level])
+                start = 0
+                for i, s in enumerate(fields["s"]):
+                    end = start + len(coord)/len(fields["s"])
+                    for cor in coord[int(start):int(end)]:
+                        if len(fields["l"]) == 1:
+                            coords[date]["composite"].append([s, cor[0], cor[1], fields["l"][0]])
+                        else:
+                            coords[date]["composite"].append([s, cor[0], cor[1], fields["l"][i]])
+                    start = end
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
-                for step in combined_dict[date][num][self.parameters[0]].keys():
-                    val_dict[step] = {}
+                #for step in combined_dict[date][num][self.parameters[0]].keys():
+                #    val_dict[step] = {}
                 for para in combined_dict[date][num].keys():
+                    if para not in val_dict:
+                        val_dict[para] = []
                     for step in combined_dict[date][num][para].keys():
-                        val_dict[step][para] = combined_dict[date][num][para][step]
-                for step in val_dict.keys():
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["step"] = step
-                    temp = []
-                    for coord in coords[date]["composite"]:
-                        temp.append([step] + coord)
-                    coords[date]["composite"] = temp
-                    mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step])
+                        val_dict[para].extend(combined_dict[date][num][para][step])
+                #for step in val_dict.keys():
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                #mm["step"] = step
+                #temp = []
+                #for coord in coords[date]["composite"]:
+                #    temp.append([step] + coord)
+                #coords[date]["composite"] = temp
+                mm["Forecast date"] = date
+                self.add_coverage(mm, coords[date], val_dict)
 
         # self.add_coverage(mars_metadata, coords, range_dict)
         # return self.covjson
