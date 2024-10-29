@@ -92,6 +92,9 @@ class Path(Encoder):
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
+        if len(fields["l"]) == 0:
+            fields["l"] = [0]
+
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
         logging.debug("The fields: %s", fields)
@@ -155,6 +158,8 @@ class Path(Encoder):
                     for cor in coord[int(start) : int(end)]:
                         if len(fields["l"]) == 1:
                             coords[date]["composite"].append([s, cor[0], cor[1], fields["l"][0]])
+                        elif len(fields["l"]) == 0:
+                            coords[date]["composite"].append([s, cor[0], cor[1], level])
                         else:
                             coords[date]["composite"].append([s, cor[0], cor[1], fields["l"][i]])
                     start = end
