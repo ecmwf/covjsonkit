@@ -142,6 +142,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "l" in fields:
+                            fields["l"].extend(result)
                     elif child.axis.name == "param":
                         fields["param"] = result
                     elif child.axis.name in ["date", "time"]:
@@ -150,6 +152,8 @@ class Encoder(ABC):
                         fields["number"] = result
                     elif child.axis.name == "step":
                         fields["step"] = result
+                        if "s" in fields:
+                            fields["s"].extend(result)
 
                 self.walk_tree(child, fields, coords, mars_metadata, range_dict)
         else:

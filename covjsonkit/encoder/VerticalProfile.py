@@ -192,10 +192,13 @@ class VerticalProfile(Encoder):
             tree.values = [float(val) for val in tree.values]
             tree.result = [float(val) for val in tree.result]
             # para_intervals = int(num_intervals/len(param))
+            try:
+                len(param)
+            except TypeError:
+                raise ValueError("No parameters were returned, date requested may be out of range")
             len_paras = len(param)
             len_levels = len(param)
             len_nums = len_paras * len(levels)
-
             for date in dates:
 
                 coords[date]["x"] = [lat]
