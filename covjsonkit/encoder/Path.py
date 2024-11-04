@@ -110,8 +110,6 @@ class Path(Encoder):
         )
 
         combined_dict = {}
-        for k in range_dict.keys():
-            print(k, range_dict[k])
 
         for date in fields["dates"]:
             if date not in combined_dict:
@@ -186,8 +184,4 @@ class Path(Encoder):
                 mm["Forecast date"] = date
                 self.add_coverage(mm, coords[date], val_dict)
 
-        # self.add_coverage(mars_metadata, coords, range_dict)
-        # return self.covjson
-        # with open('data.json', 'w') as f:
-        #    json.dump(self.covjson, f)
         return self.covjson
