@@ -1,4 +1,8 @@
 import logging
+import time
+from datetime import datetime, timedelta
+
+import pandas as pd
 
 from .encoder import Encoder
 
@@ -85,27 +89,24 @@ class VerticalProfile(Encoder):
         coords = {}
         mars_metadata = {}
         range_dict = {}
-        lat = 0
-        param = 0
-        number = 0
-        step = 0
-        long = 0
-        levels = 0
-        dates = 0
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["step"] = 0
+        fields["dates"] = []
+        fields["levels"] = [0]
 
-        self.func(
-            result,
-            lat,
-            long,
-            coords,
-            mars_metadata,
-            param,
-            range_dict,
-            step,
-            levels,
-            dates,
-            number,
-        )
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        delta = end - start
+        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
+        logging.debug("Tree walking takes: %s", delta)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)  # noqa: E501
 
         self.add_reference(
             {
@@ -117,99 +118,79 @@ class VerticalProfile(Encoder):
             }
         )
 
-        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
-        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+        print("Fields: ", fields)
+        print("Coords: ", coords)
+        # print("Mars Metadata: ", mars_metadata)
+        print("Range Dict: ", range_dict)
 
-        for date in range_dict.keys():
-            for num in range_dict[date].keys():
-                for param in range_dict[date][num].keys():
-                    self.add_parameter(param)
-                break
-            break
+        coordinates = {}
+
+        levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No parameters were returned, date requested may be out of range")
+        for para in fields["param"]:
+            self.add_parameter(para)
 
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
-        for date in range_dict.keys():
-            for num in range_dict[date].keys():
-                mm = mars_metadata.copy()
-                mm["number"] = num
-                del mm["date"]
-                self.add_coverage(mm, coords[date], range_dict[date][num])
+        for date in fields["dates"]:
+            coordinates[date] = {}
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    for para in fields["param"]:
+                        for step in fields["step"]:
+                            date_format = "%Y%m%dT%H%M%S"
+                            new_date = pd.Timestamp(date).strftime(date_format)
+                            start_time = datetime.strptime(new_date, date_format)
+                            # add current date to list by converting it to iso format
+                            stamp = start_time + timedelta(hours=int(step))
+                            coordinates[date][step] = {
+                                "x": [coords[date]["composite"][0][0]],
+                                "y": [coords[date]["composite"][0][1]],
+                                "z": [levels],
+                            }
+                            coordinates[date][step]["t"] = [stamp.isoformat() + "Z"]
+                            # coordinates[date]["t"].append(stamp.isoformat() + "Z")
+                        break
+                    break
+                break
 
-        # return json.loads(self.get_json())
+        print("Coordinates: ", coordinates)
+
+        end = time.time()
+        delta = end - start
+        logging.debug("Coords creation: %s", end)  # noqa: E501
+        logging.debug("Coords creation: %s", delta)  # noqa: E501
+
+        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)  # noqa: E501
+
+        for date in fields["dates"]:
+            for num in fields["number"]:
+                val_dict = {}
+                for step in fields["step"]:
+                    val_dict[step] = {}
+                    for para in fields["param"]:
+                        val_dict[step][para] = []
+                        for level in fields["levels"]:
+                            key = (date, level, num, para, step)
+                            # for k, v in range_dict.items():
+                            #    if k == key:
+                            # val_dict[para].append(v[0])
+                            val_dict[step][para].append(range_dict[key][0])
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["Forecast date"] = date
+                    mm["step"] = step
+                    # del mm["step"]
+                    self.add_coverage(mm, coordinates[date][step], val_dict[step])
+
+        end = time.time()
+        delta = end - start
+        logging.debug("Coverage creation: %s", end)  # noqa: E501
+        logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
         return self.covjson
-
-    def func(
-        self,
-        tree,
-        lat,
-        long,
-        coords,
-        mars_metadata,
-        param,
-        range_dict,
-        step,
-        levels,
-        dates,
-        number,
-    ):
-        if len(tree.children) != 0:
-            # recurse while we are not a leaf
-            for c in tree.children:
-                if (
-                    c.axis.name != "latitude"
-                    and c.axis.name != "longitude"
-                    and c.axis.name != "param"
-                    and c.axis.name != "step"
-                    and c.axis.name != "date"
-                    and c.axis.name != "levelist"
-                ):
-                    mars_metadata[c.axis.name] = c.values[0]
-                if c.axis.name == "latitude":
-                    lat = c.values[0]
-                if c.axis.name == "param":
-                    param = c.values
-                    for date in dates:
-                        for num in number:
-                            for para in param:
-                                range_dict[date][num][para] = []
-                if c.axis.name == "number":
-                    number = c.values
-                    for date in dates:
-                        for num in number:
-                            range_dict[date][num] = {}
-                if c.axis.name == "date":
-                    dates = [str(date) + "Z" for date in c.values]
-                    for date in dates:
-                        coords[date] = {}
-                        range_dict[date] = {}
-                    mars_metadata[c.axis.name] = str(c.values[0]) + "Z"
-                if c.axis.name == "levelist":
-                    levels = c.values
-
-                self.func(c, lat, long, coords, mars_metadata, param, range_dict, step, levels, dates, number)
-        else:
-            tree.values = [float(val) for val in tree.values]
-            tree.result = [float(val) for val in tree.result]
-            # para_intervals = int(num_intervals/len(param))
-            try:
-                len(param)
-            except TypeError:
-                raise ValueError("No parameters were returned, date requested may be out of range")
-            len_paras = len(param)
-            len_levels = len(param)
-            len_nums = len_paras * len(levels)
-            for date in dates:
-
-                coords[date]["x"] = [lat]
-                coords[date]["y"] = [tree.values[0]]
-                coords[date]["z"] = list(levels)
-                coords[date]["t"] = date
-
-            for i, date in enumerate(dates):
-                for j, num in enumerate(number):
-                    for l, level in enumerate(list(levels)):  # noqa: E741
-                        for k, para in enumerate(param):
-                            range_dict[date][num][para].append(
-                                tree.result[i * len_paras + l * len_levels + j * len_nums + k]
-                            )
