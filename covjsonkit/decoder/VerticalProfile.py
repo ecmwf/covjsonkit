@@ -102,9 +102,9 @@ class VerticalProfile(Decoder):
         dims = [
             "x",
             "y",
-            "t",
             "datetime",
             "number",
+            "t",
             "z",
         ]
         dataarraydict = {}
@@ -121,12 +121,15 @@ class VerticalProfile(Decoder):
 
         num = []
         datetime = []
+        steps = []
         for coverage in self.covjson["coverages"]:
             num.append(coverage["mars:metadata"]["number"])
             datetime.append(coverage["mars:metadata"]["Forecast date"])
+            steps.append(coverage["mars:metadata"]["step"])
 
         nums = list(set(num))
         datetime = list(set(datetime))
+        steps = list(set(steps))
 
         param_values = {}
 
@@ -137,24 +140,29 @@ class VerticalProfile(Decoder):
                 for j, date in enumerate(datetime):
                     param_values[parameter][i].append([])
                     for k, step in enumerate(steps):
+                        param_values[parameter][i][j].append([])
                         for coverage in self.covjson["coverages"]:
                             if (
                                 coverage["mars:metadata"]["number"] == num
                                 and coverage["mars:metadata"]["Forecast date"] == date
+                                and coverage["mars:metadata"]["step"] == step
                             ):
-                                param_values[parameter][i][j] = coverage["ranges"][parameter]["values"]
+                                param_values[parameter][i][j][k] = coverage["ranges"][parameter]["values"]
 
         for parameter in self.parameters:
             param_coords = {
                 "x": x,
                 "y": y,
-                "t": steps,
                 "number": nums,
                 "datetime": datetime,
+                "t": steps,
                 "z": z,
             }
+            print(dims)
+            print(param_coords)
+            print(param_values[parameter])
             dataarray = xr.DataArray(
-                [[[param_values[parameter]]]],
+                [[param_values[parameter]]],
                 dims=dims,
                 coords=param_coords,
                 name=parameter,
