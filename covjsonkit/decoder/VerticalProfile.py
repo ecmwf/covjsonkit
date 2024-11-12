@@ -1,3 +1,4 @@
+import pandas as pd
 import xarray as xr
 
 from .decoder import Decoder
@@ -52,6 +53,7 @@ class VerticalProfile(Decoder):
     def to_geopandas(self):
         pass
 
+    """
     def to_xarray(self):
         dims = ["x", "y", "t", "number", "z"]
         dataarraydict = {}
@@ -65,14 +67,18 @@ class VerticalProfile(Decoder):
                 t = [coords[ind][0][4]]
                 num = [coord[0][3] for coord in coords]
                 coords_z = coords[ind]
-                z = [int(coord[2]) for coord in coords_z]
+                z = [int(coord) for coord in list(coords_z[0][2])]
                 param_coords = {
                     "x": x,
                     "y": y,
-                    "t": t,
+                    "t": t[0],
                     "number": num,
                     "z": z,
                 }
+                print(param_values)
+                print(dims)
+                print(param_coords)
+                print(parameter)
                 dataarray = xr.DataArray(
                     param_values,
                     dims=dims,
@@ -86,6 +92,80 @@ class VerticalProfile(Decoder):
 
         ds = xr.Dataset(dataarraydict)
 
+        for mars_metadata in self.mars_metadata[0]:
+            if mars_metadata != "date" and mars_metadata != "step":
+                ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+
+        return ds"""
+
+    def to_xarray(self):
+        dims = [
+            "x",
+            "y",
+            "t",
+            "datetime",
+            "number",
+            "z",
+        ]
+        dataarraydict = {}
+
+        # Get coordinates
+        coords = self.get_domains()
+        x = coords[0]["axes"]["x"]["values"]
+        y = coords[0]["axes"]["y"]["values"]
+        z = coords[0]["axes"]["z"]["values"]
+        steps = coords[0]["axes"]["t"]["values"]
+        steps = [step.replace("Z", "") for step in steps]
+        steps = pd.to_datetime(steps)
+        # steps = list(range(len(steps)))
+
+        num = []
+        datetime = []
+        for coverage in self.covjson["coverages"]:
+            num.append(coverage["mars:metadata"]["number"])
+            datetime.append(coverage["mars:metadata"]["Forecast date"])
+
+        nums = list(set(num))
+        datetime = list(set(datetime))
+
+        param_values = {}
+
+        for parameter in self.parameters:
+            param_values[parameter] = []
+            for i, num in enumerate(nums):
+                param_values[parameter].append([])
+                for j, date in enumerate(datetime):
+                    param_values[parameter][i].append([])
+                    for k, step in enumerate(steps):
+                        for coverage in self.covjson["coverages"]:
+                            if (
+                                coverage["mars:metadata"]["number"] == num
+                                and coverage["mars:metadata"]["Forecast date"] == date
+                            ):
+                                param_values[parameter][i][j] = coverage["ranges"][parameter]["values"]
+
+        for parameter in self.parameters:
+            param_coords = {
+                "x": x,
+                "y": y,
+                "t": steps,
+                "number": nums,
+                "datetime": datetime,
+                "z": z,
+            }
+            dataarray = xr.DataArray(
+                [[[param_values[parameter]]]],
+                dims=dims,
+                coords=param_coords,
+                name=parameter,
+            )
+
+            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+            dataarraydict[dataarray.attrs["long_name"]] = dataarray
+
+        ds = xr.Dataset(dataarraydict)
         for mars_metadata in self.mars_metadata[0]:
             if mars_metadata != "date" and mars_metadata != "step":
                 ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]

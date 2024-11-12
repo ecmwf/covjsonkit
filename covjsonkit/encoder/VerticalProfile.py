@@ -118,11 +118,6 @@ class VerticalProfile(Encoder):
             }
         )
 
-        print("Fields: ", fields)
-        print("Coords: ", coords)
-        # print("Mars Metadata: ", mars_metadata)
-        print("Range Dict: ", range_dict)
-
         coordinates = {}
 
         levels = fields["levels"]
@@ -147,15 +142,13 @@ class VerticalProfile(Encoder):
                             coordinates[date][step] = {
                                 "x": [coords[date]["composite"][0][0]],
                                 "y": [coords[date]["composite"][0][1]],
-                                "z": [levels],
+                                "z": list(levels),
                             }
                             coordinates[date][step]["t"] = [stamp.isoformat() + "Z"]
                             # coordinates[date]["t"].append(stamp.isoformat() + "Z")
                         break
                     break
                 break
-
-        print("Coordinates: ", coordinates)
 
         end = time.time()
         delta = end - start
