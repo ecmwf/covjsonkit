@@ -53,51 +53,6 @@ class VerticalProfile(Decoder):
     def to_geopandas(self):
         pass
 
-    """
-    def to_xarray(self):
-        dims = ["x", "y", "t", "number", "z"]
-        dataarraydict = {}
-
-        for parameter in self.parameters:
-            param_values = [[[self.get_values()[parameter]]]]
-            for ind, value in enumerate(self.get_values()[parameter]):
-                coords = self.get_coordinates()[parameter]
-                x = [coords[ind][0][0]]
-                y = [coords[ind][0][1]]
-                t = [coords[ind][0][4]]
-                num = [coord[0][3] for coord in coords]
-                coords_z = coords[ind]
-                z = [int(coord) for coord in list(coords_z[0][2])]
-                param_coords = {
-                    "x": x,
-                    "y": y,
-                    "t": t[0],
-                    "number": num,
-                    "z": z,
-                }
-                print(param_values)
-                print(dims)
-                print(param_coords)
-                print(parameter)
-                dataarray = xr.DataArray(
-                    param_values,
-                    dims=dims,
-                    coords=param_coords,
-                    name=parameter,
-                )
-                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
-                dataarraydict[dataarray.attrs["long_name"]] = dataarray
-
-        ds = xr.Dataset(dataarraydict)
-
-        for mars_metadata in self.mars_metadata[0]:
-            if mars_metadata != "date" and mars_metadata != "step":
-                ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
-
-        return ds"""
-
     def to_xarray(self):
         dims = [
             "x",
