@@ -102,8 +102,8 @@ class VerticalProfile(Decoder):
         dims = [
             "x",
             "y",
-            "datetime",
             "number",
+            "datetime",
             "t",
             "z",
         ]
@@ -158,9 +158,7 @@ class VerticalProfile(Decoder):
                 "t": steps,
                 "z": z,
             }
-            print(dims)
-            print(param_coords)
-            print(param_values[parameter])
+
             dataarray = xr.DataArray(
                 [[param_values[parameter]]],
                 dims=dims,
