@@ -42,10 +42,12 @@ class Path(Decoder):
         # Get coordinates
         x = []
         y = []
+        z = []
         t = []
         for coord in self.get_coordinates()["composite"]["values"]:
             x.append(float(coord[1]))
             y.append(float(coord[2]))
+            z.append(float(coord[3]))
             t.append(coord[0])
 
         values = {}
@@ -108,6 +110,7 @@ class Path(Decoder):
                 points=(["points"], list(range(0, len(x)))),
                 x=(["points"], x),
                 y=(["points"], y),
+                z=(["points"], z),
                 t=(["points"], t),
             ),
         )
