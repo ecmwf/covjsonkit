@@ -109,17 +109,22 @@ class Path(Encoder):
             }
         )
 
+        print(fields)
+        print(coords)
+        print(range_dict)
+
         for date in coords.keys():
             coord = coords[date]["composite"]
             coords[date]["composite"] = []
             start = 0
             for level in set(fields["l"]):
                 for s in set(fields["s"]):
-                    cor_len = len(range_dict[(date, level, fields["number"][0], fields["param"][0], s)])
-                    end = start + cor_len
-                    for cor in coord[int(start) : int(end)]:
-                        coords[date]["composite"].append([s, cor[0], cor[1], level])
-                    start = end
+                    if (date, level, fields["number"][0], fields["param"][0], s) in range_dict:
+                        cor_len = len(range_dict[(date, level, fields["number"][0], fields["param"][0], s)])
+                        end = start + cor_len
+                        for cor in coord[int(start) : int(end)]:
+                            coords[date]["composite"].append([s, cor[0], cor[1], level])
+                        start = end
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
         combined_dict = {}
@@ -151,7 +156,6 @@ class Path(Encoder):
 
         logging.debug("The values returned from combined dicts: %s", combined_dict)  # noqa: E501
 
-        levels = fields["levels"]
         if fields["param"] == 0:
             raise ValueError("No parameters were returned, date requested may be out of range")
         for para in fields["param"]:
