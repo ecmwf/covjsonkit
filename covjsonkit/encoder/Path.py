@@ -109,10 +109,6 @@ class Path(Encoder):
             }
         )
 
-        print(fields)
-        print(coords)
-        print(range_dict)
-
         for date in coords.keys():
             coord = coords[date]["composite"]
             coords[date]["composite"] = []
@@ -166,21 +162,13 @@ class Path(Encoder):
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
-                # for step in combined_dict[date][num][self.parameters[0]].keys():
-                #    val_dict[step] = {}
                 for para in combined_dict[date][num].keys():
                     if para not in val_dict:
                         val_dict[para] = []
                     for step in combined_dict[date][num][para].keys():
                         val_dict[para].extend(combined_dict[date][num][para][step])
-                # for step in val_dict.keys():
                 mm = mars_metadata.copy()
                 mm["number"] = num
-                # mm["step"] = step
-                # temp = []
-                # for coord in coords[date]["composite"]:
-                #    temp.append([step] + coord)
-                # coords[date]["composite"] = temp
                 mm["Forecast date"] = date
                 if "levelist" in mm:
                     del mm["levelist"]

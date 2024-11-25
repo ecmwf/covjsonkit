@@ -117,7 +117,4 @@ class Path(Decoder):
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
-        # Add date attribute
-        # ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
-
         return ds
