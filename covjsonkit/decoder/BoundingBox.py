@@ -84,9 +84,9 @@ class BoundingBox(Decoder):
                     coverage["mars:metadata"]["step"]
                 ] = coverage["ranges"][parameter]["values"]
 
-        datetimes = list(set(datetimes))
-        numbers = list(set(numbers))
-        steps = list(set(steps))
+        datetimes = sorted(list(set(datetimes)))
+        numbers = sorted(list(set(numbers)))
+        steps = sorted(list(set(steps)))
 
         new_values = {}
         for parameter in values.keys():
