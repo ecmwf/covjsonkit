@@ -209,11 +209,6 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        print("fields", fields)
-        print("coords", coords)
-        print("mars_metadata", mars_metadata)
-        print("range_dict", range_dict)
-
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -245,16 +240,15 @@ class TimeSeries(Encoder):
                 for num in fields["number"]:
                     for para in fields["param"]:
                         for date in fields["dates"]:
-                            #date_format = "%Y%m%dT%H%M%S"
-                            #new_date = pd.Timestamp(date).strftime(date_format)
-                            #start_time = datetime.strptime(new_date, date_format)
+                            # date_format = "%Y%m%dT%H%M%S"
+                            # new_date = pd.Timestamp(date).strftime(date_format)
+                            # start_time = datetime.strptime(new_date, date_format)
                             # add current date to list by converting it to iso format
-                            #stamp = start_time + timedelta(hours=int(step))
+                            # stamp = start_time + timedelta(hours=int(step))
                             coordinates[fields["dates"][0]]["t"].append(date)
                         break
                     break
                 break
-        print("coordinates", coordinates)
 
         end = time.time()
         delta = end - start
@@ -282,7 +276,7 @@ class TimeSeries(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
-                    #del mm["step"]
+                    # del mm["step"]
                     self.add_coverage(mm, coordinates[fields["dates"][0]], val_dict)
 
         end = time.time()
