@@ -89,7 +89,7 @@ class BoundingBox(Encoder):
         fields["lat"] = 0
         fields["param"] = 0
         fields["number"] = [0]
-        fields["step"] = 0
+        fields["step"] = [0]
         fields["dates"] = []
         fields["levels"] = [0]
 
