@@ -190,14 +190,29 @@ class TimeSeries(Encoder):
         coords = {}
         mars_metadata = {}
         range_dict = {}
-        lat = 0
-        param = 0
-        number = [0]
-        step = 0
-        levels = [0]
-        dates = [0]
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["step"] = [0]
+        fields["dates"] = []
+        fields["levels"] = [0]
 
-        self.walk_tree(result, lat, coords, mars_metadata, param, range_dict, number, step, dates, levels)
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        delta = end - start
+        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
+        logging.debug("Tree walking takes: %s", delta)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)  # noqa: E501
+
+        print("fields", fields)
+        print("coords", coords)
+        print("mars_metadata", mars_metadata)
+        print("range_dict", range_dict)
 
         self.add_reference(
             {
@@ -210,43 +225,69 @@ class TimeSeries(Encoder):
         )
 
         coordinates = {}
-        for date in range_dict.keys():
-            for num in range_dict[date].keys():
-                for para in range_dict[date][num].keys():
-                    for step in range_dict[date][num][para].keys():
-                        for dt in range_dict.keys():
-                            date_format = "%Y%m%dT%H%M%S"
-                            new_date = pd.Timestamp(dt).strftime(date_format)
-                            start_time = datetime.strptime(new_date, date_format)
+
+        levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No parameters were returned, date requested may be out of range")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        for step in fields["step"]:
+            coordinates[fields["dates"][0]] = {
+                "x": [coords[fields["dates"][0]]["composite"][0][0]],
+                "y": [coords[fields["dates"][0]]["composite"][0][1]],
+                "z": [levels[0]],
+            }
+            coordinates[fields["dates"][0]]["t"] = []
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    for para in fields["param"]:
+                        for date in fields["dates"]:
+                            #date_format = "%Y%m%dT%H%M%S"
+                            #new_date = pd.Timestamp(date).strftime(date_format)
+                            #start_time = datetime.strptime(new_date, date_format)
                             # add current date to list by converting it to iso format
-                            stamp = start_time + timedelta(hours=int(step))
-                            if step not in coordinates:
-                                coordinates[step] = {
-                                    "x": [coords[date]["composite"][0][0]],
-                                    "y": [coords[date]["composite"][0][1]],
-                                    "z": "sfc",
-                                }
-                            if "t" not in coordinates[step]:
-                                coordinates[step]["t"] = [stamp.isoformat() + "Z"]
-                            else:
-                                coordinates[step]["t"].append(stamp.isoformat() + "Z")
+                            #stamp = start_time + timedelta(hours=int(step))
+                            coordinates[fields["dates"][0]]["t"].append(date)
+                        break
                     break
                 break
-            break
+        print("coordinates", coordinates)
 
-        for date in range_dict.keys():
-            for num in range_dict[date].keys():
-                for param in range_dict[date][num].keys():
-                    step_dict = {}
-                    for step in range_dict[date][num][param].keys():
-                        if step not in step_dict:
-                            step_dict[step] = []
-                        step_dict[step].append(range_dict[date][num][param][step])
-                    for step in range_dict[date][num][param].keys():
-                        mm = mars_metadata.copy()
-                        mm["number"] = num
-                        mm["Forecast date"] = date
-                        mm["step"] = step
-                        self.add_coverage(mm, coordinates[step], range_dict[date][num])
+        end = time.time()
+        delta = end - start
+        logging.debug("Coords creation: %s", end)  # noqa: E501
+        logging.debug("Coords creation: %s", delta)  # noqa: E501
+
+        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)  # noqa: E501
+
+        for step in fields["step"]:
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for date in fields["dates"]:
+                            key = (date, level, num, para, step)
+                            # for k, v in range_dict.items():
+                            #    if k == key:
+                            # val_dict[para].append(v[0])
+                            val_dict[para].append(range_dict[key][0])
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["Forecast date"] = date
+                    #del mm["step"]
+                    self.add_coverage(mm, coordinates[fields["dates"][0]], val_dict)
+
+        end = time.time()
+        delta = end - start
+        logging.debug("Coverage creation: %s", end)  # noqa: E501
+        logging.debug("Coverage creation: %s", delta)  # noqa: E501
 
         return self.covjson
