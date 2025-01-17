@@ -36,9 +36,9 @@ class TimeSeries(Decoder):
             coord_dict[param] = []
         # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
         for ind, domain in enumerate(self.domains):
-            x = domain["axes"]["x"]["values"][0]
-            y = domain["axes"]["y"]["values"][0]
-            z = domain["axes"]["z"]["values"][0]
+            x = domain["axes"]["latitude"]["values"][0]
+            y = domain["axes"]["longitude"]["values"][0]
+            z = domain["axes"]["levelist"]["values"][0]
             fct = domain["axes"]["t"]["values"][0]
             ts = domain["axes"]["t"]["values"]
             if "number" in self.mars_metadata[ind]:
@@ -59,14 +59,14 @@ class TimeSeries(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
-        dims = ["x", "y", "z", "number", "datetime", "t"]
+        dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
         dataarraydict = {}
 
         # Get coordinates
         coords = self.get_domains()
-        x = coords[0]["axes"]["x"]["values"]
-        y = coords[0]["axes"]["y"]["values"]
-        z = coords[0]["axes"]["z"]["values"]
+        x = coords[0]["axes"]["latitude"]["values"]
+        y = coords[0]["axes"]["longitude"]["values"]
+        z = coords[0]["axes"]["levelist"]["values"]
         steps = coords[0]["axes"]["t"]["values"]
         steps = [step.replace("Z", "") for step in steps]
         steps = pd.to_datetime(steps)
@@ -98,7 +98,7 @@ class TimeSeries(Decoder):
                                 param_values[parameter][i][j] = coverage["ranges"][parameter]["values"]
 
         for parameter in self.parameters:
-            param_coords = {"x": x, "y": y, "z": z, "number": nums, "datetime": datetime, "t": steps}
+            param_coords = {"latitude": x, "longitude": y, "levelist": z, "number": nums, "datetime": datetime, "t": steps}
             dataarray = xr.DataArray(
                 [[[param_values[parameter]]]],
                 dims=dims,
