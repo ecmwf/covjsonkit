@@ -98,7 +98,14 @@ class TimeSeries(Decoder):
                                 param_values[parameter][i][j] = coverage["ranges"][parameter]["values"]
 
         for parameter in self.parameters:
-            param_coords = {"latitude": x, "longitude": y, "levelist": z, "number": nums, "datetime": datetime, "t": steps}
+            param_coords = {
+                "latitude": x,
+                "longitude": y,
+                "levelist": z,
+                "number": nums,
+                "datetime": datetime,
+                "t": steps,
+            }
             dataarray = xr.DataArray(
                 [[[param_values[parameter]]]],
                 dims=dims,
