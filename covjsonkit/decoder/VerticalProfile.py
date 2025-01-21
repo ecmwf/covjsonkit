@@ -59,7 +59,7 @@ class VerticalProfile(Decoder):
             "y",
             "number",
             "datetime",
-            "t",
+            "time",
             "z",
         ]
         dataarraydict = {}
@@ -110,7 +110,7 @@ class VerticalProfile(Decoder):
                 "y": y,
                 "number": nums,
                 "datetime": datetime,
-                "t": steps,
+                "time": steps,
                 "z": z,
             }
 
