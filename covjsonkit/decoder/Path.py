@@ -42,13 +42,13 @@ class Path(Decoder):
         # Get coordinates
         x = []
         y = []
-        z = []
-        t = []
+        level = []
+        time = []
         for coord in self.get_coordinates()["composite"]["values"]:
             x.append(float(coord[1]))
             y.append(float(coord[2]))
-            z.append(float(coord[3]))
-            t.append(coord[0])
+            level.append(float(coord[3]))
+            time.append(coord[0])
 
         values = {}
         for parameter in self.parameters:
@@ -110,8 +110,8 @@ class Path(Decoder):
                 points=(["points"], list(range(0, len(x)))),
                 x=(["points"], x),
                 y=(["points"], y),
-                z=(["points"], z),
-                t=(["points"], t),
+                level=(["points"], level),
+                time=(["points"], time),
             ),
         )
         for mars_metadata in self.mars_metadata[0]:
