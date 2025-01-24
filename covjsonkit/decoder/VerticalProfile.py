@@ -60,7 +60,7 @@ class VerticalProfile(Decoder):
             "number",
             "datetime",
             "time",
-            "z",
+            "level",
         ]
         dataarraydict = {}
 
@@ -68,7 +68,7 @@ class VerticalProfile(Decoder):
         coords = self.get_domains()
         x = coords[0]["axes"]["x"]["values"]
         y = coords[0]["axes"]["y"]["values"]
-        z = coords[0]["axes"]["z"]["values"]
+        level = coords[0]["axes"]["z"]["values"]
         steps = coords[0]["axes"]["t"]["values"]
         steps = [step.replace("Z", "") for step in steps]
         steps = pd.to_datetime(steps)
@@ -111,7 +111,7 @@ class VerticalProfile(Decoder):
                 "number": nums,
                 "datetime": datetime,
                 "time": steps,
-                "z": z,
+                "level": level,
             }
 
             dataarray = xr.DataArray(
