@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+import pandas as pd
+
 import orjson
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
@@ -188,6 +190,122 @@ class Encoder(ABC):
                                 if key not in range_dict:
                                     range_dict[key] = []
                                 range_dict[key].extend(tree.result[start_index:end_index])
+
+    def walk_tree_step(self, tree, fields, coords, mars_metadata, range_dict):
+        def create_composite_key_step(date, level, num, para):
+            return (date, level, num, para)
+
+        def handle_non_leaf_node_step(child):
+            non_leaf_axes = ["latitude", "longitude", "param", "date", "time"]
+            if child.axis.name not in non_leaf_axes:
+                mars_metadata[child.axis.name] = child.values[0]
+
+        def handle_specific_axes_step(child):
+            if child.axis.name == "latitude":
+                return child.values[0]
+            if child.axis.name == "levelist":
+                return child.values
+            if child.axis.name == "param":
+                return child.values
+            if child.axis.name in ["date"]:
+                dates = [f"{date}Z" for date in child.values]
+                #mars_metadata["Forecast date"] = str(child.values[0])
+                #for date in dates:
+                #    coords[date] = {}
+                #    coords[date]["composite"] = []
+                #    coords[date]["t"] = [date]
+                return dates
+            if child.axis.name == "number":
+                return child.values
+            if child.axis.name == "step":
+                return child.values
+            if child.axis.name == "time":
+                for date in fields["dates"]:
+                    coords[date] = {}
+                    coords[date]["composite"] = []
+                    coords[date]["t"] = []
+                    for time in child.values:
+                        datetime = pd.Timestamp(date) + time
+                        print(datetime)
+                        coords[date]["t"].append(str(datetime).split("+")[0]+ "Z")
+                return child.values
+            return None
+
+        def calculate_index_bounds_step(level_len, num_len, para_len, step_len, l, i, j, k):  # noqa: E741
+            start_index = int(l * level_len) + int(i * num_len) + int(j * para_len) + int(k * step_len)
+            end_index = start_index + int(step_len)
+            return start_index, end_index
+
+        def append_composite_coords_step(dates, tree_values, lat, coords):
+            # for date in dates:
+            for value in tree_values:
+                coords[dates]["composite"].append([lat, value])
+
+        if len(tree.children) != 0:
+            for child in tree.children:
+                handle_non_leaf_node_step(child)
+                result = handle_specific_axes_step(child)
+                if result is not None:
+                    if child.axis.name == "latitude":
+                        fields["lat"] = result
+                    elif child.axis.name == "levelist":
+                        fields["levels"] = result
+                        if "l" in fields:
+                            fields["l"].extend(result)
+                    elif child.axis.name == "param":
+                        fields["param"] = result
+                    elif child.axis.name in ["date"]:
+                        fields["dates"].extend(result)
+                    elif child.axis.name == "number":
+                        fields["number"] = result
+                    elif child.axis.name == "step":
+                        fields["step"] = result
+                        if "s" in fields:
+                            fields["s"].extend(result)
+                    elif child.axis.name == "time":
+                        fields["times"].extend(result)
+
+                self.walk_tree_step(child, fields, coords, mars_metadata, range_dict)
+        else:
+            tree.values = [float(val) for val in tree.values]
+            if all(val is None for val in tree.result):
+                fields["dates"] = fields["dates"][:-1]
+                for date in fields["dates"]:
+                    for level in fields["levels"]:
+                        for num in fields["number"]:
+                            for para in fields["param"]:
+                                for s in fields["step"]:
+                                    key = create_composite_key_step(date, level, num, para)
+                                    if key in range_dict:
+                                        del range_dict[key]
+            else:
+                tree.result = [float(val) if val is not None else val for val in tree.result]
+                level_len = len(tree.result) / len(fields["levels"])
+                num_len = level_len / len(fields["number"])
+                #time_len = para_len / len(fields["times"])
+                date_len = len(tree.result) / len(fields["dates"])
+                para_len = date_len / len(fields["param"])
+
+                for date in fields["dates"]:
+                    append_composite_coords_step(date, tree.values, fields["lat"], coords)
+
+                for d, date in enumerate(fields["dates"]):
+                    for l, level in enumerate(fields["levels"]):  # noqa: E741
+                        for i, num in enumerate(fields["number"]):
+                            for j, para in enumerate(fields["param"]):
+                                #for k, t in enumerate(fields["times"]):
+                                    #start_index, end_index = calculate_index_bounds_step(
+                                    #    level_len, num_len, para_len, time_len, l, i, j, k
+                                    #)
+                                    key = create_composite_key_step(date, level, num, para)
+                                    if key not in range_dict:
+                                        range_dict[key] = []
+                                    #range_dict[key].extend(tree.result[start_index:end_index])
+                                    print(d, date_len,j, para_len)
+                                    print(d*date_len+j*para_len)
+                                    print(int(d*date_len+j*para_len+len(fields["times"])))
+                                    #print(tree.result[int(d*date_len+j*para_len+len)])
+                                    range_dict[key].append(tree.result[int(d*date_len+j*para_len):int(d*date_len+j*para_len+len(fields["times"]))])
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):

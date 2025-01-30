@@ -144,6 +144,10 @@ class TimeSeries(Encoder):
                             new_date = pd.Timestamp(date).strftime(date_format)
                             start_time = datetime.strptime(new_date, date_format)
                             # add current date to list by converting it to iso format
+                            try:
+                                int(step)
+                            except ValueError:
+                                step = step[0]
                             stamp = start_time + timedelta(hours=int(step))
                             coordinates[date]["t"].append(stamp.isoformat() + "Z")
                         break
@@ -197,10 +201,11 @@ class TimeSeries(Encoder):
         fields["step"] = [0]
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["times"] = []
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree_step(result, fields, coords, mars_metadata, range_dict)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
@@ -218,6 +223,12 @@ class TimeSeries(Encoder):
                 },
             }
         )
+
+        print("Fields: ", fields)
+        print("Coords: ", coords)
+        #print("Mars Metadata: ", mars_metadata)
+        print("Range Dict: ", range_dict)
+        print("Range Dict keys: ", range_dict.keys())
 
         coordinates = {}
 
