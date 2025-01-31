@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
-import pandas as pd
-
 import orjson
+import pandas as pd
 from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
@@ -209,8 +208,8 @@ class Encoder(ABC):
                 return child.values
             if child.axis.name in ["date"]:
                 dates = [f"{date}Z" for date in child.values]
-                #mars_metadata["Forecast date"] = str(child.values[0])
-                #for date in dates:
+                # mars_metadata["Forecast date"] = str(child.values[0])
+                # for date in dates:
                 #    coords[date] = {}
                 #    coords[date]["composite"] = []
                 #    coords[date]["t"] = [date]
@@ -226,8 +225,7 @@ class Encoder(ABC):
                     coords[date]["t"] = []
                     for time in child.values:
                         datetime = pd.Timestamp(date) + time
-                        print(datetime)
-                        coords[date]["t"].append(str(datetime).split("+")[0]+ "Z")
+                        coords[date]["t"].append(str(datetime).split("+")[0] + "Z")
                 return child.values
             return None
 
@@ -280,9 +278,6 @@ class Encoder(ABC):
                                         del range_dict[key]
             else:
                 tree.result = [float(val) if val is not None else val for val in tree.result]
-                level_len = len(tree.result) / len(fields["levels"])
-                num_len = level_len / len(fields["number"])
-                #time_len = para_len / len(fields["times"])
                 date_len = len(tree.result) / len(fields["dates"])
                 para_len = date_len / len(fields["param"])
 
@@ -293,19 +288,25 @@ class Encoder(ABC):
                     for l, level in enumerate(fields["levels"]):  # noqa: E741
                         for i, num in enumerate(fields["number"]):
                             for j, para in enumerate(fields["param"]):
-                                #for k, t in enumerate(fields["times"]):
-                                    #start_index, end_index = calculate_index_bounds_step(
-                                    #    level_len, num_len, para_len, time_len, l, i, j, k
-                                    #)
-                                    key = create_composite_key_step(date, level, num, para)
-                                    if key not in range_dict:
-                                        range_dict[key] = []
-                                    #range_dict[key].extend(tree.result[start_index:end_index])
-                                    print(d, date_len,j, para_len)
-                                    print(d*date_len+j*para_len)
-                                    print(int(d*date_len+j*para_len+len(fields["times"])))
-                                    #print(tree.result[int(d*date_len+j*para_len+len)])
-                                    range_dict[key].append(tree.result[int(d*date_len+j*para_len):int(d*date_len+j*para_len+len(fields["times"]))])
+                                # for k, t in enumerate(fields["times"]):
+                                # start_index, end_index = calculate_index_bounds_step(
+                                #    level_len, num_len, para_len, time_len, l, i, j, k
+                                # )
+                                key = create_composite_key_step(date, level, num, para)
+                                if key not in range_dict:
+                                    range_dict[key] = []
+                                # range_dict[key].extend(tree.result[start_index:end_index])
+                                # print(d, date_len,j, para_len)
+                                # print(d*date_len+j*para_len)
+                                # print(int(d*date_len+j*para_len+len(fields["times"])))
+                                # print(tree.result[int(d*date_len+j*para_len+len)])
+                                range_dict[key].append(
+                                    tree.result[
+                                        int(d * date_len + j * para_len) : int(
+                                            d * date_len + j * para_len + len(fields["times"])
+                                        )
+                                    ]
+                                )
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
