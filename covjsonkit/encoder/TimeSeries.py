@@ -144,6 +144,10 @@ class TimeSeries(Encoder):
                             new_date = pd.Timestamp(date).strftime(date_format)
                             start_time = datetime.strptime(new_date, date_format)
                             # add current date to list by converting it to iso format
+                            try:
+                                int(step)
+                            except ValueError:
+                                step = step[0]
                             stamp = start_time + timedelta(hours=int(step))
                             coordinates[date]["t"].append(stamp.isoformat() + "Z")
                         break
@@ -197,10 +201,11 @@ class TimeSeries(Encoder):
         fields["step"] = [0]
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["times"] = []
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree_step(result, fields, coords, mars_metadata, range_dict)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
@@ -218,6 +223,12 @@ class TimeSeries(Encoder):
                 },
             }
         )
+
+        # print("Fields: ", fields)
+        # print("Coords: ", coords)
+        # print("Mars Metadata: ", mars_metadata)
+        # print("Range Dict: ", range_dict)
+        # print("Range Dict keys: ", range_dict.keys())
 
         coordinates = {}
 
@@ -240,12 +251,14 @@ class TimeSeries(Encoder):
                 for num in fields["number"]:
                     for para in fields["param"]:
                         for date in fields["dates"]:
-                            # date_format = "%Y%m%dT%H%M%S"
-                            # new_date = pd.Timestamp(date).strftime(date_format)
-                            # start_time = datetime.strptime(new_date, date_format)
-                            # add current date to list by converting it to iso format
-                            # stamp = start_time + timedelta(hours=int(step))
-                            coordinates[fields["dates"][0]]["t"].append(date)
+                            for times in fields["times"]:
+                                # date_format = "%Y%m%dT%H%M%S"
+                                # new_date = pd.Timestamp(date).strftime(date_format)
+                                # start_time = datetime.strptime(new_date, date_format)
+                                # add current date to list by converting it to iso format
+                                # stamp = start_time + timedelta(hours=int(step))
+                                datetime = pd.Timestamp(date) + times
+                                coordinates[fields["dates"][0]]["t"].append(str(datetime).split("+")[0] + "Z")
                         break
                     break
                 break
@@ -255,29 +268,30 @@ class TimeSeries(Encoder):
         logging.debug("Coords creation: %s", end)  # noqa: E501
         logging.debug("Coords creation: %s", delta)  # noqa: E501
 
+        # print(coordinates)
+
         # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
 
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
-        for step in fields["step"]:
-            for level in fields["levels"]:
-                for num in fields["number"]:
-                    val_dict = {}
-                    for para in fields["param"]:
-                        val_dict[para] = []
-                        for date in fields["dates"]:
-                            key = (date, level, num, para, step)
-                            # for k, v in range_dict.items():
-                            #    if k == key:
-                            # val_dict[para].append(v[0])
-                            val_dict[para].append(range_dict[key][0])
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["Forecast date"] = date
-                    # del mm["step"]
-                    self.add_coverage(mm, coordinates[fields["dates"][0]], val_dict)
+        for level in fields["levels"]:
+            for num in fields["number"]:
+                val_dict = {}
+                for para in fields["param"]:
+                    val_dict[para] = []
+                    for date in fields["dates"]:
+                        key = (date, level, num, para)
+                        # for k, v in range_dict.items():
+                        #    if k == key:
+                        # val_dict[para].append(v[0])
+                        val_dict[para].extend(range_dict[key][0])
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["Forecast date"] = date
+                # del mm["step"]
+                self.add_coverage(mm, coordinates[fields["dates"][0]], val_dict)
 
         end = time.time()
         delta = end - start
