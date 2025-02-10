@@ -1,6 +1,6 @@
 pandas
 orjson
-datetime
+#datetime
 #numpy=1.26.4
 xarray
 pandas~=2.2.0
