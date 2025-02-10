@@ -92,10 +92,6 @@ class Path(Encoder):
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
-        print("The values returned from walking tree: ", range_dict)
-        print("The coordinates returned from walking tree: ", coords)
-        print("The fields: ", fields)
-
         if len(fields["l"]) == 0:
             fields["l"] = [0]
 
@@ -130,8 +126,6 @@ class Path(Encoder):
                         start = end
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
-        print(coords)
-
         combined_dict = {}
 
         for date in fields["dates"]:
@@ -160,8 +154,6 @@ class Path(Encoder):
                         # for s in fields["s"]:
 
         logging.debug("The values returned from combined dicts: %s", combined_dict)  # noqa: E501
-
-        print(combined_dict)
 
         if fields["param"] == 0:
             raise ValueError("No parameters were returned, date requested may be out of range")
