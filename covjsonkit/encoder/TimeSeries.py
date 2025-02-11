@@ -29,13 +29,13 @@ class TimeSeries(Encoder):
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["x"] = {}
-        coverage["domain"]["axes"]["y"] = {}
-        coverage["domain"]["axes"]["z"] = {}
+        coverage["domain"]["axes"]["latitude"] = {}
+        coverage["domain"]["axes"]["longitude"] = {}
+        coverage["domain"]["axes"]["levelist"] = {}
         coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["x"]["values"] = coords["x"]
-        coverage["domain"]["axes"]["y"]["values"] = coords["y"]
-        coverage["domain"]["axes"]["z"]["values"] = coords["z"]
+        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
+        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
+        coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
 
     def add_range(self, coverage, values):
@@ -111,7 +111,7 @@ class TimeSeries(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["latitude", "longitude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -131,9 +131,9 @@ class TimeSeries(Encoder):
 
         for date in fields["dates"]:
             coordinates[date] = {
-                "x": [coords[date]["composite"][0][0]],
-                "y": [coords[date]["composite"][0][1]],
-                "z": [levels[0]],
+                "latitude": [coords[date]["composite"][0][0]],
+                "longitude": [coords[date]["composite"][0][1]],
+                "levelist": [levels[0]],
             }
             coordinates[date]["t"] = []
             for level in fields["levels"]:
