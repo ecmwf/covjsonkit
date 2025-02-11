@@ -95,6 +95,9 @@ class Path(Encoder):
         if len(fields["l"]) == 0:
             fields["l"] = [0]
 
+        if len(fields["s"]) == 0:
+            fields["s"] = [0]
+
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
         logging.debug("The fields: %s", fields)
