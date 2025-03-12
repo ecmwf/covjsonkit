@@ -3,22 +3,21 @@ import logging
 from conflator import Conflator
 
 import covjsonkit.decoder.BoundingBox
+import covjsonkit.decoder.Circle
 import covjsonkit.decoder.Frame
 import covjsonkit.decoder.Path
 import covjsonkit.decoder.Shapefile
 import covjsonkit.decoder.TimeSeries
 import covjsonkit.decoder.VerticalProfile
 import covjsonkit.decoder.Wkt
-import covjsonkit.decoder.Circle
 import covjsonkit.encoder.BoundingBox
+import covjsonkit.encoder.Circle
 import covjsonkit.encoder.Frame
 import covjsonkit.encoder.Path
 import covjsonkit.encoder.Shapefile
 import covjsonkit.encoder.TimeSeries
 import covjsonkit.encoder.VerticalProfile
 import covjsonkit.encoder.Wkt
-import covjsonkit.encoder.Circle
-
 
 from .config import CovjsonKitConfig
 
