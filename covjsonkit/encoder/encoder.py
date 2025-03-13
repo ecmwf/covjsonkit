@@ -35,6 +35,8 @@ class Encoder(ABC):
             self.domaintype = DomainType.multi_point
         elif domaintype == "frame":
             self.domaintype = DomainType.multi_point
+        elif domaintype == "circle":
+            self.domaintype = DomainType.multi_point
         elif domaintype == "verticalprofile":
             self.domaintype = DomainType.vertical_profile
         elif domaintype == "path":
