@@ -106,16 +106,6 @@ class TimeSeries(Encoder):
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
         logging.debug("Tree walking takes: %s", delta)  # noqa: E501
 
-        print("Fields: ", fields)
-        print("*********")
-        print("Coords: ", coords)
-        print("*********")
-        print("Mars Metadata: ", mars_metadata)
-        print("*********")
-        print("Range Dict: ", range_dict)
-        print("*********")
-        print("Range Dict keys: ", range_dict.keys())
-
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
@@ -245,12 +235,6 @@ class TimeSeries(Encoder):
                 },
             }
         )
-
-        print("Fields: ", fields)
-        print("Coords: ", coords)
-        print("Mars Metadata: ", mars_metadata)
-        print("Range Dict: ", range_dict)
-        print("Range Dict keys: ", range_dict.keys())
 
         coordinates = {}
 
