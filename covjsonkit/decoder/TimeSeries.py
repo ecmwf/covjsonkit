@@ -100,7 +100,6 @@ class TimeSeries(Decoder):
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
 
-            print(x, y, z)
 
             num = []
             datetime = []
