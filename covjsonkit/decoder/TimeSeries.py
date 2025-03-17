@@ -140,7 +140,6 @@ class TimeSeries(Decoder):
                                     and coverage["domain"]["axes"]["z"]["values"] == z
                                 ):
                                     param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
-                                    print(coverage["ranges"][parameter]["values"])
 
             for parameter in self.parameters:
                 param_coords = {
