@@ -100,6 +100,8 @@ class TimeSeries(Decoder):
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
 
+            print(x, y, z)
+
             num = []
             datetime = []
             for coverage in self.covjson["coverages"]:
@@ -124,13 +126,22 @@ class TimeSeries(Decoder):
 
                         for k, step in enumerate(steps):
                             for coverage in self.covjson["coverages"]:
+                                # print(coverage["domain"])
+                                # print(coverage["mars:metadata"]["number"], num)
+                                # print(coverage["mars:metadata"]["Forecast date"], date)
+                                # print(coverage["domain"]["axes"]["x"]["values"][0], x)
+                                # print(coverage["domain"]["axes"]["y"]["values"][0], y)
+                                # print(coverage["domain"]["axes"]["z"]["values"][0], z)
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
+                                    and coverage["domain"]["axes"]["x"]["values"] == x
+                                    and coverage["domain"]["axes"]["y"]["values"] == y
+                                    and coverage["domain"]["axes"]["z"]["values"] == z
                                 ):
                                     param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
+                                    print(coverage["ranges"][parameter]["values"])
 
-            # Create DataArray for each parameter and domain
             for parameter in self.parameters:
                 param_coords = {
                     "x": x,
