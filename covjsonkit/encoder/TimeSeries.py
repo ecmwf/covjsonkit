@@ -151,11 +151,11 @@ class TimeSeries(Encoder):
                         "z": [levels[0]],
                     }
                 )
-                #coordinates[date] = {
+                # coordinates[date] = {
                 #    "x": [coords[date]["composite"][0][0]],
                 #    "y": [coords[date]["composite"][0][1]],
                 #    "z": [levels[0]],
-                #}
+                # }
                 coordinates[date][i]["t"] = []
                 for level in fields["levels"]:
                     for num in fields["number"]:
@@ -298,10 +298,9 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
-        #points = len(coords[fields["dates"][0]]["composite"])
+        # points = len(coords[fields["dates"][0]]["composite"])
 
-
-        #for i, point in enumerate(points):
+        # for i, point in enumerate(points):
         for level in fields["levels"]:
             for num in fields["number"]:
                 val_dict = {}
