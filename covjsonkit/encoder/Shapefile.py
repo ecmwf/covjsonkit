@@ -164,3 +164,96 @@ class Shapefile(Encoder):
         # with open('data.json', 'w') as f:
         #    json.dump(self.covjson, f)
         return self.covjson
+
+
+
+    def from_polytope_step(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["step"] = [0]
+        fields["dates"] = []
+        fields["levels"] = [0]
+        fields["times"] = []
+
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
+        self.walk_tree_step(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        delta = end - start
+        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
+        logging.debug("Tree walking takes: %s", delta)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)  # noqa: E501
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        coordinates = {}
+
+        levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        points = len(coords[fields["dates"][0]]["composite"])
+
+        coordinates = {}
+
+        for date in coords.keys():
+            for dt in coords[date]['t']:
+                coordinates[dt] = {}
+                coordinates[dt]['composite'] = []
+                coordinates[dt]['t'] = [dt]
+                coord = coords[date]["composite"]
+                for level in levels:
+                    for cor in coord:
+                        coordinates[dt]['composite'].append([cor[0], cor[1], level])
+
+        end = time.time()
+        delta = end - start
+        logging.debug("Coords creation: %s", end)  # noqa: E501
+        logging.debug("Coords creation: %s", delta)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)  # noqa: E501
+
+        for i, t in enumerate(fields["times"]):
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for date in fields["dates"]:
+                        for para in fields["param"]:
+                            val_dict[para] = []
+                            key = (date, level, num, para)
+                            vals = []
+                            for val in range_dict[key]:
+                                vals.append(val[i])
+                            val_dict[para].extend(vals)
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        datetime = pd.Timestamp(date) + t
+                        self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
+
+        end = time.time()
+        delta = end - start
+        logging.debug("Coverage creation: %s", end)  # noqa: E501
+        logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        return self.covjson

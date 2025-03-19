@@ -282,6 +282,8 @@ class Encoder(ABC):
                 tree.result = [float(val) if val is not None else val for val in tree.result]
                 date_len = len(tree.result) / len(fields["dates"])
                 para_len = date_len / len(fields["param"])
+                time_len = para_len / len(fields["times"])
+                coords_len = len(tree.values)
 
                 for date in fields["dates"]:
                     append_composite_coords_step(date, tree.values, fields["lat"], coords)
@@ -302,7 +304,8 @@ class Encoder(ABC):
                                 # print(d*date_len+j*para_len)
                                 # print(int(d*date_len+j*para_len+len(fields["times"])))
                                 # print(tree.result[int(d*date_len+j*para_len+len)])
-                                range_dict[key].append(
+                                print(tree.result)
+                                range_dict[key].append(#tree.result
                                     tree.result[
                                         int(d * date_len + j * para_len) : int(
                                             d * date_len + j * para_len + len(fields["times"])
