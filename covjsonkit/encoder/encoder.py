@@ -282,12 +282,12 @@ class Encoder(ABC):
                 tree.result = [float(val) if val is not None else val for val in tree.result]
                 date_len = len(tree.result) / len(fields["dates"])
                 para_len = date_len / len(fields["param"])
-                time_len = para_len / len(fields["times"])
-                coords_len = len(tree.values)
+                # time_len = para_len / len(fields["times"])
+                # coords_len = len(tree.values)
 
                 for date in fields["dates"]:
                     append_composite_coords_step(date, tree.values, fields["lat"], coords)
-                '''
+                """
                 for ti, _ in enumerate(fields["times"]):
                     for d, date in enumerate(fields["dates"]):
                         for l, level in enumerate(fields["levels"]):  # noqa: E741
@@ -313,7 +313,7 @@ class Encoder(ABC):
                                             )
                                         ]
                                     )
-                '''
+                """
                 for d, date in enumerate(fields["dates"]):
                     for l, level in enumerate(fields["levels"]):  # noqa: E741
                         for i, num in enumerate(fields["number"]):
@@ -330,16 +330,14 @@ class Encoder(ABC):
                                 # print(d*date_len+j*para_len)
                                 # print(int(d*date_len+j*para_len+len(fields["times"])))
                                 # print(tree.result[int(d*date_len+j*para_len+len)])
-                                #print(tree.result)
-                                range_dict[key].append(#tree.result
+                                # print(tree.result)
+                                range_dict[key].append(  # tree.result
                                     tree.result[
                                         int(d * date_len + j * para_len) : int(
                                             d * date_len + j * para_len + len(fields["times"])
                                         )
                                     ]
                                 )
-
-                
 
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):

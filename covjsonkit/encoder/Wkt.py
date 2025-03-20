@@ -1,9 +1,7 @@
 import logging
 import time
-from datetime import datetime, timedelta
 
 import pandas as pd
-
 
 from .encoder import Encoder
 
@@ -172,7 +170,6 @@ class Wkt(Encoder):
         #    json.dump(self.covjson, f)
         return self.covjson
 
-
     def from_polytope_step(self, result):
         coords = {}
         mars_metadata = {}
@@ -217,28 +214,27 @@ class Wkt(Encoder):
 
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
-        points = len(coords[fields["dates"][0]]["composite"])
+        # points = len(coords[fields["dates"][0]]["composite"])
 
         coordinates = {}
 
         for date in coords.keys():
-            for dt in coords[date]['t']:
+            for dt in coords[date]["t"]:
                 coordinates[dt] = {}
-                coordinates[dt]['composite'] = []
-                coordinates[dt]['t'] = [dt]
+                coordinates[dt]["composite"] = []
+                coordinates[dt]["t"] = [dt]
                 coord = coords[date]["composite"]
                 for level in levels:
                     for cor in coord:
-                        coordinates[dt]['composite'].append([cor[0], cor[1], level])
+                        coordinates[dt]["composite"].append([cor[0], cor[1], level])
 
-
-        #print(fields)
-        #print("********")
-        #print(coords)
-        #print("********")
-        #print(coordinates)
-        #print("********")
-        #print(range_dict)
+        # print(fields)
+        # print("********")
+        # print(coords)
+        # print("********")
+        # print(coordinates)
+        # print("********")
+        # print(range_dict)
 
         end = time.time()
         delta = end - start
@@ -262,7 +258,7 @@ class Wkt(Encoder):
                             val_dict[para].extend(vals)
                         mm = mars_metadata.copy()
                         mm["number"] = num
-                        #mm["Forecast date"] = date
+                        # mm["Forecast date"] = date
                         datetime = pd.Timestamp(date) + t
                         self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
 
