@@ -232,13 +232,13 @@ class Wkt(Encoder):
                         coordinates[dt]['composite'].append([cor[0], cor[1], level])
 
 
-        print(fields)
-        print("********")
-        print(coords)
-        print("********")
-        print(coordinates)
-        print("********")
-        print(range_dict)
+        #print(fields)
+        #print("********")
+        #print(coords)
+        #print("********")
+        #print(coordinates)
+        #print("********")
+        #print(range_dict)
 
         end = time.time()
         delta = end - start
