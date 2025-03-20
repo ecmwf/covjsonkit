@@ -282,10 +282,38 @@ class Encoder(ABC):
                 tree.result = [float(val) if val is not None else val for val in tree.result]
                 date_len = len(tree.result) / len(fields["dates"])
                 para_len = date_len / len(fields["param"])
+                # time_len = para_len / len(fields["times"])
+                # coords_len = len(tree.values)
 
                 for date in fields["dates"]:
                     append_composite_coords_step(date, tree.values, fields["lat"], coords)
-
+                """
+                for ti, _ in enumerate(fields["times"]):
+                    for d, date in enumerate(fields["dates"]):
+                        for l, level in enumerate(fields["levels"]):  # noqa: E741
+                            for i, num in enumerate(fields["number"]):
+                                for j, para in enumerate(fields["param"]):
+                                    # for k, t in enumerate(fields["times"]):
+                                    # start_index, end_index = calculate_index_bounds_step(
+                                    #    level_len, num_len, para_len, time_len, l, i, j, k
+                                    # )
+                                    key = create_composite_key_step(date, level, num, para)
+                                    if key not in range_dict:
+                                        range_dict[key] = []
+                                    # range_dict[key].extend(tree.result[start_index:end_index])
+                                    # print(d, date_len,j, para_len)
+                                    # print(d*date_len+j*para_len)
+                                    # print(int(d*date_len+j*para_len+len(fields["times"])))
+                                    # print(tree.result[int(d*date_len+j*para_len+len)])
+                                    #print(tree.result)
+                                    range_dict[key].append(#tree.result
+                                        tree.result[
+                                            int(d * date_len + j * para_len + ti * time_len) : int(
+                                                d * date_len + j * para_len + ti * time_len + len(tree.values)
+                                            )
+                                        ]
+                                    )
+                """
                 for d, date in enumerate(fields["dates"]):
                     for l, level in enumerate(fields["levels"]):  # noqa: E741
                         for i, num in enumerate(fields["number"]):
@@ -302,7 +330,8 @@ class Encoder(ABC):
                                 # print(d*date_len+j*para_len)
                                 # print(int(d*date_len+j*para_len+len(fields["times"])))
                                 # print(tree.result[int(d*date_len+j*para_len+len)])
-                                range_dict[key].append(
+                                # print(tree.result)
+                                range_dict[key].append(  # tree.result
                                     tree.result[
                                         int(d * date_len + j * para_len) : int(
                                             d * date_len + j * para_len + len(fields["times"])
