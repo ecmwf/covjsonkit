@@ -111,3 +111,7 @@ Python unit tests can be run with pytest:
     python -m pytest 
 
 When a pull request is merged into develop or main a github actions CI pipeline is triggered to test formatting and unit tests.
+
+## Acknowledgements
+
+Past and current funding and support is listed in the adjoining [Acknowledgements](./ACKNOWLEDGEMENTS.rst).
