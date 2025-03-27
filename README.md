@@ -1,5 +1,5 @@
-| :warning: This project is BETA and will be experimental for the foreseeable future. Interfaces and functionality are likely to change. DO NOT use this software in any project/software that is operational. |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+<!-- | :warning: This project is BETA and will be experimental for the foreseeable future. Interfaces and functionality are likely to change. DO NOT use this software in any project/software that is operational. |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -->
 
 <h3 align="center">
 <img src="./docs/images/ECMWF_logo.svg.png" width=60%>
@@ -14,6 +14,9 @@
   <a href="https://codecov.io/gh/ecmwf/covjsonkit"><img src="https://codecov.io/gh/ecmwf/covjsonkit/branch/develop/graph/badge.svg"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
   <a href="https://github.com/ecmwf/covjsonkit/releases"><img src="https://img.shields.io/github/v/release/ecmwf/covjsonkit?color=blue&label=Release&style=flat-square"></a>
+  <a href="https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity">
+    <img src="https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity/incubating_badge.svg" alt="Project Maturity">
+  </a>
 </p>
 <p align="center">
   <a href="#concept">Concept</a> •
@@ -39,6 +42,9 @@ Current features implemented:
 * Path
 * Wkt Polygons
 * Shapefiles
+
+> \[!IMPORTANT\]
+> This software is **Incubating** and subject to ECMWF's guidelines on [Software Maturity](https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity).
 
 ## Installation
 
