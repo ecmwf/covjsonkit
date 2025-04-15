@@ -242,7 +242,6 @@ class TimeSeries(Encoder):
 
         coordinates = {}
 
-        levels = fields["levels"]
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
         for para in fields["param"]:
