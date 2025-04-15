@@ -236,6 +236,10 @@ class TimeSeries(Encoder):
             }
         )
 
+        print("Coords: ", coords)  # noqa: E501
+        print("Range: ", range_dict)  # noqa: E501
+        print("Fields: ", fields)  # noqa: E501
+
         coordinates = {}
 
         levels = fields["levels"]
@@ -251,15 +255,15 @@ class TimeSeries(Encoder):
         for step in fields["step"]:
             coordinates[fields["dates"][0]] = []
             for i, point in enumerate(range(points)):
-                coordinates[fields["dates"][0]].append(
-                    {
-                        "x": [coords[fields["dates"][0]]["composite"][i][0]],
-                        "y": [coords[fields["dates"][0]]["composite"][i][1]],
-                        "z": [levels[0]],
-                    }
-                )
-                coordinates[fields["dates"][0]][i]["t"] = []
-                for level in fields["levels"]:
+                for j, level in enumerate(fields["levels"]):
+                    coordinates[fields["dates"][0]].append(
+                        {
+                            "x": [coords[fields["dates"][0]]["composite"][i][0]],
+                            "y": [coords[fields["dates"][0]]["composite"][i][1]],
+                            "z": [level],
+                        }
+                    )
+                    coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"] = []
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for date in fields["dates"]:
@@ -270,10 +274,13 @@ class TimeSeries(Encoder):
                                     # add current date to list by converting it to iso format
                                     # stamp = start_time + timedelta(hours=int(step))
                                     datetime = pd.Timestamp(date) + times
-                                    coordinates[fields["dates"][0]][i]["t"].append(str(datetime).split("+")[0] + "Z")
+                                    coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"].append(
+                                        str(datetime).split("+")[0] + "Z"
+                                    )
                             break
                         break
-                    break
+
+        print("coordinates: ", coordinates)  # noqa: E501
 
         end = time.time()
         delta = end - start
@@ -284,7 +291,7 @@ class TimeSeries(Encoder):
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
         for i, point in enumerate(range(points)):
-            for level in fields["levels"]:
+            for j, level in enumerate(fields["levels"]):
                 for num in fields["number"]:
                     val_dict = {}
                     for para in fields["param"]:
@@ -299,8 +306,8 @@ class TimeSeries(Encoder):
                     mm["number"] = num
                     mm["Forecast date"] = date
                     # del mm["step"]
-                    print(val_dict)
-                    self.add_coverage(mm, coordinates[fields["dates"][0]][i], val_dict)
+                    # print(val_dict)
+                    self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
 
         end = time.time()
         delta = end - start
