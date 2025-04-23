@@ -281,7 +281,8 @@ class Encoder(ABC):
             else:
                 tree.result = [float(val) if val is not None else val for val in tree.result]
                 date_len = len(tree.result) / len(fields["dates"])
-                para_len = date_len / len(fields["param"])
+                level_len = date_len / len(fields["param"])
+                para_len = level_len / len(fields["levels"])
                 # time_len = para_len / len(fields["times"])
                 # coords_len = len(tree.values)
 
@@ -333,8 +334,8 @@ class Encoder(ABC):
                                 # print(tree.result)
                                 range_dict[key].append(  # tree.result
                                     tree.result[
-                                        int(d * date_len + j * para_len) : int(
-                                            d * date_len + j * para_len + len(fields["times"])
+                                        int(d * date_len + l * level_len + j * para_len) : int(
+                                            d * date_len + l * level_len + j * para_len + len(fields["times"])
                                         )
                                     ]
                                 )
