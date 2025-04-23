@@ -236,10 +236,6 @@ class TimeSeries(Encoder):
             }
         )
 
-        print("Coords: ", coords)  # noqa: E501
-        print("Range: ", range_dict)  # noqa: E501
-        print("Fields: ", fields)  # noqa: E501
-
         coordinates = {}
 
         if fields["param"] == 0:
