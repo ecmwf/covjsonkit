@@ -275,7 +275,7 @@ class TimeSeries(Encoder):
                             break
                         break
 
-        print("coordinates: ", coordinates)  # noqa: E501
+        # print("coordinates: ", coordinates)  # noqa: E501
 
         end = time.time()
         delta = end - start

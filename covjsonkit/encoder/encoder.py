@@ -281,8 +281,8 @@ class Encoder(ABC):
             else:
                 tree.result = [float(val) if val is not None else val for val in tree.result]
                 date_len = len(tree.result) / len(fields["dates"])
-                level_len = date_len / len(fields["param"])
-                para_len = level_len / len(fields["levels"])
+                level_len = date_len / len(fields["levels"])
+                para_len = level_len / len(fields["param"])
                 # time_len = para_len / len(fields["times"])
                 # coords_len = len(tree.values)
 
