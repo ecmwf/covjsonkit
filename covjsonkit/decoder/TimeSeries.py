@@ -59,7 +59,7 @@ class TimeSeries(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
-        dims = ["x", "y", "z", "number", "datetime", "t"]
+        dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
         ds = []
 
         # Get coordinates for all domains
@@ -70,9 +70,9 @@ class TimeSeries(Decoder):
 
         for domain in self.domains:
             # Extract coordinate values
-            x = domain["axes"]["x"]["values"][0]
-            y = domain["axes"]["y"]["values"][0]
-            z = domain["axes"]["z"]["values"][0]
+            x = domain["axes"]["latitude"]["values"][0]
+            y = domain["axes"]["longitude"]["values"][0]
+            z = domain["axes"]["levelist"]["values"][0]
             t = tuple(domain["axes"]["t"]["values"])  # Use tuple for hashable type
 
             # Create a unique identifier for the domain
@@ -93,9 +93,9 @@ class TimeSeries(Decoder):
         # Process each coordinate domain
         for domain_idx, coords in enumerate(all_coords):
             dataarraydict = {}
-            x = coords["axes"]["x"]["values"]
-            y = coords["axes"]["y"]["values"]
-            z = coords["axes"]["z"]["values"]
+            x = coords["axes"]["latitude"]["values"]
+            y = coords["axes"]["longitude"]["values"]
+            z = coords["axes"]["levelist"]["values"]
             steps = coords["axes"]["t"]["values"]
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
@@ -133,17 +133,17 @@ class TimeSeries(Decoder):
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
-                                    and coverage["domain"]["axes"]["x"]["values"] == x
-                                    and coverage["domain"]["axes"]["y"]["values"] == y
-                                    and coverage["domain"]["axes"]["z"]["values"] == z
+                                    and coverage["domain"]["axes"]["latitude"]["values"] == x
+                                    and coverage["domain"]["axes"]["longitude"]["values"] == y
+                                    and coverage["domain"]["axes"]["levelist"]["values"] == z
                                 ):
                                     param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
 
             for parameter in self.parameters:
                 param_coords = {
-                    "x": x,
-                    "y": y,
-                    "z": z,
+                    "latitude": x,
+                    "longitude": y,
+                    "levelist": z,
                     "number": nums,
                     "datetime": datetime,
                     "t": steps,
