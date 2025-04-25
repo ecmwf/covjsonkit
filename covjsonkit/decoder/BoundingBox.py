@@ -112,9 +112,9 @@ class BoundingBox(Decoder):
                 number=(["number"], numbers),
                 steps=(["steps"], steps),
                 points=(["points"], list(range(0, len(x)))),
-                x=(["points"], x),
-                y=(["points"], y),
-                z=(["points"], z),
+                latitude=(["points"], x),
+                longitude=(["points"], y),
+                levelist=(["points"], z),
             ),
         )
         for mars_metadata in self.mars_metadata[0]:

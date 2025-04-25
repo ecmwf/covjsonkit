@@ -3,7 +3,7 @@ import xarray as xr
 from .decoder import Decoder
 
 
-class Path(Decoder):
+class Circle(Decoder):
     def __init__(self, covjson):
         super().__init__(covjson)
         self.domains = self.get_domains()
@@ -27,6 +27,9 @@ class Path(Decoder):
             values[parameter] = []
             for range in self.ranges:
                 values[parameter].append(range[parameter]["values"])
+            # values[parameter] = [
+            #    value for sublist in values[parameter] for value in sublist
+            # ]
         return values
 
     def get_coordinates(self):
@@ -42,13 +45,14 @@ class Path(Decoder):
         # Get coordinates
         x = []
         y = []
-        level = []
-        time = []
+        z = []
+        datetimes = []
         for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[1]))
-            y.append(float(coord[2]))
-            level.append(float(coord[3]))
-            time.append(coord[0])
+            x.append(float(coord[0]))
+            y.append(float(coord[1]))
+            z.append(float(coord[2]))
+        for datetime in self.get_coordinates()["t"]["values"]:
+            datetimes.append(datetime)
 
         values = {}
         for parameter in self.parameters:
@@ -64,25 +68,25 @@ class Path(Decoder):
             if "step" not in coverage["mars:metadata"]:
                 coverage["mars:metadata"]["step"] = 0
             steps.append(coverage["mars:metadata"]["step"])
-            datetimes.append(coverage["mars:metadata"]["Forecast date"])
+            datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
             for parameter in self.parameters:
                 # values[parameter].append(coverage["ranges"][parameter]["values"])
-                if coverage["mars:metadata"]["Forecast date"] not in values[parameter]:
-                    values[parameter][coverage["mars:metadata"]["Forecast date"]] = {}
+                if coverage["domain"]["axes"]["t"]["values"][0] not in values[parameter]:
+                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]] = {}
                 if (
                     coverage["mars:metadata"]["number"]
-                    not in values[parameter][coverage["mars:metadata"]["Forecast date"]]
+                    not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]
                 ):
-                    values[parameter][coverage["mars:metadata"]["Forecast date"]][
+                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][
                         coverage["mars:metadata"]["number"]
                     ] = {}
-                values[parameter][coverage["mars:metadata"]["Forecast date"]][coverage["mars:metadata"]["number"]][
+                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][
                     coverage["mars:metadata"]["step"]
                 ] = coverage["ranges"][parameter]["values"]
 
-        datetimes = list(set(datetimes))
-        numbers = list(set(numbers))
-        steps = list(set(steps))
+        datetimes = sorted(list(set(datetimes)))
+        numbers = sorted(list(set(numbers)))
+        steps = sorted(list(set(steps)))
 
         new_values = {}
         for parameter in values.keys():
@@ -110,11 +114,13 @@ class Path(Decoder):
                 points=(["points"], list(range(0, len(x)))),
                 latitude=(["points"], x),
                 longitude=(["points"], y),
-                level=(["points"], level),
-                time=(["points"], time),
+                levelist=(["points"], z),
             ),
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+
+        # Add date attribute
+        ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
 
         return ds
