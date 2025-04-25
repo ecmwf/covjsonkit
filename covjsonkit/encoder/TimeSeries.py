@@ -136,9 +136,9 @@ class TimeSeries(Encoder):
             for i, point in enumerate(range(points)):
                 coordinates[date].append(
                     {
-                        "x": [coords[date]["composite"][i][0]],
-                        "y": [coords[date]["composite"][i][1]],
-                        "z": [levels[0]],
+                        "latitude": [coords[date]["composite"][i][0]],
+                        "longitude": [coords[date]["composite"][i][1]],
+                        "levelist": [levels[0]],
                     }
                 )
                 # coordinates[date] = {
@@ -253,9 +253,9 @@ class TimeSeries(Encoder):
                 for j, level in enumerate(fields["levels"]):
                     coordinates[fields["dates"][0]].append(
                         {
-                            "x": [coords[fields["dates"][0]]["composite"][i][0]],
-                            "y": [coords[fields["dates"][0]]["composite"][i][1]],
-                            "z": [level],
+                            "latitude": [coords[fields["dates"][0]]["composite"][i][0]],
+                            "longitude": [coords[fields["dates"][0]]["composite"][i][1]],
+                            "levelist": [level],
                         }
                     )
                     coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"] = []
