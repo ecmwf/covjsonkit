@@ -95,6 +95,9 @@ class Path(Encoder):
         if len(fields["l"]) == 0:
             fields["l"] = [0]
 
+        if len(fields["s"]) == 0:
+            fields["s"] = [0]
+
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
         logging.debug("The fields: %s", fields)
@@ -153,7 +156,7 @@ class Path(Encoder):
         logging.debug("The values returned from combined dicts: %s", combined_dict)  # noqa: E501
 
         if fields["param"] == 0:
-            raise ValueError("No parameters were returned, date requested may be out of range")
+            raise ValueError("No data was returned.")
         for para in fields["param"]:
             self.add_parameter(para)
 
