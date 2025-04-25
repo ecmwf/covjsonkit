@@ -55,8 +55,8 @@ class VerticalProfile(Decoder):
 
     def to_xarray(self):
         dims = [
-            "x",
-            "y",
+            "latitude",
+            "longitude",
             "number",
             "datetime",
             "time",
@@ -66,9 +66,9 @@ class VerticalProfile(Decoder):
 
         # Get coordinates
         coords = self.get_domains()
-        x = coords[0]["axes"]["x"]["values"]
-        y = coords[0]["axes"]["y"]["values"]
-        level = coords[0]["axes"]["z"]["values"]
+        x = coords[0]["axes"]["latitude"]["values"]
+        y = coords[0]["axes"]["longitude"]["values"]
+        level = coords[0]["axes"]["levelist"]["values"]
         steps = coords[0]["axes"]["t"]["values"]
         steps = [step.replace("Z", "") for step in steps]
         steps = pd.to_datetime(steps)
@@ -106,8 +106,8 @@ class VerticalProfile(Decoder):
 
         for parameter in self.parameters:
             param_coords = {
-                "x": x,
-                "y": y,
+                "latitude": x,
+                "longitude": y,
                 "number": nums,
                 "datetime": datetime,
                 "time": steps,
