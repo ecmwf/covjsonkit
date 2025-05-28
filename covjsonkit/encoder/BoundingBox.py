@@ -103,7 +103,7 @@ class BoundingBox(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["latitude", "longitude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",

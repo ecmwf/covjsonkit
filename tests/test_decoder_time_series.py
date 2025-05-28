@@ -22,9 +22,9 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "x": {"values": [3]},
-                            "y": {"values": [7]},
-                            "z": {"values": [1]},
+                            "latitude": {"values": [3]},
+                            "longitude": {"values": [7]},
+                            "levelist": {"values": [1]},
                             "t": {
                                 "values": [
                                     "2017-01-01 00:00:00",
@@ -72,9 +72,9 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "x": {"values": [3]},
-                            "y": {"values": [7]},
-                            "z": {"values": [1]},
+                            "latitude": {"values": [3]},
+                            "longitude": {"values": [7]},
+                            "levelist": {"values": [1]},
                             "t": {
                                 "values": [
                                     "2017-01-02 00:00:00",
@@ -174,9 +174,9 @@ class TestDecoder:
         domain1 = {
             "type": "Domain",
             "axes": {
-                "x": {"values": [3]},
-                "y": {"values": [7]},
-                "z": {"values": [1]},
+                "latitude": {"values": [3]},
+                "longitude": {"values": [7]},
+                "levelist": {"values": [1]},
                 "t": {
                     "values": [
                         "2017-01-01 00:00:00",
@@ -190,9 +190,9 @@ class TestDecoder:
         domain2 = {
             "type": "Domain",
             "axes": {
-                "x": {"values": [3]},
-                "y": {"values": [7]},
-                "z": {"values": [1]},
+                "latitude": {"values": [3]},
+                "longitude": {"values": [7]},
+                "levelist": {"values": [1]},
                 "t": {
                     "values": [
                         "2017-01-02 00:00:00",
