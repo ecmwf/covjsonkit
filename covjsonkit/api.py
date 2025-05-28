@@ -3,6 +3,7 @@ import logging
 from conflator import Conflator
 
 import covjsonkit.decoder.BoundingBox
+import covjsonkit.decoder.Circle
 import covjsonkit.decoder.Frame
 import covjsonkit.decoder.Path
 import covjsonkit.decoder.Shapefile
@@ -10,6 +11,7 @@ import covjsonkit.decoder.TimeSeries
 import covjsonkit.decoder.VerticalProfile
 import covjsonkit.decoder.Wkt
 import covjsonkit.encoder.BoundingBox
+import covjsonkit.encoder.Circle
 import covjsonkit.encoder.Frame
 import covjsonkit.encoder.Path
 import covjsonkit.encoder.Shapefile
@@ -27,6 +29,7 @@ features_encoder = {
     "frame": covjsonkit.encoder.Frame.Frame,
     "path": covjsonkit.encoder.Path.Path,
     "polygon": covjsonkit.encoder.Wkt.Wkt,
+    "circle": covjsonkit.encoder.Circle.Circle,
 }
 features_decoder = {
     "pointseries": covjsonkit.decoder.TimeSeries.TimeSeries,
@@ -36,6 +39,7 @@ features_decoder = {
     "frame": covjsonkit.decoder.Frame.Frame,
     "path": covjsonkit.decoder.Path.Path,
     "polygon": covjsonkit.decoder.Wkt.Wkt,
+    "circle": covjsonkit.decoder.Circle.Circle,
 }
 
 

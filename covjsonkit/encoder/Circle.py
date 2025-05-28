@@ -1,12 +1,9 @@
 import logging
-import time
-
-import pandas as pd
 
 from .encoder import Encoder
 
 
-class Wkt(Encoder):
+class Circle(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
         self.covjson["domainType"] = "MultiPoint"
@@ -23,7 +20,7 @@ class Wkt(Encoder):
         self.add_range(new_coverage, values)
         self.covjson["coverages"].append(new_coverage)
         # cov = Coverage.model_validate_json(json.dumps(new_coverage))
-        # self.pydantic_coverage.coverages.append(cov)
+        # self.pydantic_coverage.coverages.append(json.dumps(new_coverage))
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
@@ -103,7 +100,7 @@ class Wkt(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["latitude", "longitude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -127,7 +124,7 @@ class Wkt(Encoder):
                         for s in fields["step"]:
                             key = (date, level, num, para, s)
                             # for k, v in range_dict.items():
-                            #    if k == key:
+                            # if k == key:
                             if s not in combined_dict[date][num][para]:
                                 combined_dict[date][num][para][s] = range_dict[key]
                             else:
@@ -168,103 +165,4 @@ class Wkt(Encoder):
         # return self.covjson
         # with open('data.json', 'w') as f:
         #    json.dump(self.covjson, f)
-        return self.covjson
-
-    def from_polytope_step(self, result):
-        coords = {}
-        mars_metadata = {}
-        range_dict = {}
-        fields = {}
-        fields["lat"] = 0
-        fields["param"] = 0
-        fields["number"] = [0]
-        fields["step"] = [0]
-        fields["dates"] = []
-        fields["levels"] = [0]
-        fields["times"] = []
-
-        start = time.time()
-        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree_step(result, fields, coords, mars_metadata, range_dict)
-        end = time.time()
-        delta = end - start
-        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
-        logging.debug("Tree walking takes: %s", delta)  # noqa: E501
-
-        start = time.time()
-        logging.debug("Coords creation: %s", start)  # noqa: E501
-
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
-
-        coordinates = {}
-
-        levels = fields["levels"]
-        if fields["param"] == 0:
-            raise ValueError("No data was returned.")
-        for para in fields["param"]:
-            self.add_parameter(para)
-
-        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
-
-        # points = len(coords[fields["dates"][0]]["composite"])
-
-        coordinates = {}
-
-        for date in coords.keys():
-            for dt in coords[date]["t"]:
-                coordinates[dt] = {}
-                coordinates[dt]["composite"] = []
-                coordinates[dt]["t"] = [dt]
-                coord = coords[date]["composite"]
-                for level in levels:
-                    for cor in coord:
-                        coordinates[dt]["composite"].append([cor[0], cor[1], level])
-
-        # print(fields)
-        # print("********")
-        # print(coords)
-        # print("********")
-        # print(coordinates)
-        # print("********")
-        # print(range_dict)
-
-        end = time.time()
-        delta = end - start
-        logging.debug("Coords creation: %s", end)  # noqa: E501
-        logging.debug("Coords creation: %s", delta)  # noqa: E501
-
-        start = time.time()
-        logging.debug("Coverage creation: %s", start)  # noqa: E501
-
-        for i, t in enumerate(fields["times"]):
-            for level in fields["levels"]:
-                for num in fields["number"]:
-                    val_dict = {}
-                    for date in fields["dates"]:
-                        for para in fields["param"]:
-                            val_dict[para] = []
-                            key = (date, level, num, para)
-                            vals = []
-                            for val in range_dict[key]:
-                                vals.append(val[i])
-                            val_dict[para].extend(vals)
-                        mm = mars_metadata.copy()
-                        mm["number"] = num
-                        # mm["Forecast date"] = date
-                        datetime = pd.Timestamp(date) + t
-                        self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
-
-        end = time.time()
-        delta = end - start
-        logging.debug("Coverage creation: %s", end)  # noqa: E501
-        logging.debug("Coverage creation: %s", delta)  # noqa: E501
-
         return self.covjson

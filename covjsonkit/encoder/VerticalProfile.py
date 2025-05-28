@@ -27,13 +27,13 @@ class VerticalProfile(Encoder):
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["x"] = {}
-        coverage["domain"]["axes"]["y"] = {}
-        coverage["domain"]["axes"]["z"] = {}
+        coverage["domain"]["axes"]["latitude"] = {}
+        coverage["domain"]["axes"]["longitude"] = {}
+        coverage["domain"]["axes"]["levelist"] = {}
         coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["x"]["values"] = coords["x"]
-        coverage["domain"]["axes"]["y"]["values"] = coords["y"]
-        coverage["domain"]["axes"]["z"]["values"] = coords["z"]
+        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
+        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
+        coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
 
     def add_range(self, coverage, values):
@@ -43,7 +43,7 @@ class VerticalProfile(Encoder):
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["z"]
+            coverage["ranges"][param]["axisNames"] = ["levelist"]
             coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -110,7 +110,7 @@ class VerticalProfile(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["latitude", "longitude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -140,9 +140,9 @@ class VerticalProfile(Encoder):
                             # add current date to list by converting it to iso format
                             stamp = start_time + timedelta(hours=int(step))
                             coordinates[date][step] = {
-                                "x": [coords[date]["composite"][0][0]],
-                                "y": [coords[date]["composite"][0][1]],
-                                "z": list(levels),
+                                "latitude": [coords[date]["composite"][0][0]],
+                                "longitude": [coords[date]["composite"][0][1]],
+                                "levelist": list(levels),
                             }
                             coordinates[date][step]["t"] = [stamp.isoformat() + "Z"]
                             # coordinates[date]["t"].append(stamp.isoformat() + "Z")
