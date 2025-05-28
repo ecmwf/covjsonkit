@@ -9,6 +9,16 @@ class TimeSeries(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
+        if "x" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.x_name = "x"
+        else:
+            self.x_name = "latitude"
+        if "y" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.y_name = "y"
+        else:
+            self.y_name = "longitude"
+        if "z" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.z_name = "z"
 
     def get_domains(self):
         domains = []
@@ -36,9 +46,9 @@ class TimeSeries(Decoder):
             coord_dict[param] = []
         # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
         for ind, domain in enumerate(self.domains):
-            x = domain["axes"]["latitude"]["values"][0]
-            y = domain["axes"]["longitude"]["values"][0]
-            z = domain["axes"]["levelist"]["values"][0]
+            x = domain["axes"][self.x_name]["values"][0]
+            y = domain["axes"][self.y_name]["values"][0]
+            z = domain["axes"][self.z_name]["values"][0]
             fct = domain["axes"]["t"]["values"][0]
             ts = domain["axes"]["t"]["values"]
             if "number" in self.mars_metadata[ind]:
@@ -70,9 +80,9 @@ class TimeSeries(Decoder):
 
         for domain in self.domains:
             # Extract coordinate values
-            x = domain["axes"]["latitude"]["values"][0]
-            y = domain["axes"]["longitude"]["values"][0]
-            z = domain["axes"]["levelist"]["values"][0]
+            x = domain["axes"][self.x_name]["values"][0]
+            y = domain["axes"][self.y_name]["values"][0]
+            z = domain["axes"][self.z_name]["values"][0]
             t = tuple(domain["axes"]["t"]["values"])  # Use tuple for hashable type
 
             # Create a unique identifier for the domain
@@ -93,9 +103,9 @@ class TimeSeries(Decoder):
         # Process each coordinate domain
         for domain_idx, coords in enumerate(all_coords):
             dataarraydict = {}
-            x = coords["axes"]["latitude"]["values"]
-            y = coords["axes"]["longitude"]["values"]
-            z = coords["axes"]["levelist"]["values"]
+            x = coords["axes"][self.x_name]["values"]
+            y = coords["axes"][self.y_name]["values"]
+            z = coords["axes"][self.z_name]["values"]
             steps = coords["axes"]["t"]["values"]
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
@@ -133,9 +143,9 @@ class TimeSeries(Decoder):
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
-                                    and coverage["domain"]["axes"]["latitude"]["values"] == x
-                                    and coverage["domain"]["axes"]["longitude"]["values"] == y
-                                    and coverage["domain"]["axes"]["levelist"]["values"] == z
+                                    and coverage["domain"]["axes"][self.x_name]["values"] == x
+                                    and coverage["domain"]["axes"][self.y_name]["values"] == y
+                                    and coverage["domain"]["axes"][self.z_name]["values"] == z
                                 ):
                                     param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
 

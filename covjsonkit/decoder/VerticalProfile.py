@@ -9,6 +9,16 @@ class VerticalProfile(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
+        if "x" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.x_name = "x"
+        else:
+            self.x_name = "latitude"
+        if "y" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.y_name = "y"
+        else:
+            self.y_name = "longitude"
+        if "z" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.z_name = "z"
 
     def get_domains(self):
         domains = []
@@ -28,10 +38,10 @@ class VerticalProfile(Decoder):
             coord_dict[param] = []
         # Get x,y,z coords and unpack z coords and match to x,y coords
         for ind, domain in enumerate(self.domains):
-            x = domain["axes"]["x"]["values"][0]
-            y = domain["axes"]["y"]["values"][0]
+            x = domain["axes"][self.x_name]["values"][0]
+            y = domain["axes"][self.y_name]["values"][0]
             t = domain["axes"]["t"]["values"]
-            zs = domain["axes"]["z"]["values"]
+            zs = domain["axes"][self.z_name]["values"]
             num = self.mars_metadata[ind]["number"]
             for param in self.parameters:
                 coords = []
@@ -66,9 +76,9 @@ class VerticalProfile(Decoder):
 
         # Get coordinates
         coords = self.get_domains()
-        x = coords[0]["axes"]["latitude"]["values"]
-        y = coords[0]["axes"]["longitude"]["values"]
-        level = coords[0]["axes"]["levelist"]["values"]
+        x = coords[0]["axes"][self.x_name]["values"]
+        y = coords[0]["axes"][self.y_name]["values"]
+        level = coords[0]["axes"][self.z_name]["values"]
         steps = coords[0]["axes"]["t"]["values"]
         steps = [step.replace("Z", "") for step in steps]
         steps = pd.to_datetime(steps)
