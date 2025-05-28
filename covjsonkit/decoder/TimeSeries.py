@@ -19,6 +19,8 @@ class TimeSeries(Decoder):
             self.y_name = "longitude"
         if "z" in self.covjson["coverages"][0]["domain"]["axes"]:
             self.z_name = "z"
+        else:  
+            self.z_name = "levelist"
 
     def get_domains(self):
         domains = []
