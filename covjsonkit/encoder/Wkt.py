@@ -1,3 +1,4 @@
+import gc
 import logging
 import time
 
@@ -266,5 +267,8 @@ class Wkt(Encoder):
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        del coordinates
+        gc.collect()
 
         return self.covjson
