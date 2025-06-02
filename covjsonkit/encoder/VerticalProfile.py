@@ -128,27 +128,34 @@ class VerticalProfile(Encoder):
 
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
+        points = len(coords[fields["dates"][0]]["composite"])
+
         for date in fields["dates"]:
             coordinates[date] = {}
-            for level in fields["levels"]:
-                for num in fields["number"]:
-                    for para in fields["param"]:
-                        for step in fields["step"]:
-                            date_format = "%Y%m%dT%H%M%S"
-                            new_date = pd.Timestamp(date).strftime(date_format)
-                            start_time = datetime.strptime(new_date, date_format)
-                            # add current date to list by converting it to iso format
-                            stamp = start_time + timedelta(hours=int(step))
-                            coordinates[date][step] = {
-                                "latitude": [coords[date]["composite"][0][0]],
-                                "longitude": [coords[date]["composite"][0][1]],
-                                "levelist": list(levels),
-                            }
-                            coordinates[date][step]["t"] = [stamp.isoformat() + "Z"]
-                            # coordinates[date]["t"].append(stamp.isoformat() + "Z")
-                        break
-                    break
-                break
+            for i, point in enumerate(range(points)):
+                coordinates[date][i] = []
+                for step in fields["step"]:
+                    date_format = "%Y%m%dT%H%M%S"
+                    new_date = pd.Timestamp(date).strftime(date_format)
+                    start_time = datetime.strptime(new_date, date_format)
+                    # add current date to list by converting it to iso format
+                    try:
+                        int(step)
+                    except ValueError:
+                        step = step[0]
+                    stamp = start_time + timedelta(hours=int(step))
+                    coordinates[date][i].append(
+                        {
+                            "latitude": [coords[date]["composite"][i][0]],
+                            "longitude": [coords[date]["composite"][i][1]],
+                            "levelist": list(levels),
+                            "t": [stamp.isoformat() + "Z"],
+                        }
+                    )
+
+        print(coordinates)
+        print(range_dict)
+
 
         end = time.time()
         delta = end - start
@@ -161,25 +168,26 @@ class VerticalProfile(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
-        for date in fields["dates"]:
-            for num in fields["number"]:
-                val_dict = {}
-                for step in fields["step"]:
-                    val_dict[step] = {}
-                    for para in fields["param"]:
-                        val_dict[step][para] = []
-                        for level in fields["levels"]:
-                            key = (date, level, num, para, step)
-                            # for k, v in range_dict.items():
-                            #    if k == key:
-                            # val_dict[para].append(v[0])
-                            val_dict[step][para].append(range_dict[key][0])
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["Forecast date"] = date
-                    mm["step"] = step
-                    # del mm["step"]
-                    self.add_coverage(mm, coordinates[date][step], val_dict[step])
+        for i, point in enumerate(range(points)):
+            for date in fields["dates"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for step in fields["step"]:
+                        val_dict[step] = {}
+                        for para in fields["param"]:
+                            val_dict[step][para] = []
+                            for level in fields["levels"]:
+                                key = (date, level, num, para, step)
+                                # for k, v in range_dict.items():
+                                #    if k == key:
+                                # val_dict[para].append(v[0])
+                                val_dict[step][para].append(range_dict[key][i])
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        mm["step"] = step
+                        # del mm["step"]
+                        self.add_coverage(mm, coordinates[date][i][step], val_dict[step])
 
         end = time.time()
         delta = end - start
