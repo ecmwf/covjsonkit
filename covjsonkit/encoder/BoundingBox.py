@@ -244,23 +244,26 @@ class BoundingBox(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
+        val_dict = {}
         for i, t in enumerate(fields["times"]):
+            val_dict[t] = {}
             for level in fields["levels"]:
                 for num in fields["number"]:
-                    val_dict = {}
                     for date in fields["dates"]:
                         for para in fields["param"]:
-                            val_dict[para] = []
+                            val_dict[t][para] = []
                             key = (date, level, num, para)
-                            vals = []
-                            for val in range_dict[key]:
-                                vals.append(val[i])
-                            val_dict[para].extend(range_dict[key])
+                            vals = int(len(range_dict[key]) / len(fields["times"]))
+                            # for val in range_dict[key]:
+                            #    vals.append(val[i])
+                            val_dict[t][para].extend(range_dict[key][i * vals : (i + 1) * vals])
+                        for para in fields["param"]:
+                            val_dict[t][para] = [item for sublist in val_dict[t][para] for item in sublist]
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         # mm["Forecast date"] = date
                         datetime = pd.Timestamp(date) + t
-                        self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
+                        self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict[t])
 
         end = time.time()
         delta = end - start
