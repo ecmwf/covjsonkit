@@ -1,4 +1,3 @@
-import pandas as pd
 import xarray as xr
 
 from .decoder import Decoder
@@ -112,7 +111,7 @@ class VerticalProfile(Decoder):
             y = coords["axes"][self.y_name]["values"]
             levelist = coords["axes"][self.z_name]["values"]
             steps = coords["axes"]["t"]["values"]
-            #steps = pd.to_datetime(steps)
+            # steps = pd.to_datetime(steps)
             # steps = list(range(len(steps)))
 
             num = []
@@ -124,7 +123,7 @@ class VerticalProfile(Decoder):
             nums = list(set(num))
             datetime = list(set(datetime))
             steps = list(set(steps))
-            #print(steps)
+            # print(steps)
 
             for parameter in self.parameters:
                 if len(param_values[parameter]) <= domain_idx:
@@ -141,7 +140,7 @@ class VerticalProfile(Decoder):
                         for k, step in enumerate(steps):
                             for coverage in self.covjson["coverages"]:
                                 if (
-                                    coverage["mars:metadata"]["number"] ==  num
+                                    coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
                                     and coverage["domain"]["axes"][self.x_name]["values"][0] == x[0]
                                     and coverage["domain"]["axes"][self.y_name]["values"][0] == y[0]
@@ -183,9 +182,8 @@ class VerticalProfile(Decoder):
             for dss in ds:
                 if mars_metadata != "date" and mars_metadata != "step":
                     dss.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
-        
+
         if len(ds) == 1:
             return ds[0]
-
 
         return ds
