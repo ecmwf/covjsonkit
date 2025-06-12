@@ -153,9 +153,6 @@ class VerticalProfile(Encoder):
                         }
                     )
 
-        print(coordinates)
-        print(range_dict)
-
         end = time.time()
         delta = end - start
         logging.debug("Coords creation: %s", end)  # noqa: E501

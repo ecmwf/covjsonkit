@@ -1,6 +1,7 @@
 import xarray as xr
 
 from .decoder import Decoder
+from datetime import datetime as dt, timedelta
 
 
 class VerticalProfile(Decoder):
@@ -86,10 +87,9 @@ class VerticalProfile(Decoder):
             x = domain["axes"][self.x_name]["values"][0]
             y = domain["axes"][self.y_name]["values"][0]
             z = domain["axes"][self.z_name]["values"][0]
-            t = tuple(domain["axes"]["t"]["values"])  # Use tuple for hashable type
 
             # Create a unique identifier for the domain
-            coord_tuple = (x, y, z, t)
+            coord_tuple = (x, y, z)
 
             # Check if this coordinate combination is already seen
             if coord_tuple not in unique_coords:
@@ -116,9 +116,11 @@ class VerticalProfile(Decoder):
 
             num = []
             datetime = []
+            steps = []
             for coverage in self.covjson["coverages"]:
                 num.append(coverage["mars:metadata"]["number"])
                 datetime.append(coverage["mars:metadata"]["Forecast date"])
+                steps.append(coverage["mars:metadata"]["step"])
 
             nums = list(set(num))
             datetime = list(set(datetime))
@@ -138,7 +140,10 @@ class VerticalProfile(Decoder):
                             param_values[parameter][domain_idx][i].append([])
 
                         for k, step in enumerate(steps):
+                            if len(param_values[parameter][domain_idx][i][j]) <= k:
+                                param_values[parameter][domain_idx][i][j].append([])
                             for coverage in self.covjson["coverages"]:
+                                step = (dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=1)).isoformat() + "Z"
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
@@ -146,15 +151,9 @@ class VerticalProfile(Decoder):
                                     and coverage["domain"]["axes"][self.y_name]["values"][0] == y[0]
                                     and coverage["domain"]["axes"]["t"]["values"][0] == step
                                 ):
-                                    param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
+                                    param_values[parameter][domain_idx][i][j][k] = coverage["ranges"][parameter]["values"]
 
             for parameter in self.parameters:
-                print(x)
-                print(y)
-                print(nums)
-                print(datetime)
-                print(steps)
-                print(levelist)
                 param_coords = {
                     "latitude": x,
                     "longitude": y,
@@ -163,9 +162,8 @@ class VerticalProfile(Decoder):
                     "time": steps,
                     "levelist": list(levelist),
                 }
-                print(param_values[parameter][domain_idx])
                 dataarray = xr.DataArray(
-                    [[[param_values[parameter][domain_idx]]]],
+                    [[param_values[parameter][domain_idx]]],
                     dims=dims,
                     coords=param_coords,
                     name=f"{parameter}_domain_{domain_idx}",
