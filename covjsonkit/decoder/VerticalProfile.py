@@ -1,7 +1,9 @@
+from datetime import datetime as dt
+from datetime import timedelta
+
 import xarray as xr
 
 from .decoder import Decoder
-from datetime import datetime as dt, timedelta
 
 
 class VerticalProfile(Decoder):
@@ -151,7 +153,9 @@ class VerticalProfile(Decoder):
                                     and coverage["domain"]["axes"][self.y_name]["values"][0] == y[0]
                                     and coverage["domain"]["axes"]["t"]["values"][0] == step
                                 ):
-                                    param_values[parameter][domain_idx][i][j][k] = coverage["ranges"][parameter]["values"]
+                                    param_values[parameter][domain_idx][i][j][k] = coverage["ranges"][parameter][
+                                        "values"
+                                    ]
 
             for parameter in self.parameters:
                 param_coords = {
