@@ -1,4 +1,6 @@
-import pandas as pd
+from datetime import datetime as dt
+from datetime import timedelta
+
 import xarray as xr
 
 from .decoder import Decoder
@@ -72,75 +74,118 @@ class VerticalProfile(Decoder):
             "number",
             "datetime",
             "time",
-            "level",
+            "levelist",
         ]
-        dataarraydict = {}
+        ds = []
 
-        # Get coordinates
-        coords = self.get_domains()
-        x = coords[0]["axes"][self.x_name]["values"]
-        y = coords[0]["axes"][self.y_name]["values"]
-        level = coords[0]["axes"][self.z_name]["values"]
-        steps = coords[0]["axes"]["t"]["values"]
-        steps = [step.replace("Z", "") for step in steps]
-        steps = pd.to_datetime(steps)
-        # steps = list(range(len(steps)))
+        # Get coordinates for all domains
+        all_coords = self.get_domains()
 
-        num = []
-        datetime = []
-        steps = []
-        for coverage in self.covjson["coverages"]:
-            num.append(coverage["mars:metadata"]["number"])
-            datetime.append(coverage["mars:metadata"]["Forecast date"])
-            steps.append(coverage["mars:metadata"]["step"])
+        unique_coords = set()  # To track unique coordinate tuples
+        unique_domains = []  # To store unique domains
 
-        nums = list(set(num))
-        datetime = list(set(datetime))
-        steps = list(set(steps))
+        for domain in self.domains:
+            # Extract coordinate values
+            x = domain["axes"][self.x_name]["values"][0]
+            y = domain["axes"][self.y_name]["values"][0]
+            z = domain["axes"][self.z_name]["values"][0]
 
+            # Create a unique identifier for the domain
+            coord_tuple = (x, y, z)
+
+            # Check if this coordinate combination is already seen
+            if coord_tuple not in unique_coords:
+                unique_coords.add(coord_tuple)  # Mark as seen
+                unique_domains.append(domain)  # Add to unique domains
+
+        all_coords = unique_domains
         param_values = {}
 
+        # Initialize parameter values for all parameters
         for parameter in self.parameters:
             param_values[parameter] = []
-            for i, num in enumerate(nums):
-                param_values[parameter].append([])
-                for j, date in enumerate(datetime):
-                    param_values[parameter][i].append([])
-                    for k, step in enumerate(steps):
-                        param_values[parameter][i][j].append([])
-                        for coverage in self.covjson["coverages"]:
-                            if (
-                                coverage["mars:metadata"]["number"] == num
-                                and coverage["mars:metadata"]["Forecast date"] == date
-                                and coverage["mars:metadata"]["step"] == step
-                            ):
-                                param_values[parameter][i][j][k] = coverage["ranges"][parameter]["values"]
 
-        for parameter in self.parameters:
-            param_coords = {
-                "latitude": x,
-                "longitude": y,
-                "number": nums,
-                "datetime": datetime,
-                "time": steps,
-                "level": level,
-            }
+        for domain_idx, coords in enumerate(all_coords):
+            dataarraydict = {}
 
-            dataarray = xr.DataArray(
-                [[param_values[parameter]]],
-                dims=dims,
-                coords=param_coords,
-                name=parameter,
-            )
+            # Get coordinates
+            x = coords["axes"][self.x_name]["values"]
+            y = coords["axes"][self.y_name]["values"]
+            levelist = coords["axes"][self.z_name]["values"]
+            steps = coords["axes"]["t"]["values"]
+            # steps = pd.to_datetime(steps)
+            # steps = list(range(len(steps)))
 
-            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
-            dataarraydict[dataarray.attrs["long_name"]] = dataarray
+            num = []
+            datetime = []
+            steps = []
+            for coverage in self.covjson["coverages"]:
+                num.append(coverage["mars:metadata"]["number"])
+                datetime.append(coverage["mars:metadata"]["Forecast date"])
+                steps.append(coverage["mars:metadata"]["step"])
 
-        ds = xr.Dataset(dataarraydict)
+            nums = list(set(num))
+            datetime = list(set(datetime))
+            steps = list(set(steps))
+            # print(steps)
+
+            for parameter in self.parameters:
+                if len(param_values[parameter]) <= domain_idx:
+                    param_values[parameter].append([])
+
+                for i, num in enumerate(nums):
+                    if len(param_values[parameter][domain_idx]) <= i:
+                        param_values[parameter][domain_idx].append([])
+
+                    for j, date in enumerate(datetime):
+                        if len(param_values[parameter][domain_idx][i]) <= j:
+                            param_values[parameter][domain_idx][i].append([])
+
+                        for k, step in enumerate(steps):
+                            if len(param_values[parameter][domain_idx][i][j]) <= k:
+                                param_values[parameter][domain_idx][i][j].append([])
+                            for coverage in self.covjson["coverages"]:
+                                step = (dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=1)).isoformat() + "Z"
+                                if (
+                                    coverage["mars:metadata"]["number"] == num
+                                    and coverage["mars:metadata"]["Forecast date"] == date
+                                    and coverage["domain"]["axes"][self.x_name]["values"][0] == x[0]
+                                    and coverage["domain"]["axes"][self.y_name]["values"][0] == y[0]
+                                    and coverage["domain"]["axes"]["t"]["values"][0] == step
+                                ):
+                                    param_values[parameter][domain_idx][i][j][k] = coverage["ranges"][parameter][
+                                        "values"
+                                    ]
+
+            for parameter in self.parameters:
+                param_coords = {
+                    "latitude": x,
+                    "longitude": y,
+                    "number": nums,
+                    "datetime": datetime,
+                    "time": steps,
+                    "levelist": list(levelist),
+                }
+                dataarray = xr.DataArray(
+                    [[param_values[parameter][domain_idx]]],
+                    dims=dims,
+                    coords=param_coords,
+                    name=f"{parameter}_domain_{domain_idx}",
+                )
+
+                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+                dataarraydict[dataarray.attrs["long_name"]] = dataarray
+
+            ds.append(xr.Dataset(dataarraydict))
+
         for mars_metadata in self.mars_metadata[0]:
-            if mars_metadata != "date" and mars_metadata != "step":
-                ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+            for dss in ds:
+                if mars_metadata != "date" and mars_metadata != "step":
+                    dss.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+
+        if len(ds) == 1:
+            return ds[0]
 
         return ds
