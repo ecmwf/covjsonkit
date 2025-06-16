@@ -53,37 +53,62 @@ class TimeSeries(Encoder):
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
-    def from_xarray(self, dataset):
-        for data_var in dataset.data_vars:
-            self.add_parameter(data_var)
+    def from_xarray(self, datasets):
+        """
+        Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON coverageCollection of type PointSeries.
 
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
-        for num in dataset["number"].values:
-            dv_dict = {}
-            for dv in dataset.data_vars:
-                dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
-            mars_metadata = {}
-            for metadata in dataset.attrs:
-                mars_metadata[metadata] = dataset.attrs[metadata]
-            mars_metadata["number"] = num
-            self.add_coverage(
-                mars_metadata,
+        Args:
+            datasets (Union[xarray.Dataset, List[xarray.Dataset]]): An xarray dataset or a list of xarray datasets.
+
+        Returns:
+            dict: The CoverageJSON representation of the coverageCollection.
+        """
+        if not isinstance(datasets, list):
+            datasets = [datasets]
+
+        self.covjson["type"] = "CoverageCollection"
+        self.covjson["domainType"] = "PointSeries"
+        self.covjson["coverages"] = []
+
+        for dataset in datasets:
+            # Add parameters for each dataset
+            for data_var in dataset.data_vars:
+                data_var = self.convert_param_to_param_id(data_var)
+                self.add_parameter(data_var)
+
+            # Add reference system
+            self.add_reference(
                 {
-                    "x": list(dataset["x"].values),
-                    "y": list(dataset["y"].values),
-                    "z": list(dataset["z"].values),
-                    "t": [str(x) for x in dataset["t"].values],
-                },
-                dv_dict,
+                    "coordinates": ["x", "y", "z"],
+                    "system": {
+                        "type": "GeographicCRS",
+                        "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                    },
+                }
             )
+
+            # Process each "number" in the dataset
+            for num in dataset["number"].values:
+                dv_dict = {}
+                for dv in dataset.data_vars:
+                    dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
+
+                mars_metadata = {}
+                for metadata in dataset.attrs:
+                    mars_metadata[metadata] = dataset.attrs[metadata]
+                mars_metadata["number"] = num
+
+                self.add_coverage(
+                    mars_metadata,
+                    {
+                        "latitude": list(dataset["latitude"].values),
+                        "longitude": list(dataset["longitude"].values),
+                        "levelist": list(dataset["levelist"].values),
+                        "t": [str(x) for x in dataset["t"].values],
+                    },
+                    dv_dict,
+                )
+
         return self.covjson
 
     def from_polytope(self, result):

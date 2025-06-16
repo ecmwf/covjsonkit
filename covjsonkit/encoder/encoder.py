@@ -91,6 +91,13 @@ class Encoder(ABC):
         # param_dict = get_param_from_db(int(param))
         param_dict = self.params[str(param)]
         return param_dict["shortname"]
+    
+    def convert_param_to_param_id(self, param):
+        if isinstance(param, int):
+            return param
+        # param_dict = get_param_from_db(param)
+        param_id = self.param_ids[param]
+        return param_id
 
     def get_json(self):
         # self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
