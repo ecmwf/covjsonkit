@@ -55,7 +55,8 @@ class TimeSeries(Encoder):
 
     def from_xarray(self, datasets):
         """
-        Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON coverageCollection of type PointSeries.
+        Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON
+        coverageCollection of type PointSeries.
 
         Args:
             datasets (Union[xarray.Dataset, List[xarray.Dataset]]): An xarray dataset or a list of xarray datasets.

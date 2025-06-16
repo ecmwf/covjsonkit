@@ -91,7 +91,7 @@ class Encoder(ABC):
         # param_dict = get_param_from_db(int(param))
         param_dict = self.params[str(param)]
         return param_dict["shortname"]
-    
+
     def convert_param_to_param_id(self, param):
         if isinstance(param, int):
             return param
