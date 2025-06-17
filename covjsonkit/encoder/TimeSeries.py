@@ -70,48 +70,48 @@ class TimeSeries(Encoder):
         self.covjson["type"] = "CoverageCollection"
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
+        # Add reference system
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
 
+        for data_var in datasets[0].data_vars:
+            data_var = self.convert_param_to_param_id(data_var)
+            self.add_parameter(data_var)
+
+        
         for dataset in datasets:
-            # Add parameters for each dataset
-            for data_var in dataset.data_vars:
-                data_var = self.convert_param_to_param_id(data_var)
-                self.add_parameter(data_var)
-
-            # Add reference system
-            self.add_reference(
-                {
-                    "coordinates": ["x", "y", "z"],
-                    "system": {
-                        "type": "GeographicCRS",
-                        "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                    },
-                }
-            )
 
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 dv_dict = {}
                 for dv in dataset.data_vars:
-                    dv_dict[dv] = list(dataset[dv].sel(number=num).values[0][0][0])
+                    dv_dict[dv] = dataset[dv].sel(number=num).values[0][0][0][0].tolist()
 
                 mars_metadata = {}
                 for metadata in dataset.attrs:
                     mars_metadata[metadata] = dataset.attrs[metadata]
-                mars_metadata["number"] = num
+                mars_metadata["number"] = int(num)
+                
 
                 self.add_coverage(
                     mars_metadata,
                     {
-                        "latitude": list(dataset["latitude"].values),
-                        "longitude": list(dataset["longitude"].values),
-                        "levelist": list(dataset["levelist"].values),
+                        "latitude": [float(x) for x in dataset["latitude"].values],
+                        "longitude": [float(x) for x in dataset["longitude"].values],
+                        "levelist": [float(x) for x in dataset["levelist"].values],
                         "t": [str(x) for x in dataset["t"].values],
                     },
                     dv_dict,
                 )
 
         return self.covjson
-
     def from_polytope(self, result):
         coords = {}
         mars_metadata = {}
