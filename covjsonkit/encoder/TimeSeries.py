@@ -85,7 +85,6 @@ class TimeSeries(Encoder):
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        
         for dataset in datasets:
 
             # Process each "number" in the dataset
@@ -98,7 +97,6 @@ class TimeSeries(Encoder):
                 for metadata in dataset.attrs:
                     mars_metadata[metadata] = dataset.attrs[metadata]
                 mars_metadata["number"] = int(num)
-                
 
                 self.add_coverage(
                     mars_metadata,
@@ -112,6 +110,7 @@ class TimeSeries(Encoder):
                 )
 
         return self.covjson
+
     def from_polytope(self, result):
         coords = {}
         mars_metadata = {}
