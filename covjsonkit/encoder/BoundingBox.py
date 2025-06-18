@@ -85,8 +85,14 @@ class BoundingBox(Encoder):
         }
 
         for point in dataset["points"].values:
-            coords["composite"].append([float(dataset.isel(points=point).longitude.values), float(dataset.isel(points=point).latitude.values), float(dataset.isel(points=point).levelist.values)])
-    
+            coords["composite"].append(
+                [
+                    float(dataset.isel(points=point).longitude.values),
+                    float(dataset.isel(points=point).latitude.values),
+                    float(dataset.isel(points=point).levelist.values),
+                ]
+            )
+
         print(self.covjson)
         print(coords)
 
@@ -95,7 +101,6 @@ class BoundingBox(Encoder):
             for dv in dataset.data_vars:
                 dv_dict[dv] = dataset[dv].sel(number=num).values[0][0].tolist()
 
-            
         print(dv_dict)
 
         # Add coverage to the CoverageJSON
