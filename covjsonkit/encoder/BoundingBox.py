@@ -75,13 +75,13 @@ class BoundingBox(Encoder):
             self.add_parameter(data_var)
 
         # Extract metadata from dataset attributes
-        mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
+        #mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
 
         # Prepare coordinates
         coords = {
             "composite": [],
             "dataType": "tuple",
-            "t": [str(x) for x in dataset["datetimes"].values] if "time" in dataset else [],
+            "t": [str(x) for x in dataset["datetimes"].values],
         }
 
         for point in dataset["points"].values:
@@ -93,18 +93,19 @@ class BoundingBox(Encoder):
                 ]
             )
 
-        print(self.covjson)
-        print(coords)
 
-        for num in dataset["number"].values:
-            dv_dict = {}
-            for dv in dataset.data_vars:
-                dv_dict[dv] = dataset[dv].sel(number=num).values[0][0].tolist()
+        for datetime in dataset["datetimes"].values:
+            for num in dataset["number"].values:
+                for step in dataset["steps"].values:
+                    dv_dict = {}
+                    mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
+                    mars_metadata["number"] = int(num)
+                    mars_metadata["step"] = int(step)
+                    mars_metadata["Forecast date"] = str(datetime)
+                    for dv in dataset.data_vars:
+                        dv_dict[dv] = dataset[dv].sel(number=num,steps=step,datetimes=datetime).values.tolist()
 
-        print(dv_dict)
-
-        # Add coverage to the CoverageJSON
-        self.add_coverage(mars_metadata, coords, dv_dict)
+                    self.add_coverage(mars_metadata, coords, dv_dict)
 
         # Return the generated CoverageJSON
         return self.covjson
