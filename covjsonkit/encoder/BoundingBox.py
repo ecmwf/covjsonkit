@@ -51,15 +51,18 @@ class BoundingBox(Encoder):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        range_dicts = {}
+        """
+        Converts an xarray dataset into a MultiPoint CoverageJSON format.
+        """
 
-        for data_var in dataset.data_vars:
-            self.add_parameter(data_var)
-            range_dicts[data_var] = dataset[data_var].values.tolist()
+        self.covjson["type"] = "CoverageCollection"
+        self.covjson["domainType"] = "PointSeries"
+        self.covjson["coverages"] = []
 
+        # Add reference system
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["latitude", "lonigtude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -67,20 +70,38 @@ class BoundingBox(Encoder):
             }
         )
 
-        mars_metadata = {}
+        for data_var in dataset.data_vars:
+            data_var = self.convert_param_to_param_id(data_var)
+            self.add_parameter(data_var)
 
-        for metadata in dataset.attrs:
-            mars_metadata[metadata] = dataset.attrs[metadata]
+        # Extract metadata from dataset attributes
+        mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
 
-        coords = {}
-        coords["composite"] = []
-        coords["t"] = dataset.attrs["date"]
+        # Prepare coordinates
+        coords = {
+            "composite": [],
+            "dataType": "tuple",
+            "t": [str(x) for x in dataset["datetimes"].values] if "time" in dataset else [],
+        }
 
-        xy = zip(dataset.x.values, dataset.y.values)
-        for x, y in xy:
-            coords["composite"].append([x, y])
+        for point in dataset["points"].values:
+            coords["composite"].append([float(dataset.isel(points=point).longitude.values), float(dataset.isel(points=point).latitude.values), float(dataset.isel(points=point).levelist.values)])
+    
+        print(self.covjson)
+        print(coords)
 
-        self.add_coverage(mars_metadata, coords, range_dicts)
+        for num in dataset["number"].values:
+            dv_dict = {}
+            for dv in dataset.data_vars:
+                dv_dict[dv] = dataset[dv].sel(number=num).values[0][0].tolist()
+
+            
+        print(dv_dict)
+
+        # Add coverage to the CoverageJSON
+        self.add_coverage(mars_metadata, coords, dv_dict)
+
+        # Return the generated CoverageJSON
         return self.covjson
 
     def from_polytope(self, result):
