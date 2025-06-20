@@ -87,7 +87,7 @@ class Wkt(Encoder):
             self.add_parameter(data_var)
 
         # Extract metadata from dataset attributes
-        #mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
+        # mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
 
         # Prepare coordinates
         coords = {
@@ -105,7 +105,6 @@ class Wkt(Encoder):
                 ]
             )
 
-
         for datetime in dataset["datetimes"].values:
             for num in dataset["number"].values:
                 for step in dataset["steps"].values:
@@ -115,7 +114,7 @@ class Wkt(Encoder):
                     mars_metadata["step"] = int(step)
                     mars_metadata["Forecast date"] = str(datetime)
                     for dv in dataset.data_vars:
-                        dv_dict[dv] = dataset[dv].sel(number=num,steps=step,datetimes=datetime).values.tolist()
+                        dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
                     self.add_coverage(mars_metadata, coords, dv_dict)
 

@@ -70,16 +70,16 @@ class TimeSeries(Encoder):
         self.covjson["type"] = "CoverageCollection"
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
-        
-        if "latitude" in dataset.coords:
+
+        if "latitude" in datasets[0].coords:
             x_coord = "latitude"
-        elif "x" in dataset.coords:
+        elif "x" in datasets[0].coords:
             x_coord = "x"
-        if "longitude" in dataset.coords:
+        if "longitude" in datasets[0].coords:
             y_coord = "longitude"
-        elif "y" in dataset.coords:
+        elif "y" in datasets[0].coords:
             y_coord = "y"
-        if "levelist" in dataset.coords:
+        if "levelist" in datasets[0].coords:
             z_coord = "levelist"
 
         # Add reference system
