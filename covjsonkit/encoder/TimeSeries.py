@@ -70,10 +70,22 @@ class TimeSeries(Encoder):
         self.covjson["type"] = "CoverageCollection"
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
+        
+        if "latitude" in dataset.coords:
+            x_coord = "latitude"
+        elif "x" in dataset.coords:
+            x_coord = "x"
+        if "longitude" in dataset.coords:
+            y_coord = "longitude"
+        elif "y" in dataset.coords:
+            y_coord = "y"
+        if "levelist" in dataset.coords:
+            z_coord = "levelist"
+
         # Add reference system
         self.add_reference(
             {
-                "coordinates": ["latitude", "lonigtude", "levelist"],
+                "coordinates": [x_coord, y_coord, z_coord],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
