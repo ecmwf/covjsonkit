@@ -70,7 +70,7 @@ class Path(Encoder):
         # Add reference system
         self.add_reference(
             {
-                "coordinates": ['t', x_coord, y_coord, z_coord],
+                "coordinates": ["t", x_coord, y_coord, z_coord],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
