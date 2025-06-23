@@ -98,8 +98,8 @@ class BoundingBox(Encoder):
         for point in dataset["points"].values:
             coords["composite"].append(
                 [
-                    float(dataset.isel(points=point).longitude.values),
                     float(dataset.isel(points=point).latitude.values),
+                    float(dataset.isel(points=point).longitude.values),
                     float(dataset.isel(points=point).levelist.values),
                 ]
             )
