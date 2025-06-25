@@ -194,9 +194,6 @@ class VerticalProfile(Encoder):
         logging.debug("Coords creation: %s", end)  # noqa: E501
         logging.debug("Coords creation: %s", delta)  # noqa: E501
 
-        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
-        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
-
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 

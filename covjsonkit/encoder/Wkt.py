@@ -86,9 +86,6 @@ class Wkt(Encoder):
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        # Extract metadata from dataset attributes
-        # mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
-
         # Prepare coordinates
         coords = {
             "composite": [],
@@ -202,10 +199,6 @@ class Wkt(Encoder):
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 
-        # self.add_coverage(mars_metadata, coords, range_dict)
-        # return self.covjson
-        # with open('data.json', 'w') as f:
-        #    json.dump(self.covjson, f)
         return self.covjson
 
     def from_polytope_step(self, result):
@@ -265,14 +258,6 @@ class Wkt(Encoder):
                 for level in levels:
                     for cor in coord:
                         coordinates[dt]["composite"].append([cor[0], cor[1], level])
-
-        # print(fields)
-        # print("********")
-        # print(coords)
-        # print("********")
-        # print(coordinates)
-        # print("********")
-        # print(range_dict)
 
         end = time.time()
         delta = end - start

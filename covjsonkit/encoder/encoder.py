@@ -10,6 +10,45 @@ from covjsonkit.param_db import get_param_ids, get_params, get_units
 
 class Encoder(ABC):
     def __init__(self, type, domaintype):
+        """
+        Base class for encoding data into CovJSON format.
+
+        The Encoder class provides functionality to initialize and manage the encoding
+        process for various domain types, including point series, multi-point, vertical profiles,
+        and trajectories. It handles parameters, referencing systems, and domain types, and
+        supports conversion between parameter IDs and parameter names.
+
+        Attributes:
+            covjson (dict): The CovJSON representation being constructed.
+            type (str): The type of data being encoded.
+            referencing (list): A list of referencing systems used in the encoding.
+            units (dict): Units associated with the parameters, retrieved from the database.
+            params (dict): Parameters associated with the data type, retrieved from the database.
+            param_ids (dict): Mapping of parameter names to their IDs.
+            domaintype (str): The domain type of the data being encoded.
+            pydantic_coverage (CoverageCollection): A Pydantic representation of the coverage collection.
+            parameters (list): A list of parameters included in the encoding.
+
+        Methods:
+            add_parameter(param): Adds a parameter to the CovJSON representation.
+            add_reference(reference): Adds a referencing system to the CovJSON representation.
+            convert_param_id_to_param(paramid): Converts a parameter ID to its corresponding parameter name.
+            convert_param_to_param_id(param): Converts a parameter name to its corresponding parameter ID.
+            get_json(): Returns the CovJSON representation as a JSON string.
+            walk_tree(tree, fields, coords, mars_metadata, range_dict): Processes a hierarchical tree structure
+                to extract data and populate the CovJSON representation.
+            walk_tree_step(tree, fields, coords, mars_metadata, range_dict): Processes a hierarchical tree structure
+                with step-based data to extract and populate the CovJSON representation.
+
+        Abstract Methods:
+            add_coverage(mars_metadata, coords, values): Abstract method for adding coverage data.
+            add_domain(coverage, domain): Abstract method for adding domain information.
+            add_range(coverage, range): Abstract method for adding range information.
+            add_mars_metadata(coverage, metadata): Abstract method for adding Mars metadata.
+            from_xarray(dataset): Abstract method for encoding data from an xarray dataset.
+            from_polytope(result): Abstract method for encoding data from a polytope result.
+        """
+        
         self.covjson = {}
         self.covjson["type"] = "CoverageCollection"
 
@@ -333,12 +372,6 @@ class Encoder(ABC):
                                 key = create_composite_key_step(date, level, num, para)
                                 if key not in range_dict:
                                     range_dict[key] = []
-                                # range_dict[key].extend(tree.result[start_index:end_index])
-                                # print(d, date_len,j, para_len)
-                                # print(d*date_len+j*para_len)
-                                # print(int(d*date_len+j*para_len+len(fields["times"])))
-                                # print(tree.result[int(d*date_len+j*para_len+len)])
-                                # print(tree.result)
                                 range_dict[key].append(  # tree.result
                                     tree.result[
                                         int(d * date_len + l * level_len + j * para_len) : int(

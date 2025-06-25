@@ -207,9 +207,6 @@ class TimeSeries(Encoder):
         logging.debug("Coords creation: %s", end)  # noqa: E501
         logging.debug("Coords creation: %s", delta)  # noqa: E501
 
-        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
-        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
-
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
@@ -312,8 +309,6 @@ class TimeSeries(Encoder):
                             break
                         break
 
-        # print("coordinates: ", coordinates)  # noqa: E501
-
         end = time.time()
         delta = end - start
         logging.debug("Coords creation: %s", end)  # noqa: E501
@@ -337,8 +332,6 @@ class TimeSeries(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
-                    # del mm["step"]
-                    # print(val_dict)
                     self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
 
         end = time.time()

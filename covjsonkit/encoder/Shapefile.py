@@ -82,9 +82,6 @@ class Shapefile(Encoder):
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        # Extract metadata from dataset attributes
-        # mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
-
         # Prepare coordinates
         coords = {
             "composite": [],
@@ -196,8 +193,4 @@ class Shapefile(Encoder):
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 
-        # self.add_coverage(mars_metadata, coords, range_dict)
-        # return self.covjson
-        # with open('data.json', 'w') as f:
-        #    json.dump(self.covjson, f)
         return self.covjson

@@ -82,9 +82,6 @@ class Path(Encoder):
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        # Extract metadata from dataset attributes
-        # mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
-
         # Prepare coordinates
         coords = {
             "composite": [],
@@ -193,7 +190,6 @@ class Path(Encoder):
                                 # Cocatenate arrays
                                 if key in range_dict:
                                     combined_dict[date][num][para][s] += range_dict[key]
-                        # for s in fields["s"]:
 
         logging.debug("The values returned from combined dicts: %s", combined_dict)  # noqa: E501
 
