@@ -42,12 +42,12 @@ class Path(Decoder):
         # Get coordinates
         x = []
         y = []
-        level = []
+        levelist = []
         time = []
         for coord in self.get_coordinates()["composite"]["values"]:
             x.append(float(coord[1]))
             y.append(float(coord[2]))
-            level.append(float(coord[3]))
+            levelist.append(float(coord[3]))
             time.append(coord[0])
 
         values = {}
@@ -110,7 +110,7 @@ class Path(Decoder):
                 points=(["points"], list(range(0, len(x)))),
                 latitude=(["points"], x),
                 longitude=(["points"], y),
-                level=(["points"], level),
+                levelist=(["points"], levelist),
                 time=(["points"], time),
             ),
         )

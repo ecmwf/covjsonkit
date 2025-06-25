@@ -45,6 +45,20 @@ features_decoder = {
 
 class Covjsonkit:
     def __init__(self, config=None):
+        """
+        Initializes the Covjsonkit instance.
+
+        If no configuration is provided, it attempts to load the default configuration
+        from predefined locations using the Conflator library. If a configuration dictionary
+        is provided, it validates and initializes the instance with the given configuration.
+
+        Args:
+            config (dict, optional): A dictionary containing configuration settings.
+                                     If None, the default configuration is loaded.
+
+        Attributes:
+            conf (CovjsonKitConfig): The validated configuration object for the instance.
+        """
         # If no config check default locations
         if config is None:
             self.conf = Conflator(app_name="covjsonkit", model=CovjsonKitConfig).load()

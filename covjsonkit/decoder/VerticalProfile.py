@@ -113,8 +113,6 @@ class VerticalProfile(Decoder):
             y = coords["axes"][self.y_name]["values"]
             levelist = coords["axes"][self.z_name]["values"]
             steps = coords["axes"]["t"]["values"]
-            # steps = pd.to_datetime(steps)
-            # steps = list(range(len(steps)))
 
             num = []
             datetime = []
@@ -127,7 +125,6 @@ class VerticalProfile(Decoder):
             nums = list(set(num))
             datetime = list(set(datetime))
             steps = list(set(steps))
-            # print(steps)
 
             for parameter in self.parameters:
                 if len(param_values[parameter]) <= domain_idx:
@@ -145,13 +142,15 @@ class VerticalProfile(Decoder):
                             if len(param_values[parameter][domain_idx][i][j]) <= k:
                                 param_values[parameter][domain_idx][i][j].append([])
                             for coverage in self.covjson["coverages"]:
-                                step = (dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=1)).isoformat() + "Z"
+                                new_step = (
+                                    dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=int(step))
+                                ).isoformat() + "Z"
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
                                     and coverage["domain"]["axes"][self.x_name]["values"][0] == x[0]
                                     and coverage["domain"]["axes"][self.y_name]["values"][0] == y[0]
-                                    and coverage["domain"]["axes"]["t"]["values"][0] == step
+                                    and coverage["domain"]["axes"]["t"]["values"][0] == new_step
                                 ):
                                     param_values[parameter][domain_idx][i][j][k] = coverage["ranges"][parameter][
                                         "values"

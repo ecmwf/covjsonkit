@@ -48,15 +48,29 @@ class Shapefile(Encoder):
         coverage["mars:metadata"] = metadata
 
     def from_xarray(self, dataset):
-        range_dicts = {}
+        """
+        Converts an xarray dataset into a MultiPoint CoverageJSON format.
+        """
 
-        for data_var in dataset.data_vars:
-            self.add_parameter(data_var)
-            range_dicts[data_var] = dataset[data_var].values.tolist()
+        self.covjson["type"] = "CoverageCollection"
+        self.covjson["domainType"] = "PointSeries"
+        self.covjson["coverages"] = []
 
+        if "latitude" in dataset.coords:
+            x_coord = "latitude"
+        elif "x" in dataset.coords:
+            x_coord = "x"
+        if "longitude" in dataset.coords:
+            y_coord = "longitude"
+        elif "y" in dataset.coords:
+            y_coord = "y"
+        if "levelist" in dataset.coords:
+            z_coord = "levelist"
+
+        # Add reference system
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": [x_coord, y_coord, z_coord],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -64,20 +78,40 @@ class Shapefile(Encoder):
             }
         )
 
-        mars_metadata = {}
+        for data_var in dataset.data_vars:
+            data_var = self.convert_param_to_param_id(data_var)
+            self.add_parameter(data_var)
 
-        for metadata in dataset.attrs:
-            mars_metadata[metadata] = dataset.attrs[metadata]
+        # Prepare coordinates
+        coords = {
+            "composite": [],
+            "dataType": "tuple",
+            "t": [str(x) for x in dataset["datetimes"].values],
+        }
 
-        coords = {}
-        coords["composite"] = []
-        coords["t"] = dataset.attrs["date"]
+        for point in dataset["points"].values:
+            coords["composite"].append(
+                [
+                    float(dataset.isel(points=point).longitude.values),
+                    float(dataset.isel(points=point).latitude.values),
+                    float(dataset.isel(points=point).levelist.values),
+                ]
+            )
 
-        xy = zip(dataset.x.values, dataset.y.values)
-        for x, y in xy:
-            coords["composite"].append([x, y])
+        for datetime in dataset["datetimes"].values:
+            for num in dataset["number"].values:
+                for step in dataset["steps"].values:
+                    dv_dict = {}
+                    mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
+                    mars_metadata["number"] = int(num)
+                    mars_metadata["step"] = int(step)
+                    mars_metadata["Forecast date"] = str(datetime)
+                    for dv in dataset.data_vars:
+                        dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
-        self.add_coverage(mars_metadata, coords, range_dicts)
+                    self.add_coverage(mars_metadata, coords, dv_dict)
+
+        # Return the generated CoverageJSON
         return self.covjson
 
     def from_polytope(self, result):
@@ -159,8 +193,4 @@ class Shapefile(Encoder):
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 
-        # self.add_coverage(mars_metadata, coords, range_dict)
-        # return self.covjson
-        # with open('data.json', 'w') as f:
-        #    json.dump(self.covjson, f)
         return self.covjson

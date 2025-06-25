@@ -37,7 +37,7 @@ class VerticalProfile(Encoder):
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
 
     def add_range(self, coverage, values):
-        for parameter in self.parameters:
+        for parameter in values.keys():
             param = self.convert_param_id_to_param(parameter)
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
@@ -49,40 +49,76 @@ class VerticalProfile(Encoder):
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
-    def from_xarray(self, dataset):
-        for parameter in dataset.data_vars:
-            if parameter == "Temperature":
-                self.add_parameter("t")
-            elif parameter == "Pressure":
-                self.add_parameter("p")
+    def from_xarray(self, datasets):
+        """
+        Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON
+        coverageCollection of type Vertical Profile.
 
+        Args:
+            datasets (Union[xarray.Dataset, List[xarray.Dataset]]): An xarray dataset or a list of xarray datasets.
+
+        Returns:
+            dict: The CoverageJSON representation of the coverageCollection.
+        """
+        if not isinstance(datasets, list):
+            datasets = [datasets]
+
+        self.covjson["type"] = "CoverageCollection"
+        self.covjson["domainType"] = "VeticalProfile"
+        self.covjson["coverages"] = []
+
+        if "latitude" in datasets[0].coords:
+            x_coord = "latitude"
+        elif "x" in datasets[0].coords:
+            x_coord = "x"
+        if "longitude" in datasets[0].coords:
+            y_coord = "longitude"
+        elif "y" in datasets[0].coords:
+            y_coord = "y"
+        if "levelist" in datasets[0].coords:
+            z_coord = "levelist"
+
+        # Add reference system
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": [x_coord, y_coord, z_coord],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
             }
         )
-        for num in dataset["number"].values:
-            self.add_coverage(
-                {
-                    "number": num,
-                    "type": "forecast",
-                    "step": 0,
-                },
-                {
-                    "x": list(dataset["x"].values),
-                    "y": list(dataset["y"].values),
-                    "z": list(dataset["z"].values),
-                    "t": [str(x) for x in dataset["t"].values],
-                },
-                {
-                    "t": list(dataset["Temperature"].sel(number=num).values[0][0][0]),
-                    "p": dataset["Pressure"].sel(number=num).values[0][0][0],
-                },
-            )
+
+        for data_var in datasets[0].data_vars:
+            data_var = self.convert_param_to_param_id(data_var)
+            self.add_parameter(data_var)
+
+        for dataset in datasets:
+
+            # Process each "number" in the dataset
+            for num in dataset["number"].values:
+                for step in dataset["time"].values:
+                    dv_dict = {}
+                    for dv in dataset.data_vars:
+                        dv_dict[dv] = dataset[dv].sel(number=num, time=step).values[0][0][0].tolist()
+
+                    mars_metadata = {}
+                    for metadata in dataset.attrs:
+                        mars_metadata[metadata] = dataset.attrs[metadata]
+                    mars_metadata["number"] = int(num)
+                    mars_metadata["step"] = int(step)
+
+                    self.add_coverage(
+                        mars_metadata,
+                        {
+                            "latitude": [float(x) for x in dataset["latitude"].values],
+                            "longitude": [float(x) for x in dataset["longitude"].values],
+                            "levelist": [float(x) for x in dataset["levelist"].values],
+                            "t": [str(x) for x in dataset["datetime"].values],
+                        },
+                        dv_dict,
+                    )
+
         return self.covjson
 
     def from_polytope(self, result):
@@ -157,9 +193,6 @@ class VerticalProfile(Encoder):
         delta = end - start
         logging.debug("Coords creation: %s", end)  # noqa: E501
         logging.debug("Coords creation: %s", delta)  # noqa: E501
-
-        # logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
-        # logging.debug("The coordinates returned from walking tree: %s", coordinates)  # noqa: E501
 
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
