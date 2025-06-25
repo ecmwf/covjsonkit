@@ -48,7 +48,7 @@ class Encoder(ABC):
             from_xarray(dataset): Abstract method for encoding data from an xarray dataset.
             from_polytope(result): Abstract method for encoding data from a polytope result.
         """
-        
+
         self.covjson = {}
         self.covjson["type"] = "CoverageCollection"
 

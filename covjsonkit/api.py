@@ -53,7 +53,7 @@ class Covjsonkit:
         is provided, it validates and initializes the instance with the given configuration.
 
         Args:
-            config (dict, optional): A dictionary containing configuration settings. 
+            config (dict, optional): A dictionary containing configuration settings.
                                      If None, the default configuration is loaded.
 
         Attributes:

@@ -192,5 +192,5 @@ class Frame(Encoder):
                     mm["step"] = step
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
-                    
+
         return self.covjson
