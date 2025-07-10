@@ -228,7 +228,17 @@ class TimeSeries(Encoder):
                                 # for k, v in range_dict.items():
                                 #    if k == key:
                                 # val_dict[para].append(v[0])
-                                val_dict[para].append(range_dict[key][i])
+                                try:
+                                    val_dict[para].append(range_dict[key][i])
+                                except IndexError:
+                                    logging.debug(
+                                        f"Index {i} out of range for key {key} in range_dict. "
+                                        f"Available keys: {list(range_dict.keys())}"
+                                    )
+                                    raise IndexError(
+                                        "Key {key} not found in range_dict. "
+                                        "Please ensure all axes are compressed in config"
+                                    )
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         mm["Forecast date"] = date
