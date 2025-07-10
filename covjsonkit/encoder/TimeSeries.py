@@ -202,6 +202,8 @@ class TimeSeries(Encoder):
                         break
                     break
 
+        logging.debug("Coordinates created: %s", coordinates)  # noqa: E501
+
         end = time.time()
         delta = end - start
         logging.debug("Coords creation: %s", end)  # noqa: E501
@@ -209,6 +211,10 @@ class TimeSeries(Encoder):
 
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
+
+        logging.debug("The points found were: %s", points)  # noqa: E501
+        logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
+        logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
         for i, point in enumerate(range(points)):
             for date in fields["dates"]:
