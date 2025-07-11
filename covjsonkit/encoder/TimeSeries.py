@@ -124,6 +124,13 @@ class TimeSeries(Encoder):
         return self.covjson
 
     def from_polytope(self, result):
+        """
+        Converts a Polytope result into an OGC CoverageJSON coverageCollection of type PointSeries
+        Args:
+            result (dict): The Polytope result containing the data to be converted.
+        Returns:
+            dict: The CoverageJSON representation of the coverageCollection.
+        """
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -178,11 +185,6 @@ class TimeSeries(Encoder):
                         "levelist": [levels[0]],
                     }
                 )
-                # coordinates[date] = {
-                #    "x": [coords[date]["composite"][0][0]],
-                #    "y": [coords[date]["composite"][0][1]],
-                #    "z": [levels[0]],
-                # }
                 coordinates[date][i]["t"] = []
                 for level in fields["levels"]:
                     for num in fields["number"]:
@@ -225,9 +227,6 @@ class TimeSeries(Encoder):
                             val_dict[para] = []
                             for step in fields["step"]:
                                 key = (date, level, num, para, step)
-                                # for k, v in range_dict.items():
-                                #    if k == key:
-                                # val_dict[para].append(v[0])
                                 try:
                                     val_dict[para].append(range_dict[key][i])
                                 except IndexError:
@@ -236,8 +235,8 @@ class TimeSeries(Encoder):
                                         f"Available keys: {list(range_dict.keys())}"
                                     )
                                     raise IndexError(
-                                        "Key {key} not found in range_dict. "
-                                        "Please ensure all axes are compressed in config"
+                                        f"Key {key} not found in range_dict. "
+                                        f"Please ensure all axes are compressed in config"
                                     )
                         mm = mars_metadata.copy()
                         mm["number"] = num
