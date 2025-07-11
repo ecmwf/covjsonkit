@@ -177,6 +177,9 @@ class Wkt(Encoder):
 
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
+        logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
+        logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
+
         for date in coords.keys():
             coord = coords[date]["composite"]
             coords[date]["composite"] = []
