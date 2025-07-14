@@ -16,7 +16,7 @@ def merge_coverage_collections(collection1, collection2):
 
     if collection1.get("type") != collection2.get("type"):
         raise ValueError("Both coverageJSONs must be CoverageCollections.")
-    if collection1.get("domainType") != "MultiPoint":
+    if collection1.get("domainType") != collection2.get("domainType"):
         raise ValueError("Both coverageJSONs must be have the same domainType.")
 
     parameters1 = collection1.get("parameters", [])
@@ -28,7 +28,6 @@ def merge_coverage_collections(collection1, collection2):
 
     for coverage in collection2.get("coverages", []):
         merged = 0
-        print("merged start", merged)
         for coverage1 in merged_collection.get("coverages", []):
             if coverage["mars:metadata"] == coverage1["mars:metadata"]:
                 if coverage["domain"]["axes"]["t"] == coverage1["domain"]["axes"]["t"]:
@@ -42,9 +41,7 @@ def merge_coverage_collections(collection1, collection2):
                                 coverage1["ranges"][param] = coverage["ranges"][param]
                                 merged = 1
                                 print("here")
-        print("merged end", merged)
         if merged == 0:
-            print("No merge happened for coverage with metadata: ")
             # If no merge happened, append the new coverage
             merged_collection["coverages"].append(coverage)
 
