@@ -12,6 +12,11 @@ def merge_coverage_collections(collection1, collection2):
     if not isinstance(collection1, dict) or not isinstance(collection2, dict):
         raise ValueError("Both collections must be dictionaries.")
 
+    if collection1 == {}:
+        return collection2
+    if collection2 == {}:
+        return collection1
+
     merged_collection = collection1.copy()
 
     if collection1.get("type") != collection2.get("type"):
