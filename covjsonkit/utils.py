@@ -40,7 +40,6 @@ def merge_coverage_collections(collection1, collection2):
                             if param not in coverage1["ranges"].keys():
                                 coverage1["ranges"][param] = coverage["ranges"][param]
                                 merged = 1
-                                print("here")
         if merged == 0:
             # If no merge happened, append the new coverage
             merged_collection["coverages"].append(coverage)
