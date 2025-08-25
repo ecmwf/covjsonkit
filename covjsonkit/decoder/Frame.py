@@ -35,6 +35,9 @@ class Frame(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geojson(self):
+        pass
+
     def to_xarray(self):
         dims = ["points"]
         dataarraydict = {}

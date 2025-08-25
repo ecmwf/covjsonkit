@@ -106,3 +106,7 @@ class Decoder(ABC):
     @abstractmethod
     def to_xarray(self):
         pass
+
+    @abstractmethod
+    def to_geojson(self):
+        pass

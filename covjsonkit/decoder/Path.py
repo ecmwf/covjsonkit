@@ -35,6 +35,9 @@ class Path(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geojson(self):
+        pass
+
     def to_xarray(self):
         dims = ["datetimes", "number", "steps", "points"]
         dataarraydict = {}

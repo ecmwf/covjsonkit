@@ -69,6 +69,9 @@ class TimeSeries(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geojson(self):
+        pass
+
     # function to convert covjson to xarray dataset
     def to_xarray(self):
         dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
