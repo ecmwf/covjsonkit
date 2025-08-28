@@ -35,6 +35,36 @@ class Frame(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geojson(self):
+        features = []
+        for coverage in self.covjson["coverages"]:
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            datetime = coverage["domain"]["axes"]["t"]["values"][0]
+            if "mars:metadata" in coverage:
+                mars_metadata = coverage["mars:metadata"]
+
+            values = {}
+            for key in coverage["ranges"]:
+                values[key] = coverage["ranges"][key]["values"]
+
+            for idx, lonlat in enumerate(coords):
+                param_vals = {}
+                for key in values.keys():
+                    param_vals[key] = values[key][idx]
+                param_vals["datetime"] = datetime
+                if "mars:metadata" in coverage:
+                    param_vals["mars:metadata"] = mars_metadata
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lonlat[1], lonlat[0], lonlat[2]]},
+                        "properties": param_vals,
+                    }
+                )
+
+        geojson = {"type": "FeatureCollection", "features": features}
+        return geojson
+
     def to_xarray(self):
         dims = ["points"]
         dataarraydict = {}

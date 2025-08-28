@@ -69,6 +69,38 @@ class TimeSeries(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geojson(self):
+        features = []
+        for coverage in self.covjson["coverages"]:
+            lat = coverage["domain"]["axes"]["latitude"]["values"][0]
+            lon = coverage["domain"]["axes"]["longitude"]["values"][0]
+            z = coverage["domain"]["axes"]["levelist"]["values"][0]
+            datetimes = coverage["domain"]["axes"]["t"]["values"]
+            if "mars:metadata" in coverage:
+                mars_metadata = coverage["mars:metadata"]
+
+            values = {}
+            for key in coverage["ranges"]:
+                values[key] = coverage["ranges"][key]["values"]
+
+            for idx, datetime in enumerate(datetimes):
+                param_vals = {}
+                for key in values.keys():
+                    param_vals[key] = values[key][idx]
+                param_vals["datetime"] = datetime
+                if "mars:metadata" in coverage:
+                    param_vals["mars:metadata"] = mars_metadata
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lon, lat, z]},
+                        "properties": param_vals,
+                    }
+                )
+
+        geojson = {"type": "FeatureCollection", "features": features}
+        return geojson
+
     # function to convert covjson to xarray dataset
     def to_xarray(self):
         dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
@@ -136,12 +168,6 @@ class TimeSeries(Decoder):
 
                         for k, step in enumerate(steps):
                             for coverage in self.covjson["coverages"]:
-                                # print(coverage["domain"])
-                                # print(coverage["mars:metadata"]["number"], num)
-                                # print(coverage["mars:metadata"]["Forecast date"], date)
-                                # print(coverage["domain"]["axes"]["x"]["values"][0], x)
-                                # print(coverage["domain"]["axes"]["y"]["values"][0], y)
-                                # print(coverage["domain"]["axes"]["z"]["values"][0], z)
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and coverage["mars:metadata"]["Forecast date"] == date
