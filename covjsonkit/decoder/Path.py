@@ -36,7 +36,36 @@ class Path(Decoder):
         pass
 
     def to_geojson(self):
-        pass
+        features = []
+        for coverage in self.coverages:
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            values = {}
+            for key in coverage["ranges"]:
+                values[key] = coverage["ranges"][key]["values"]
+            if "mars:metadata" in coverage:
+                mars_metadata = coverage["mars:metadata"]
+
+            for idx, coord in enumerate(coords):
+                param_vals = {}
+                for key in values.keys():
+                    param_vals[key] = values[key][idx]
+                if "mars:metadata" in coverage:
+                    param_vals["mars:metadata"] = mars_metadata
+                param_vals["datetime"] = coord[0]
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [[coord[1], coord[2], coord[3]]],  # lon, lat, z
+                        },
+                        "properties": param_vals,
+                    }
+                )
+
+        geojson = {"type": "FeatureCollection", "features": features}
+
+        return geojson
 
     def to_xarray(self):
         dims = ["datetimes", "number", "steps", "points"]
