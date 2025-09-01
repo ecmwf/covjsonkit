@@ -67,6 +67,9 @@ class VerticalProfile(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geotiff(self):
+        pass
+
     def to_geojson(self):
         features = []
         for coverage in self.covjson["coverages"]:
