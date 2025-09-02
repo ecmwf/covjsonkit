@@ -1,7 +1,6 @@
-import xarray as xr
-
 import numpy as np
 import rasterio
+import xarray as xr
 from rasterio.transform import from_origin
 from scipy.spatial import cKDTree
 
@@ -45,10 +44,10 @@ class BoundingBox(Decoder):
 
     def to_geotiff(self):
         coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
-        x = [c[1] for c in coords]   # longitude
-        y = [c[0] for c in coords]   # latitude
-        z = [c[2] for c in coords]   # height/time/etc (not used yet)
-        values = covjson["coverages"][0]["ranges"]["2t"]["values"]  # adjust param name
+        x = [c[1] for c in coords]  # longitude
+        y = [c[0] for c in coords]  # latitude
+        # z = [c[2] for c in coords]  # height/time/etc (not used yet)
+        values = self.covjson["coverages"][0]["ranges"]["2t"]["values"]  # adjust param name
 
         # Define grid
         res = 0.01
@@ -60,9 +59,9 @@ class BoundingBox(Decoder):
         nx = int(np.ceil((x_max - x_min) / res))
 
         grid_y, grid_x = np.meshgrid(
-            np.linspace(y_max, y_min, ny),   # from north to south
-            np.linspace(x_min, x_max, nx),   # from west to east
-            indexing="ij"                    # row = y, col = x
+            np.linspace(y_max, y_min, ny),  # from north to south
+            np.linspace(x_min, x_max, nx),  # from west to east
+            indexing="ij",  # row = y, col = x
         )
 
         # Nearest-neighbor interpolation
