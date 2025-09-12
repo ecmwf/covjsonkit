@@ -160,8 +160,8 @@ class Path(Encoder):
                     if (date, level, fields["number"][0], fields["param"][0], s) in range_dict:
                         cor_len = len(range_dict[(date, level, fields["number"][0], fields["param"][0], s)])
                         end = start + cor_len
-                        if len(fields['levels']) != 1:
-                            for lev in fields['levels']:
+                        if len(fields["levels"]) != 1:
+                            for lev in fields["levels"]:
                                 for cor in coord[int(start) : int(end)]:
                                     coords[date]["composite"].append([s, cor[0], cor[1], lev])
                         else:
