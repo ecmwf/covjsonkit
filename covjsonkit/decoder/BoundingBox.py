@@ -42,7 +42,7 @@ class BoundingBox(Decoder):
     def to_geopandas(self):
         pass
 
-    def to_geotiff(self, output_file='multipoint', resolution=0.01):
+    def to_geotiff(self, output_file="multipoint", resolution=0.01):
         coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
         x = [c[1] for c in coords]  # longitude
         y = [c[0] for c in coords]  # latitude
@@ -65,7 +65,6 @@ class BoundingBox(Decoder):
         # Nearest-neighbor interpolation
         points = np.column_stack([x, y])
         tree = cKDTree(points)
-
 
         # Loop through each parameter in ranges
         for param, param_data in self.covjson["coverages"][0]["ranges"].items():

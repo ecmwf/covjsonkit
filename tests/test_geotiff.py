@@ -13,7 +13,6 @@ class TestGeotiffConversion:
 
     def test_geotiff_multipoint(self):
         cov = Covjsonkit().decode(self.covjson)
-        mp = cov.to_geotiff()
+        cov.to_geotiff()
         os.remove("multipoint_2t.tif")
         os.remove("multipoint_10u.tif")
-
