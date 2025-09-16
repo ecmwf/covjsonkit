@@ -39,7 +39,7 @@ class Circle(Decoder):
         pass
 
     def to_geotiff(self):
-        pass
+        raise TypeError("Circle domain cannot be converted to GeoTIFF.")
 
     def to_geojson(self):
         features = []

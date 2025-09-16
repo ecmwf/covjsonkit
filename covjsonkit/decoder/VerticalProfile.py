@@ -68,7 +68,7 @@ class VerticalProfile(Decoder):
         pass
 
     def to_geotiff(self):
-        pass
+        raise TypeError("Vertical Profile domain cannot be converted to GeoTIFF.")
 
     def to_geojson(self):
         features = []

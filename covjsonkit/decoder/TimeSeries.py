@@ -70,7 +70,7 @@ class TimeSeries(Decoder):
         pass
 
     def to_geotiff(self):
-        pass
+        raise TypeError("Timeseries domain cannot be converted to GeoTIFF.")
 
     def to_geojson(self):
         features = []

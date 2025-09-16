@@ -42,21 +42,19 @@ class BoundingBox(Decoder):
     def to_geopandas(self):
         pass
 
-    def to_geotiff(self):
+    def to_geotiff(self, output_file='multipoint', resolution=0.01):
         coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
         x = [c[1] for c in coords]  # longitude
         y = [c[0] for c in coords]  # latitude
         # z = [c[2] for c in coords]  # height/time/etc (not used yet)
-        values = self.covjson["coverages"][0]["ranges"]["2t"]["values"]  # adjust param name
 
         # Define grid
-        res = 0.01
         x_min, x_max = min(x), max(x)
         y_min, y_max = min(y), max(y)
 
         # Notice: meshgrid with indexing="ij"
-        ny = int(np.ceil((y_max - y_min) / res))
-        nx = int(np.ceil((x_max - x_min) / res))
+        ny = int(np.ceil((y_max - y_min) / resolution))
+        nx = int(np.ceil((x_max - x_min) / resolution))
 
         grid_y, grid_x = np.meshgrid(
             np.linspace(y_max, y_min, ny),  # from north to south
@@ -67,25 +65,34 @@ class BoundingBox(Decoder):
         # Nearest-neighbor interpolation
         points = np.column_stack([x, y])
         tree = cKDTree(points)
-        _, idx = tree.query(np.column_stack([grid_x.ravel(), grid_y.ravel()]))
-        grid_values = np.array(values)[idx].reshape((ny, nx))
 
-        # Define transform (upper-left corner, pixel size)
-        transform = from_origin(x_min, y_max, res, res)
 
-        with rasterio.open(
-            "multipoint_output.tif",
-            "w",
-            driver="GTiff",
-            height=ny,
-            width=nx,
-            count=1,
-            dtype=grid_values.dtype,
-            crs="EPSG:4326",
-            transform=transform,
-        ) as dst:
-            dst.write(grid_values, 1)
-            dst.set_band_description(1, "Temperature")
+        # Loop through each parameter in ranges
+        for param, param_data in self.covjson["coverages"][0]["ranges"].items():
+            values = param_data["values"]
+
+            # Interpolate values onto the grid
+            _, idx = tree.query(np.column_stack([grid_x.ravel(), grid_y.ravel()]))
+            grid_values = np.array(values)[idx].reshape((ny, nx))
+
+            # Define transform (upper-left corner, pixel size)
+            transform = from_origin(x_min, y_max, resolution, resolution)
+
+            # Write GeoTIFF for the current parameter
+            output_path = f"{output_file}_{param}.tif"
+            with rasterio.open(
+                output_path,
+                "w",
+                driver="GTiff",
+                height=ny,
+                width=nx,
+                count=1,
+                dtype=grid_values.dtype,
+                crs="EPSG:4326",
+                transform=transform,
+            ) as dst:
+                dst.write(grid_values, 1)
+                dst.set_band_description(1, param)
 
     def to_geojson(self):
         features = []

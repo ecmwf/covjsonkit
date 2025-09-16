@@ -36,7 +36,7 @@ class Path(Decoder):
         pass
 
     def to_geotiff(self):
-        pass
+        raise TypeError("Path domain cannot be converted to GeoTIFF.")
 
     def to_geojson(self):
         features = []
