@@ -4,7 +4,7 @@ import os
 from covjsonkit.api import Covjsonkit
 
 
-class TestMultipointXarray:
+class TestGeojsonConversion:
     def setup_method(self):
         current_dir = os.path.dirname(__file__)
         timeseries = os.path.join(current_dir, "data/test_timeseries_coverage.json")

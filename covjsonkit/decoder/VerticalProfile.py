@@ -67,6 +67,9 @@ class VerticalProfile(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geotiff(self):
+        raise TypeError("Vertical Profile domain cannot be converted to GeoTIFF.")
+
     def to_geojson(self):
         features = []
         for coverage in self.covjson["coverages"]:

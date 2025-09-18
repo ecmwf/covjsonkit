@@ -35,6 +35,9 @@ class Path(Decoder):
     def to_geopandas(self):
         pass
 
+    def to_geotiff(self):
+        raise TypeError("Path domain cannot be converted to GeoTIFF.")
+
     def to_geojson(self):
         features = []
         for coverage in self.coverages:

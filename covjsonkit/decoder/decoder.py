@@ -110,3 +110,7 @@ class Decoder(ABC):
     @abstractmethod
     def to_geojson(self):
         pass
+
+    @abstractmethod
+    def to_geotiff(self):
+        pass
