@@ -5,3 +5,4 @@ covjson-pydantic
 conflator
 rasterio
 scipy
+pre-commit
