@@ -88,7 +88,7 @@ res = encoder.from_polytope(polytope_output)
 
 ### Config
 
-Covjsonkit uses a config to determine what parameter metadata to use, an example can be found in [example_config.json](example_config.json). This will automatically be loaded at runtime to point to the correct parameter metadata files. 
+Covjsonkit uses a config to determine what parameter metadata to use, an example can be found in [example_config.json](example_config.json). This will automatically be loaded at runtime to point to the correct parameter metadata files.
 
 The example config has to be stored in one of the following places:
 
@@ -108,7 +108,7 @@ Where `cf` is a valid covjsonkit config.
 
 Python unit tests can be run with pytest:
 
-    python -m pytest 
+    python -m pytest
 
 When a pull request is merged into develop or main a github actions CI pipeline is triggered to test formatting and unit tests.
 
