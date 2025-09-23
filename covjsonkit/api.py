@@ -68,13 +68,17 @@ class Covjsonkit:
             self.conf = CovjsonKitConfig.model_validate(config)
             logging.debug("Config loaded from dictionary: %s", self.conf)  # noqa: E501
 
+        self.compression = self.conf.compression
+
     def encode(self, type, domaintype):
         if domaintype == "timeseries":
             domaintype = "PointSeries"
         elif domaintype == "trajectory":
             domaintype = "path"
         feature = self._feature_factory(domaintype.lower(), "encoder")
-        return feature(self.conf, domaintype)
+        coveragejson = feature(self.conf, domaintype)
+        coveragejson = self._compress(coveragejson)
+        return coveragejson
 
     def decode(self, covjson):
         requesttype = covjson["domainType"]
@@ -93,3 +97,23 @@ class Covjsonkit:
         elif encoder_decoder == "decoder":
             features = features_decoder
         return features[feature_type]
+
+    def _compress(self, data):
+        if self.compression == "zstd":
+            import zstandard as zstd
+
+            cctx = zstd.ZstdCompressor(level=3)
+            compressed = cctx.compress(data)
+            return compressed
+        elif self.compression == "LZ4":
+            import lz4.frame
+
+            compressed = lz4.frame.compress(data)
+            return compressed
+        # elif self.compression == "binpack":
+        #    import binpacking
+
+        #    compressed = binpacking.pack(data)
+        #    return compressed
+        else:
+            return data
