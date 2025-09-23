@@ -178,7 +178,6 @@ class Encoder(ABC):
             return start_index, end_index
 
         def append_composite_coords(dates, tree_values, lat, coords):
-            # for date in dates:
             for value in tree_values:
                 coords[dates]["composite"].append([lat, value])
 
