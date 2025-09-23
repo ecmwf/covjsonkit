@@ -68,8 +68,6 @@ class Covjsonkit:
             self.conf = CovjsonKitConfig.model_validate(config)
             logging.debug("Config loaded from dictionary: %s", self.conf)  # noqa: E501
 
-        self.compression = self.conf.compression
-
     def encode(self, type, domaintype):
         if domaintype == "timeseries":
             domaintype = "PointSeries"
