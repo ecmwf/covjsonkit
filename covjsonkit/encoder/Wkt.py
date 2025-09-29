@@ -228,6 +228,10 @@ class Wkt(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
+        print("Fields:", fields)
+        print("Coords:", coords)
+        print("Range_dict:", range_dict)
+
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
@@ -271,22 +275,22 @@ class Wkt(Encoder):
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
         for i, t in enumerate(fields["times"]):
-            for level in fields["levels"]:
-                for num in fields["number"]:
-                    val_dict = {}
-                    for date in fields["dates"]:
-                        for para in fields["param"]:
-                            val_dict[para] = []
+            for num in fields["number"]:
+                val_dict = {}
+                for date in fields["dates"]:
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for level in fields["levels"]:
                             key = (date, level, num, para)
                             vals = []
                             for val in range_dict[key]:
                                 vals.append(val[i])
                             val_dict[para].extend(vals)
-                        mm = mars_metadata.copy()
-                        mm["number"] = num
-                        # mm["Forecast date"] = date
-                        datetime = pd.Timestamp(date) + t
-                        self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    # mm["Forecast date"] = date
+                    datetime = pd.Timestamp(date) + t
+                    self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
 
         end = time.time()
         delta = end - start
