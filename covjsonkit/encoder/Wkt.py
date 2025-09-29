@@ -228,10 +228,6 @@ class Wkt(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        print("Fields:", fields)
-        print("Coords:", coords)
-        print("Range_dict:", range_dict)
-
         self.add_reference(
             {
                 "coordinates": ["x", "y", "z"],
