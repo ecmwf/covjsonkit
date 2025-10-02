@@ -2,10 +2,10 @@ import logging
 
 from conflator import Conflator
 
-import covjsonkit.decoder
 import covjsonkit.decoder.BoundingBox
 import covjsonkit.decoder.Circle
 import covjsonkit.decoder.Frame
+import covjsonkit.decoder.Grid
 import covjsonkit.decoder.Path
 import covjsonkit.decoder.Shapefile
 import covjsonkit.decoder.TimeSeries
