@@ -124,88 +124,79 @@ class Grid(Decoder):
         return geojson
 
     def to_xarray(self):
-        dims = ["datetimes", "number", "steps", "points"]
-        dataarraydict = {}
+        """
+        Convert a Grid domainType CoverageJSON CoverageCollection into an xarray.Dataset.
 
-        # Get coordinates
-        x = []
-        y = []
-        z = []
-        datetimes = []
-        for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[0]))
-            y.append(float(coord[1]))
-            z.append(float(coord[2]))
-        for datetime in self.get_coordinates()["t"]["values"]:
-            datetimes.append(datetime)
+        Dimensions:
+        - time (Forecast date)
+        - number (ensemble member)
+        - step ('t' axis)
+        - level ('levelist')
+        - latitude
+        - longitude
+        """
+        if self.covjson["type"] != "CoverageCollection":
+            raise ValueError("Expected CoverageCollection as root object")
 
-        values = {}
-        for parameter in self.parameters:
-            values[parameter] = {}
+        parameters = self.covjson.get("parameters", {})
 
-        datetimes = []
-        numbers = []
-        steps = []
-        for coverage in self.coverages:
-            if "number" not in coverage["mars:metadata"]:
-                coverage["mars:metadata"]["number"] = 0
-            numbers.append(coverage["mars:metadata"]["number"])
-            if "step" not in coverage["mars:metadata"]:
-                coverage["mars:metadata"]["step"] = 0
-            steps.append(coverage["mars:metadata"]["step"])
-            datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
-            for parameter in self.parameters:
-                # values[parameter].append(coverage["ranges"][parameter]["values"])
-                if coverage["domain"]["axes"]["t"]["values"][0] not in values[parameter]:
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]] = {}
-                if (
-                    coverage["mars:metadata"]["number"]
-                    not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]
-                ):
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][
-                        coverage["mars:metadata"]["number"]
-                    ] = {}
-                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][
-                    coverage["mars:metadata"]["step"]
-                ] = coverage["ranges"][parameter]["values"]
+        # Collect metadata for unique coords
+        times = sorted({cov["mars:metadata"]["Forecast date"] for cov in self.covjson["coverages"]})
+        numbers = sorted({cov["mars:metadata"].get("number", 0) for cov in self.covjson["coverages"]})
 
-        datetimes = sorted(list(set(datetimes)))
-        numbers = sorted(list(set(numbers)))
-        steps = sorted(list(set(steps)))
+        # Initialize coords from first coverage
+        first_cov = self.covjson["coverages"][0]
+        domain = first_cov["domain"]["axes"]
 
-        new_values = {}
-        for parameter in values.keys():
-            new_values[parameter] = []
-            for i, datetime in enumerate(datetimes):
-                new_values[parameter].append([])
-                for j, number in enumerate(numbers):
-                    new_values[parameter][i].append([])
-                    for k, step in enumerate(steps):
-                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
+        steps = np.array(domain.get("t", {}).get("values", [0]))
+        levels = np.array(domain.get("levelist", {}).get("values", [0]))
+        lat = np.array(domain["latitude"]["values"])
+        lon = np.array(domain["longitude"]["values"])
 
-        for parameter in self.parameters:
-            dataarray = xr.DataArray(new_values[parameter], dims=dims)
-            dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
-            dataarraydict[dataarray.attrs["long_name"]] = dataarray
+        # Prepare arrays for each parameter
+        data_arrays = {
+            pname: np.full(
+                (len(times), len(numbers), len(steps), len(levels), len(lat), len(lon)),
+                np.nan,
+                dtype=float,
+            )
+            for pname in first_cov["ranges"].keys()
+        }
+
+        # Fill arrays
+        for coverage in self.covjson["coverages"]:
+            md = coverage["mars:metadata"]
+            t_idx = times.index(md["Forecast date"])
+            n_idx = numbers.index(md.get("number", 0))
+
+            for pname, prange in coverage["ranges"].items():
+                arr = np.array(prange["values"]).reshape(prange["shape"])
+                data_arrays[pname][t_idx, n_idx, :, :, :, :] = arr
+
+        # Build xarray Dataset
+        xr_vars = {
+            pname: (
+                ["datetimes", "number", "steps", "levelist", "latitude", "longitude"],
+                arr,
+            )
+            for pname, arr in data_arrays.items()
+        }
 
         ds = xr.Dataset(
-            dataarraydict,
-            coords=dict(
-                datetimes=(["datetimes"], datetimes),
-                number=(["number"], numbers),
-                steps=(["steps"], steps),
-                points=(["points"], list(range(0, len(x)))),
-                latitude=(["points"], x),
-                longitude=(["points"], y),
-                levelist=(["points"], z),
-            ),
+            xr_vars,
+            coords={
+                "datetimes": ("datetimes", np.array(times)),
+                "number": ("number", np.array(numbers)),
+                "steps": ("s", steps),
+                "levelist": ("levelist", levels),
+                "latitude": ("latitude", lat),
+                "longitude": ("longitude", lon),
+            },
         )
-        for mars_metadata in self.mars_metadata[0]:
-            ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
-        # Add date attribute
-        ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
+        # Attach parameter metadata
+        for pname, param in parameters.items():
+            for k, v in param.items():
+                ds[pname].attrs[k] = v
 
         return ds

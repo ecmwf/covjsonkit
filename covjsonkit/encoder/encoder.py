@@ -80,9 +80,11 @@ class Encoder(ABC):
             self.domaintype = DomainType.vertical_profile
         elif domaintype == "path":
             self.domaintype = "Trajectory"
+        elif domaintype == "grid":
+            self.domaintype = "Grid"
 
         # Trajectory not yet implemented in covjson-pydantic
-        if self.domaintype != "Trajectory":
+        if self.domaintype != "Trajectory" and self.domaintype != "Grid":
             self.pydantic_coverage = CoverageCollection(
                 type="CoverageCollection", coverages=[], domainType=self.domaintype, parameters={}, referencing=[]
             )
