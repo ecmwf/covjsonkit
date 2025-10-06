@@ -187,7 +187,7 @@ class Grid(Decoder):
             coords={
                 "datetimes": ("datetimes", np.array(times)),
                 "number": ("number", np.array(numbers)),
-                "steps": ("s", steps),
+                "steps": ("steps", steps),
                 "levelist": ("levelist", levels),
                 "latitude": ("latitude", lat),
                 "longitude": ("longitude", lon),

@@ -56,7 +56,7 @@ class Grid(Encoder):
 
     def from_xarray(self, dataset):
         """
-        Converts an xarray dataset into a MultiPoint CoverageJSON format.
+        Converts an xarray dataset into a grid CoverageJSON format.
         """
 
         self.covjson["type"] = "CoverageCollection"
@@ -148,10 +148,6 @@ class Grid(Encoder):
             }
         )
 
-        print("Fields: ", fields)  # noqa: E501
-        print("Range dict: ", range_dict)  # noqa: E501
-        print("Coords: ", coords)  # noqa: E501
-
         combined_dict = {}
 
         for date in fields["dates"]:
@@ -175,8 +171,6 @@ class Grid(Encoder):
                                 # Cocatenate arrays
                                 combined_dict[date][num][para][s] += range_dict[key]
 
-        print("Combined dict: ", combined_dict)  # noqa: E501
-
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
         for para in fields["param"]:
@@ -199,12 +193,8 @@ class Grid(Encoder):
             for cor in coords[date]["composite"]:
                 self.add_if_not_close(coordinates[date]["latitude"], cor[0])
                 self.add_if_not_close(coordinates[date]["longitude"], cor[1])
-                # coordinates[date]["latitude"].add(cor[0])
-                # coordinates[date]["longitude"].add(cor[1])
             coordinates[date]["latitude"] = list(coordinates[date]["latitude"])
             coordinates[date]["longitude"] = list(coordinates[date]["longitude"])
-
-        print("Coordinates: ", coordinates)  # noqa: E501
 
         self.shp = [
             len(coordinates[fields["dates"][0]]["t"]),
@@ -216,17 +206,15 @@ class Grid(Encoder):
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
-                for step in combined_dict[date][num][self.parameters[0]].keys():
-                    val_dict[step] = {}
                 for para in combined_dict[date][num].keys():
+                    val_dict[para] = []
                     for step in combined_dict[date][num][para].keys():
-                        val_dict[step][para] = combined_dict[date][num][para][step]
-                for step in val_dict.keys():
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["step"] = step
-                    mm["Forecast date"] = date
-                    self.add_coverage(mm, coordinates[date], val_dict[step])
+                        val_dict[para].extend(combined_dict[date][num][para][step])
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["step"] = step
+                mm["Forecast date"] = date
+                self.add_coverage(mm, coordinates[date], val_dict)
 
         return self.covjson
 
