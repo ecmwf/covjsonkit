@@ -141,17 +141,36 @@ class Grid(Decoder):
         parameters = self.covjson.get("parameters", {})
 
         # Collect metadata for unique coords
-        times = sorted({cov["mars:metadata"]["Forecast date"] for cov in self.covjson["coverages"]})
-        numbers = sorted({cov["mars:metadata"].get("number", 0) for cov in self.covjson["coverages"]})
+        if "mars:metadata" not in self.covjson["coverages"][0]:
+            times = [0]
+        else:
+            times = sorted({cov["mars:metadata"]["Forecast date"] for cov in self.covjson["coverages"]})
+        if "mars:metadata" not in self.covjson["coverages"][0]:
+            numbers = [0]
+        else:
+            numbers = sorted({cov["mars:metadata"].get("number", 0) for cov in self.covjson["coverages"]})
 
         # Initialize coords from first coverage
         first_cov = self.covjson["coverages"][0]
         domain = first_cov["domain"]["axes"]
 
+        if "latitude" in domain:
+            x_coords = "latitude"
+        else:
+            x_coords = "x"
+        if "longitude" in domain:
+            y_coords = "longitude"
+        else:
+            y_coords = "y"
+        if "levelist" in domain:
+            z_coords = "levelist"
+        else:
+            z_coords = "z"
+
         steps = np.array(domain.get("t", {}).get("values", [0]))
-        levels = np.array(domain.get("levelist", {}).get("values", [0]))
-        lat = np.array(domain["latitude"]["values"])
-        lon = np.array(domain["longitude"]["values"])
+        levels = np.array(domain.get(z_coords, {}).get("values", [0]))
+        lat = np.array(domain[x_coords]["values"])
+        lon = np.array(domain[y_coords]["values"])
 
         # Prepare arrays for each parameter
         data_arrays = {
@@ -165,7 +184,10 @@ class Grid(Decoder):
 
         # Fill arrays
         for coverage in self.covjson["coverages"]:
-            md = coverage["mars:metadata"]
+            if "mars:metadata" not in coverage:
+                md = {"Forecast date": 0, "number": 0}
+            else:
+                md = coverage["mars:metadata"]
             t_idx = times.index(md["Forecast date"])
             n_idx = numbers.index(md.get("number", 0))
 

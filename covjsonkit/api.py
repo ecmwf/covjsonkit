@@ -81,7 +81,10 @@ class Covjsonkit:
         return feature(self.conf, domaintype)
 
     def decode(self, covjson):
-        requesttype = covjson["domainType"]
+        if "domainType" not in covjson:
+            requesttype = covjson["domain"]["domainType"]
+        else:
+            requesttype = covjson["domainType"]
         if requesttype == "timeseries":
             requesttype = "PointSeries"
         elif requesttype == "MultiPoint":
