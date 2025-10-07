@@ -78,7 +78,8 @@ class Covjsonkit:
         elif domaintype == "trajectory":
             domaintype = "path"
         feature = self._feature_factory(domaintype.lower(), "encoder")
-        return feature(self.conf, domaintype)
+        coveragejson = feature(self.conf, domaintype)
+        return coveragejson
 
     def decode(self, covjson):
         if "domainType" not in covjson:

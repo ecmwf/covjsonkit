@@ -6,3 +6,5 @@ conflator
 rasterio
 scipy
 pre-commit
+zstandard
+lz4
