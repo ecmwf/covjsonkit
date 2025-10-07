@@ -1,4 +1,3 @@
-import gc
 import logging
 import time
 
@@ -7,10 +6,10 @@ import pandas as pd
 from .encoder import Encoder
 
 
-class Wkt(Encoder):
+class Grid(Encoder):
     def __init__(self, type, domaintype):
         super().__init__(type, domaintype)
-        self.covjson["domainType"] = "MultiPoint"
+        self.covjson["domainType"] = "Grid"
         self.covjson["coverages"] = []
 
     def add_coverage(self, mars_metadata, coords, values):
@@ -24,19 +23,19 @@ class Wkt(Encoder):
         self.add_range(new_coverage, values)
         self.covjson["coverages"].append(new_coverage)
         # cov = Coverage.model_validate_json(json.dumps(new_coverage))
-        # self.pydantic_coverage.coverages.append(cov)
+        # self.pydantic_coverage.coverages.append(json.dumps(new_coverage))
 
     def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
         coverage["domain"]["axes"]["t"] = {}
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
-        coverage["domain"]["axes"]["composite"] = {}
-        coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0][
-            "coordinates"
-        ]  # self.pydantic_coverage.referencing[0].coordinates
-        coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
+        coverage["domain"]["axes"]["latitude"] = {}
+        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
+        coverage["domain"]["axes"]["longitude"] = {}
+        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
+        coverage["domain"]["axes"]["levelist"] = {}
+        coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -44,16 +43,20 @@ class Wkt(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = [str(param)]
+            coverage["ranges"][param]["shape"] = self.shp
+            coverage["ranges"][param]["axisNames"] = ["t", "levelist", "latitude", "longitude"]
             coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
+    def add_if_not_close(self, my_list, number, threshold=0.01):
+        if all(abs(number - x) > threshold for x in my_list):
+            my_list.append(number)
+
     def from_xarray(self, dataset):
         """
-        Converts an xarray dataset into a MultiPoint CoverageJSON format.
+        Converts an xarray dataset into a grid CoverageJSON format.
         """
 
         self.covjson["type"] = "CoverageCollection"
@@ -88,19 +91,13 @@ class Wkt(Encoder):
 
         # Prepare coordinates
         coords = {
-            "composite": [],
-            "dataType": "tuple",
-            "t": [str(x) for x in dataset["datetimes"].values],
+            "t": [str(x) for x in dataset["steps"].values],
+            "latitude": dataset["latitude"].values.tolist(),
+            "longitude": dataset["longitude"].values.tolist(),
+            "levelist": dataset["levelist"].values.tolist(),
         }
 
-        for point in dataset["points"].values:
-            coords["composite"].append(
-                [
-                    float(dataset.isel(points=point).longitude.values),
-                    float(dataset.isel(points=point).latitude.values),
-                    float(dataset.isel(points=point).levelist.values),
-                ]
-            )
+        self.shp = [len(coords["t"]), len(coords["levelist"]), len(coords["latitude"]), len(coords["longitude"])]
 
         for datetime in dataset["datetimes"].values:
             for num in dataset["number"].values:
@@ -111,7 +108,12 @@ class Wkt(Encoder):
                     mars_metadata["step"] = int(step)
                     mars_metadata["Forecast date"] = str(datetime)
                     for dv in dataset.data_vars:
-                        dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
+                        nested_list = dataset[dv].sel(datetimes=datetime, number=num, steps=step).values.tolist()
+                        print(nested_list)
+                        flattened_list = [item for sublist in nested_list for item in sublist]
+                        flattened_list = [item for sublist in flattened_list for item in sublist]
+                        print(flattened_list)
+                        dv_dict[dv] = flattened_list
 
                     self.add_coverage(mars_metadata, coords, dv_dict)
 
@@ -138,7 +140,7 @@ class Wkt(Encoder):
 
         self.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["latitude", "longitude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -162,14 +164,13 @@ class Wkt(Encoder):
                         for s in fields["step"]:
                             key = (date, level, num, para, s)
                             # for k, v in range_dict.items():
-                            #    if k == key:
+                            # if k == key:
                             if s not in combined_dict[date][num][para]:
                                 combined_dict[date][num][para][s] = range_dict[key]
                             else:
                                 # Cocatenate arrays
                                 combined_dict[date][num][para][s] += range_dict[key]
 
-        levels = fields["levels"]
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
         for para in fields["param"]:
@@ -180,27 +181,40 @@ class Wkt(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
+        coordinates = {}
+        coordinates["t"] = list(fields["step"])
+
         for date in coords.keys():
-            coord = coords[date]["composite"]
-            coords[date]["composite"] = []
-            for level in levels:
-                for cor in coord:
-                    coords[date]["composite"].append([cor[0], cor[1], level])
+            coordinates[date] = {}
+            coordinates[date]["t"] = list(fields["step"])
+            coordinates[date]["levelist"] = list(fields["levels"])
+            coordinates[date]["latitude"] = []
+            coordinates[date]["longitude"] = []
+            for cor in coords[date]["composite"]:
+                self.add_if_not_close(coordinates[date]["latitude"], cor[0])
+                self.add_if_not_close(coordinates[date]["longitude"], cor[1])
+            coordinates[date]["latitude"] = list(coordinates[date]["latitude"])
+            coordinates[date]["longitude"] = list(coordinates[date]["longitude"])
+
+        self.shp = [
+            len(coordinates[fields["dates"][0]]["t"]),
+            len(coordinates[fields["dates"][0]]["levelist"]),
+            len(coordinates[fields["dates"][0]]["latitude"]),
+            len(coordinates[fields["dates"][0]]["longitude"]),
+        ]
 
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
-                for step in combined_dict[date][num][self.parameters[0]].keys():
-                    val_dict[step] = {}
                 for para in combined_dict[date][num].keys():
+                    val_dict[para] = []
                     for step in combined_dict[date][num][para].keys():
-                        val_dict[step][para] = combined_dict[date][num][para][step]
-                for step in val_dict.keys():
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["step"] = step
-                    mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step])
+                        val_dict[para].extend(combined_dict[date][num][para][step])
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["step"] = step
+                mm["Forecast date"] = date
+                self.add_coverage(mm, coordinates[date], val_dict)
 
         return self.covjson
 
@@ -270,30 +284,30 @@ class Wkt(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
+        val_dict = {}
         for i, t in enumerate(fields["times"]):
-            for num in fields["number"]:
-                val_dict = {}
-                for date in fields["dates"]:
-                    for para in fields["param"]:
-                        val_dict[para] = []
-                        for level in fields["levels"]:
+            val_dict[t] = {}
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    for date in fields["dates"]:
+                        for para in fields["param"]:
+                            val_dict[t][para] = []
                             key = (date, level, num, para)
-                            vals = []
-                            for val in range_dict[key]:
-                                vals.append(val[i])
-                            val_dict[para].extend(vals)
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    # mm["Forecast date"] = date
-                    datetime = pd.Timestamp(date) + t
-                    self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict)
+                            vals = int(len(range_dict[key]) / len(fields["times"]))
+                            # for val in range_dict[key]:
+                            #    vals.append(val[i])
+                            val_dict[t][para].extend(range_dict[key][i * vals : (i + 1) * vals])
+                        for para in fields["param"]:
+                            val_dict[t][para] = [item for sublist in val_dict[t][para] for item in sublist]
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        # mm["Forecast date"] = date
+                        datetime = pd.Timestamp(date) + t
+                        self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict[t])
 
         end = time.time()
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
-
-        del coordinates
-        gc.collect()
 
         return self.covjson

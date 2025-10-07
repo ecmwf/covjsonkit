@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 from covjsonkit.Coverage import Coverage
 from covjsonkit.CoverageCollection import CoverageCollection
+from covjsonkit.utils import coverage_to_coveragecollection
 
 
 class Decoder(ABC):
@@ -49,6 +50,10 @@ class Decoder(ABC):
             raise TypeError("Covjson must be dictionary or covjson file")
 
         self.type = self.get_type()
+        if self.type == "Coverage":
+            self.covjson = coverage_to_coveragecollection(self.covjson)
+            self.type = self.get_type()
+            self.coverage = CoverageCollection(self.covjson)
 
         if self.type == "Coverage":
             self.coverage = Coverage(self.covjson)
@@ -79,8 +84,11 @@ class Decoder(ABC):
 
     def get_mars_metadata(self):
         mars_metadata = []
-        for coverage in self.coverage.coverages:
-            mars_metadata.append(coverage["mars:metadata"])
+        if "mars:metadata" not in self.coverage.coverages[0]:
+            return mars_metadata
+        else:
+            for coverage in self.coverage.coverages:
+                mars_metadata.append(coverage["mars:metadata"])
         return mars_metadata
 
     @abstractmethod
