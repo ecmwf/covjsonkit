@@ -50,3 +50,40 @@ def merge_coverage_collections(collection1, collection2):
             merged_collection["coverages"].append(coverage)
 
     return merged_collection
+
+
+def coverage_to_coveragecollection(coverage: dict) -> dict:
+    """
+    Wrap a single CoverageJSON object into a CoverageCollection.
+
+    If the input is already a CoverageCollection, it is returned unchanged.
+
+    Returns
+    -------
+    dict
+        A CoverageCollection JSON structure containing the single coverage.
+    """
+    if not isinstance(coverage, dict):
+        raise TypeError("Input must be a dict representing a CoverageJSON object")
+
+    if coverage.get("type") == "CoverageCollection":
+        # Already a collection, just return it
+        return coverage
+
+    if coverage.get("type") != "Coverage":
+        raise ValueError("Input must be a Coverage object (type='Coverage')")
+
+    collection = {
+        "type": "CoverageCollection",
+        "domainType": coverage.get("domain", {}).get("domainType", "Grid"),
+        "coverages": [coverage],
+        "referencing": coverage.get("referencing", []),
+        "parameters": coverage.get("parameters", {}),
+    }
+
+    # include global metadata if present
+    for key in ["title", "description", "attribution", "license"]:
+        if key in coverage:
+            collection[key] = coverage[key]
+
+    return collection

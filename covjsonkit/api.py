@@ -5,6 +5,7 @@ from conflator import Conflator
 import covjsonkit.decoder.BoundingBox
 import covjsonkit.decoder.Circle
 import covjsonkit.decoder.Frame
+import covjsonkit.decoder.Grid
 import covjsonkit.decoder.Path
 import covjsonkit.decoder.Shapefile
 import covjsonkit.decoder.TimeSeries
@@ -13,6 +14,7 @@ import covjsonkit.decoder.Wkt
 import covjsonkit.encoder.BoundingBox
 import covjsonkit.encoder.Circle
 import covjsonkit.encoder.Frame
+import covjsonkit.encoder.Grid
 import covjsonkit.encoder.Path
 import covjsonkit.encoder.Shapefile
 import covjsonkit.encoder.TimeSeries
@@ -30,6 +32,7 @@ features_encoder = {
     "path": covjsonkit.encoder.Path.Path,
     "polygon": covjsonkit.encoder.Wkt.Wkt,
     "circle": covjsonkit.encoder.Circle.Circle,
+    "grid": covjsonkit.encoder.Grid.Grid,
 }
 features_decoder = {
     "pointseries": covjsonkit.decoder.TimeSeries.TimeSeries,
@@ -40,6 +43,7 @@ features_decoder = {
     "path": covjsonkit.decoder.Path.Path,
     "polygon": covjsonkit.decoder.Wkt.Wkt,
     "circle": covjsonkit.decoder.Circle.Circle,
+    "grid": covjsonkit.decoder.Grid.Grid,
 }
 
 
@@ -77,7 +81,10 @@ class Covjsonkit:
         return feature(self.conf, domaintype)
 
     def decode(self, covjson):
-        requesttype = covjson["domainType"]
+        if "domainType" not in covjson:
+            requesttype = covjson["domain"]["domainType"]
+        else:
+            requesttype = covjson["domainType"]
         if requesttype == "timeseries":
             requesttype = "PointSeries"
         elif requesttype == "MultiPoint":
