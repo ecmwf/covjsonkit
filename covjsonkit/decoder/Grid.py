@@ -17,9 +17,6 @@ class Grid(Decoder):
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
 
-        if rasterio is None:
-            raise ImportError("Please install 'rasterio' to use this feature: pip install my-package[full]")
-
     def get_domains(self):
         domains = []
         for coverage in self.coverage.coverages:
@@ -50,6 +47,8 @@ class Grid(Decoder):
         pass
 
     def to_geotiff(self, output_file="multipoint", resolution=0.01):
+        if rasterio is None:
+            raise ImportError("Please install 'rasterio' to use this feature: pip install covjsonkit[geo]")
         coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
         x = [c[1] for c in coords]  # longitude
         y = [c[0] for c in coords]  # latitude
