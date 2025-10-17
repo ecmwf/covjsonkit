@@ -1,7 +1,11 @@
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+    from rasterio.transform import from_origin
+except ImportError:
+    rasterio = None
 import xarray as xr
-from rasterio.transform import from_origin
 from scipy.spatial import cKDTree
 
 from .decoder import Decoder
@@ -12,6 +16,9 @@ class Grid(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
+
+        if rasterio is None:
+            raise ImportError("Please install 'rasterio' to use this feature: pip install my-package[full]")
 
     def get_domains(self):
         domains = []
