@@ -58,24 +58,18 @@ class Grid(Encoder):
         """
 
         self.covjson["type"] = "CoverageCollection"
-        self.covjson["domainType"] = "PointSeries"
+        self.covjson["domainType"] = "Grid"
         self.covjson["coverages"] = []
 
-        if "latitude" in dataset.coords:
-            x_coord = "latitude"
-        elif "x" in dataset.coords:
-            x_coord = "x"
-        if "longitude" in dataset.coords:
-            y_coord = "longitude"
-        elif "y" in dataset.coords:
-            y_coord = "y"
+        if "indicies" in dataset.coords:
+            i_coord = "indicies"
         if "levelist" in dataset.coords:
             z_coord = "levelist"
 
         # Add reference system
         self.add_reference(
             {
-                "coordinates": [x_coord, y_coord, z_coord],
+                "coordinates": [i_coord, z_coord],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -90,30 +84,29 @@ class Grid(Encoder):
         # Prepare coordinates
         coords = {
             "t": [str(x) for x in dataset["steps"].values],
-            "latitude": dataset["latitude"].values.tolist(),
-            "longitude": dataset["longitude"].values.tolist(),
+            "indicies": dataset["indicies"].values.tolist(),
             "levelist": dataset["levelist"].values.tolist(),
         }
 
-        self.shp = [len(coords["t"]), len(coords["levelist"]), len(coords["latitude"]), len(coords["longitude"])]
+        self.shp = [len(coords["t"]), len(coords["levelist"]), len(coords["indicies"])]
 
         for datetime in dataset["datetimes"].values:
             for num in dataset["number"].values:
-                for step in dataset["steps"].values:
-                    dv_dict = {}
-                    mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
-                    mars_metadata["number"] = int(num)
-                    mars_metadata["step"] = int(step)
-                    mars_metadata["Forecast date"] = str(datetime)
-                    for dv in dataset.data_vars:
-                        nested_list = dataset[dv].sel(datetimes=datetime, number=num, steps=step).values.tolist()
-                        print(nested_list)
-                        flattened_list = [item for sublist in nested_list for item in sublist]
-                        flattened_list = [item for sublist in flattened_list for item in sublist]
-                        print(flattened_list)
-                        dv_dict[dv] = flattened_list
+                # for step in dataset["steps"].values:
+                dv_dict = {}
+                mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
+                mars_metadata["number"] = int(num)
+                # mars_metadata["step"] = int(step)
+                mars_metadata["Forecast date"] = str(datetime)
+                for dv in dataset.data_vars:
+                    nested_list = dataset[dv].sel(datetimes=datetime, number=num).values.tolist()
+                    print(nested_list)
+                    flattened_list = [item for sublist in nested_list for item in sublist]
+                    flattened_list = [item for sublist in flattened_list for item in sublist]
+                    print(flattened_list)
+                    dv_dict[dv] = flattened_list
 
-                    self.add_coverage(mars_metadata, coords, dv_dict)
+                self.add_coverage(mars_metadata, coords, dv_dict)
 
         # Return the generated CoverageJSON
         return self.covjson

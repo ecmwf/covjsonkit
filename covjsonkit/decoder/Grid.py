@@ -138,6 +138,97 @@ class Grid(Decoder):
         - number (ensemble member)
         - step ('t' axis)
         - level ('levelist')
+        - indicies
+        """
+        if self.covjson["type"] != "CoverageCollection":
+            raise ValueError("Expected CoverageCollection as root object")
+
+        parameters = self.covjson.get("parameters", {})
+
+        # Collect metadata for unique coords
+        if "mars:metadata" not in self.covjson["coverages"][0]:
+            times = [0]
+        else:
+            times = sorted({cov["mars:metadata"]["Forecast date"] for cov in self.covjson["coverages"]})
+        if "mars:metadata" not in self.covjson["coverages"][0]:
+            numbers = [0]
+        else:
+            numbers = sorted({cov["mars:metadata"].get("number", 0) for cov in self.covjson["coverages"]})
+
+        # Initialize coords from first coverage
+        first_cov = self.covjson["coverages"][0]
+        domain = first_cov["domain"]["axes"]
+
+        if "indicies" in domain:
+            i_coords = "indicies"
+        if "levelist" in domain:
+            z_coords = "levelist"
+        else:
+            z_coords = "z"
+
+        steps = np.array(domain.get("t", {}).get("values", [0]))
+        levels = np.array(domain.get(z_coords, {}).get("values", [0]))
+        indicies = np.array(domain[i_coords]["values"])
+
+        # Prepare arrays for each parameter
+        data_arrays = {
+            pname: np.full(
+                (len(times), len(numbers), len(steps), len(levels), len(indicies)),
+                np.nan,
+                dtype=float,
+            )
+            for pname in first_cov["ranges"].keys()
+        }
+
+        # Fill arrays
+        for coverage in self.covjson["coverages"]:
+            if "mars:metadata" not in coverage:
+                md = {"Forecast date": 0, "number": 0}
+            else:
+                md = coverage["mars:metadata"]
+            t_idx = times.index(md["Forecast date"])
+            n_idx = numbers.index(md.get("number", 0))
+
+            for pname, prange in coverage["ranges"].items():
+                arr = np.array(prange["values"]).reshape(prange["shape"])
+                data_arrays[pname][t_idx, n_idx, :, :, :] = arr
+
+        # Build xarray Dataset
+        xr_vars = {
+            pname: (
+                ["datetimes", "number", "steps", "levelist", "indicies"],
+                arr,
+            )
+            for pname, arr in data_arrays.items()
+        }
+
+        ds = xr.Dataset(
+            xr_vars,
+            coords={
+                "datetimes": ("datetimes", np.array(times)),
+                "number": ("number", np.array(numbers)),
+                "steps": ("steps", steps),
+                "levelist": ("levelist", levels),
+                "indicies": ("latitude", indicies),
+            },
+        )
+
+        # Attach parameter metadata
+        for pname, param in parameters.items():
+            for k, v in param.items():
+                ds[pname].attrs[k] = v
+
+        return ds
+
+    def to_xarray_old(self):
+        """
+        Convert a Grid domainType CoverageJSON CoverageCollection into an xarray.Dataset.
+
+        Dimensions:
+        - time (Forecast date)
+        - number (ensemble member)
+        - step ('t' axis)
+        - level ('levelist')
         - latitude
         - longitude
         """
