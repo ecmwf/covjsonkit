@@ -30,10 +30,8 @@ class Grid(Encoder):
         coverage["domain"]["axes"] = {}
         coverage["domain"]["axes"]["t"] = {}
         coverage["domain"]["axes"]["t"]["values"] = coords["t"]
-        coverage["domain"]["axes"]["latitude"] = {}
-        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
-        coverage["domain"]["axes"]["longitude"] = {}
-        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
+        coverage["domain"]["axes"]["indicies"] = {}
+        coverage["domain"]["axes"]["indicies"]["values"] = coords["indicies"]
         coverage["domain"]["axes"]["levelist"] = {}
         coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
 
@@ -44,7 +42,7 @@ class Grid(Encoder):
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = self.shp
-            coverage["ranges"][param]["axisNames"] = ["t", "levelist", "latitude", "longitude"]
+            coverage["ranges"][param]["axisNames"] = ["t", "levelist", "indicies"]
             coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -132,15 +130,19 @@ class Grid(Encoder):
         fields["step"] = [0]
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["indicies"] = []
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        print(fields)
+        print(range_dict)
+        print(coords)
 
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
         self.add_reference(
             {
-                "coordinates": ["latitude", "longitude", "levelist"],
+                "coordinates": ["indicies", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -188,19 +190,12 @@ class Grid(Encoder):
             coordinates[date] = {}
             coordinates[date]["t"] = list(fields["step"])
             coordinates[date]["levelist"] = list(fields["levels"])
-            coordinates[date]["latitude"] = []
-            coordinates[date]["longitude"] = []
-            for cor in coords[date]["composite"]:
-                self.add_if_not_close(coordinates[date]["latitude"], cor[0])
-                self.add_if_not_close(coordinates[date]["longitude"], cor[1])
-            coordinates[date]["latitude"] = list(coordinates[date]["latitude"])
-            coordinates[date]["longitude"] = list(coordinates[date]["longitude"])
+            coordinates[date]["indicies"] = fields["indicies"]
 
         self.shp = [
             len(coordinates[fields["dates"][0]]["t"]),
             len(coordinates[fields["dates"][0]]["levelist"]),
-            len(coordinates[fields["dates"][0]]["latitude"]),
-            len(coordinates[fields["dates"][0]]["longitude"]),
+            len(coordinates[fields["dates"][0]]["indicies"]),
         ]
 
         for date in combined_dict.keys():
@@ -309,5 +304,103 @@ class Grid(Encoder):
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        return self.covjson
+
+    def from_polytope_old_latlon(self, result):
+
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["step"] = [0]
+        fields["dates"] = []
+        fields["levels"] = [0]
+
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        combined_dict = {}
+
+        for date in fields["dates"]:
+            if date not in combined_dict:
+                combined_dict[date] = {}
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    if num not in combined_dict[date]:
+                        combined_dict[date][num] = {}
+                    for para in fields["param"]:
+                        if para not in combined_dict[date][num]:
+                            combined_dict[date][num][para] = {}
+                        # for s, value in range_dict[date][level][num][para].items():
+                        for s in fields["step"]:
+                            key = (date, level, num, para, s)
+                            # for k, v in range_dict.items():
+                            # if k == key:
+                            if s not in combined_dict[date][num][para]:
+                                combined_dict[date][num][para][s] = range_dict[key]
+                            else:
+                                # Cocatenate arrays
+                                combined_dict[date][num][para][s] += range_dict[key]
+
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
+        logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
+
+        coordinates = {}
+        coordinates["t"] = list(fields["step"])
+
+        for date in coords.keys():
+            coordinates[date] = {}
+            coordinates[date]["t"] = list(fields["step"])
+            coordinates[date]["levelist"] = list(fields["levels"])
+            coordinates[date]["latitude"] = []
+            coordinates[date]["longitude"] = []
+            for cor in coords[date]["composite"]:
+                self.add_if_not_close(coordinates[date]["latitude"], cor[0])
+                self.add_if_not_close(coordinates[date]["longitude"], cor[1])
+            coordinates[date]["latitude"] = list(coordinates[date]["latitude"])
+            coordinates[date]["longitude"] = list(coordinates[date]["longitude"])
+
+        self.shp = [
+            len(coordinates[fields["dates"][0]]["t"]),
+            len(coordinates[fields["dates"][0]]["levelist"]),
+            len(coordinates[fields["dates"][0]]["latitude"]),
+            len(coordinates[fields["dates"][0]]["longitude"]),
+        ]
+
+        for date in combined_dict.keys():
+            for num in combined_dict[date].keys():
+                val_dict = {}
+                for para in combined_dict[date][num].keys():
+                    val_dict[para] = []
+                    for step in combined_dict[date][num][para].keys():
+                        val_dict[para].extend(combined_dict[date][num][para][step])
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["step"] = step
+                mm["Forecast date"] = date
+                self.add_coverage(mm, coordinates[date], val_dict)
 
         return self.covjson
