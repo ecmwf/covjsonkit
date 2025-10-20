@@ -209,7 +209,7 @@ class Grid(Decoder):
                 "number": ("number", np.array(numbers)),
                 "steps": ("steps", steps),
                 "levelist": ("levelist", levels),
-                "indicies": ("latitude", indicies),
+                "indicies": ("indicies", indicies),
             },
         )
 
