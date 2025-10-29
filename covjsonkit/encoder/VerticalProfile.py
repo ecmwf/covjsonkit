@@ -205,7 +205,7 @@ class VerticalProfile(Encoder):
             for date in fields["dates"]:
                 for num in fields["number"]:
                     val_dict = {}
-                    for step in fields["step"]:
+                    for s, step in enumerate(fields["step"]):
                         val_dict[step] = {}
                         for para in fields["param"]:
                             val_dict[step][para] = []
@@ -219,15 +219,15 @@ class VerticalProfile(Encoder):
                                         f"Available keys: {list(range_dict.keys())}"
                                     )
                                     raise IndexError(
-                                        "Key {key} not found in range_dict. "
-                                        "Please ensure all axes are compressed in config"
+                                        f"Key {key} not found in range_dict. "
+                                        f"Please ensure all axes are compressed in config"
                                     )
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         mm["Forecast date"] = date
                         mm["step"] = step
                         # del mm["step"]
-                        self.add_coverage(mm, coordinates[date][i][step], val_dict[step])
+                        self.add_coverage(mm, coordinates[date][i][s], val_dict[step])
 
         end = time.time()
         delta = end - start
