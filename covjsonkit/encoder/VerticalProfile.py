@@ -219,8 +219,8 @@ class VerticalProfile(Encoder):
                                         f"Available keys: {list(range_dict.keys())}"
                                     )
                                     raise IndexError(
-                                        "Key {key} not found in range_dict. "
-                                        "Please ensure all axes are compressed in config"
+                                        f"Key {key} not found in range_dict. "
+                                        f"Please ensure all axes are compressed in config"
                                     )
                         mm = mars_metadata.copy()
                         mm["number"] = num
