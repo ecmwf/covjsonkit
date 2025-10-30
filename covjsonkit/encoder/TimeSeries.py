@@ -241,6 +241,8 @@ class TimeSeries(Encoder):
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         mm["Forecast date"] = date
+                        mm["levelist"] = level
+                        coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
                         self.add_coverage(mm, coordinates[date][i], val_dict)
 
