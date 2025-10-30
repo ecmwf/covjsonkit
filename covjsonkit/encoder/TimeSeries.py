@@ -218,6 +218,10 @@ class TimeSeries(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
+        print(fields)
+        print(coordinates)
+        print(range_dict)
+
         for i, point in enumerate(range(points)):
             for date in fields["dates"]:
                 for level in fields["levels"]:
@@ -241,6 +245,8 @@ class TimeSeries(Encoder):
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         mm["Forecast date"] = date
+                        mm["levelist"] = level
+                        coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
                         self.add_coverage(mm, coordinates[date][i], val_dict)
 
