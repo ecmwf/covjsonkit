@@ -7,6 +7,7 @@ import covjsonkit.decoder.Circle
 import covjsonkit.decoder.Frame
 import covjsonkit.decoder.Grid
 import covjsonkit.decoder.Path
+import covjsonkit.decoder.Position
 import covjsonkit.decoder.Shapefile
 import covjsonkit.decoder.TimeSeries
 import covjsonkit.decoder.VerticalProfile
@@ -16,6 +17,7 @@ import covjsonkit.encoder.Circle
 import covjsonkit.encoder.Frame
 import covjsonkit.encoder.Grid
 import covjsonkit.encoder.Path
+import covjsonkit.encoder.Position
 import covjsonkit.encoder.Shapefile
 import covjsonkit.encoder.TimeSeries
 import covjsonkit.encoder.VerticalProfile
@@ -33,6 +35,7 @@ features_encoder = {
     "polygon": covjsonkit.encoder.Wkt.Wkt,
     "circle": covjsonkit.encoder.Circle.Circle,
     "grid": covjsonkit.encoder.Grid.Grid,
+    "position": covjsonkit.encoder.Position.Position,
 }
 features_decoder = {
     "pointseries": covjsonkit.decoder.TimeSeries.TimeSeries,
@@ -44,6 +47,7 @@ features_decoder = {
     "polygon": covjsonkit.decoder.Wkt.Wkt,
     "circle": covjsonkit.decoder.Circle.Circle,
     "grid": covjsonkit.decoder.Grid.Grid,
+    "position": covjsonkit.decoder.Position.Position,
 }
 
 
