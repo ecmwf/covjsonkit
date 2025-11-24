@@ -53,7 +53,7 @@ class Circle(Encoder):
         """
 
         self.covjson["type"] = "CoverageCollection"
-        self.covjson["domainType"] = "PointSeries"
+        self.covjson["domainType"] = "MultiPoint"
         self.covjson["coverages"] = []
 
         if "latitude" in dataset.coords:

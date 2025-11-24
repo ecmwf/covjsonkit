@@ -223,6 +223,9 @@ class Encoder(ABC):
                                         del range_dict[key]
             else:
                 tree.result = [float(val) if val is not None else val for val in tree.result]
+                print(tree.indexes)
+                if "indicies" in fields:
+                    fields["indicies"].extend(tree.indexes)
                 level_len = len(tree.result) / len(fields["levels"])
                 num_len = level_len / len(fields["number"])
                 para_len = num_len / len(fields["param"])
