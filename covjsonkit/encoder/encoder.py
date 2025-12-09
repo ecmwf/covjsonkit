@@ -96,7 +96,12 @@ class Encoder(ABC):
         # param_dict = get_param_from_db(param)
         # unit = get_unit_from_db(param_dict["unit_id"])
         param_dict = self.params[str(param)]
-        unit = self.units[str(param_dict["unit_id"])]
+        print(param)
+        if isinstance(param_dict["unit_id"], str):
+            unit = {"name": param_dict["unit_id"]}
+        else:
+            unit = self.units[str(param_dict["unit_id"])]
+        print(unit)
         parameter = {
             "type": "Parameter",
             "description": {"en": param_dict["description"]},
