@@ -85285,7 +85285,7 @@
     "name": "Solar radiation heating rate",
     "shortname": "sohr_rad",
     "description": null,
-    "unit_id": 37,
+    "unit_id": "K s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85300,7 +85300,7 @@
     "name": "Thermal radiation heating rate",
     "shortname": "thhr_rad",
     "description": null,
-    "unit_id": 37,
+    "unit_id": "K s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85315,7 +85315,7 @@
     "name": "Latent heat flux from bare soil",
     "shortname": "alhfl_bs",
     "description": null,
-    "unit_id": 76,
+    "unit_id": "W m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85330,7 +85330,7 @@
     "name": "Latent heat flux from plants",
     "shortname": "alhfl_pl",
     "description": null,
-    "unit_id": 76,
+    "unit_id": "W m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85360,7 +85360,7 @@
     "name": "Stomatal Resistance",
     "shortname": "rstom",
     "description": null,
-    "unit_id": 20,
+    "unit_id": "s m-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85540,7 +85540,7 @@
     "name": "vertical integral of divergence of total water content (s)",
     "shortname": "tdiv_hum",
     "description": null,
-    "unit_id": 22,
+    "unit_id": "kg m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85555,7 +85555,7 @@
     "name": "subgrid scale cloud water",
     "shortname": "qc_rad",
     "description": null,
-    "unit_id": 21,
+    "unit_id": "kg kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85570,7 +85570,7 @@
     "name": "subgridscale cloud ice",
     "shortname": "qi_rad",
     "description": null,
-    "unit_id": 21,
+    "unit_id": "kg kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85627,7 +85627,7 @@
     "name": "cloud base above msl, shallow convection",
     "shortname": "hbas_sc",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85642,7 +85642,7 @@
     "name": "cloud top above msl, shallow convection",
     "shortname": "htop_sc",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85657,7 +85657,7 @@
     "name": "specific cloud water content, convective cloud",
     "shortname": "clw_con",
     "description": null,
-    "unit_id": 21,
+    "unit_id": "kg kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85702,7 +85702,7 @@
     "name": "base index (vertical level) of main convective cloud (i)",
     "shortname": "bas_con",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85717,7 +85717,7 @@
     "name": "top index (vertical level) of main convective cloud (i)",
     "shortname": "top_con",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85732,7 +85732,7 @@
     "name": "Temperature tendency due to convection",
     "shortname": "dt_con",
     "description": null,
-    "unit_id": 37,
+    "unit_id": "K s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85747,7 +85747,7 @@
     "name": "Specific humitiy tendency due to convection",
     "shortname": "dqv_con",
     "description": null,
-    "unit_id": 39,
+    "unit_id": "kg kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85762,7 +85762,7 @@
     "name": "zonal wind tendency due to convection",
     "shortname": "du_con",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m s-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85777,7 +85777,7 @@
     "name": "meridional wind tendency due to convection",
     "shortname": "dv_con",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m s-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85792,7 +85792,7 @@
     "name": "height of top of dry convection",
     "shortname": "htop_dc",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85822,7 +85822,7 @@
     "name": "Height of snow fall limit",
     "shortname": "snowlmt",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85837,7 +85837,7 @@
     "name": "Tendency of specific cloud liquid water content due to conversion",
     "shortname": "dqc_con",
     "description": null,
-    "unit_id": 39,
+    "unit_id": "kg kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85852,7 +85852,7 @@
     "name": "tendency of  specific cloud ice content due to convection",
     "shortname": "dqi_con",
     "description": null,
-    "unit_id": 39,
+    "unit_id": "kg kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -85867,7 +85867,7 @@
     "name": "Specific content of precipitation particles (needed for water loadin)g",
     "shortname": "q_sedim",
     "description": null,
-    "unit_id": 21,
+    "unit_id": "kg kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86002,7 +86002,7 @@
     "name": "Temperature tendency due to grid scale precipation",
     "shortname": "dt_gsp",
     "description": null,
-    "unit_id": 37,
+    "unit_id": "K s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86017,7 +86017,7 @@
     "name": "Specific humitiy tendency due to grid scale precipitation",
     "shortname": "dqv_gsp",
     "description": null,
-    "unit_id": 39,
+    "unit_id": "kg kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86032,7 +86032,7 @@
     "name": "tendency of specific cloud liquid water content due to grid scale precipitation",
     "shortname": "dqc_gsp",
     "description": null,
-    "unit_id": 39,
+    "unit_id": "kg kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86047,7 +86047,7 @@
     "name": "Fresh snow factor (weighting function for albedo indicating freshness of snow)",
     "shortname": "freshsnw",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86062,7 +86062,7 @@
     "name": "tendency of specific cloud ice content due to grid scale precipitation",
     "shortname": "dqi_gsp",
     "description": null,
-    "unit_id": 39,
+    "unit_id": "kg kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86122,7 +86122,7 @@
     "name": "Pressure perturbation",
     "shortname": "pp",
     "description": null,
-    "unit_id": 16,
+    "unit_id": "Pa",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86137,7 +86137,7 @@
     "name": "supercell detection index 1 (rot. up+down drafts)",
     "shortname": "sdi_1",
     "description": null,
-    "unit_id": 8,
+    "unit_id": "s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86152,7 +86152,7 @@
     "name": "supercell detection index 2 (only rot. up drafts)",
     "shortname": "sdi_2",
     "description": null,
-    "unit_id": 8,
+    "unit_id": "s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86167,7 +86167,7 @@
     "name": "Convective Available Potential Energy, most unstable",
     "shortname": "cape_mu",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86182,7 +86182,7 @@
     "name": "Convective Inhibition, most unstable",
     "shortname": "cin_mu",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86197,7 +86197,7 @@
     "name": "Convective Available Potential Energy, mean layer",
     "shortname": "cape_ml",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86212,7 +86212,7 @@
     "name": "Convective Inhibition, mean layer",
     "shortname": "cin_ml",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86242,7 +86242,7 @@
     "name": "Tendency of turbulent kinetic energy",
     "shortname": "tketens",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m2 s-3",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86257,7 +86257,7 @@
     "name": "Kinetic Energy",
     "shortname": "ke",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86542,7 +86542,7 @@
     "name": "unknown",
     "shortname": "dttdiv",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86557,7 +86557,7 @@
     "name": "Effective transmissivity of solar radiation",
     "shortname": "sotr_rad",
     "description": null,
-    "unit_id": 37,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86572,7 +86572,7 @@
     "name": "sum of contributions to evaporation",
     "shortname": "evatra_sum",
     "description": null,
-    "unit_id": 22,
+    "unit_id": "kg m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86587,7 +86587,7 @@
     "name": "total transpiration from all soil layers",
     "shortname": "tra_sum",
     "description": null,
-    "unit_id": 22,
+    "unit_id": "kg m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86602,7 +86602,7 @@
     "name": "total forcing at soil surface",
     "shortname": "totforce_s",
     "description": null,
-    "unit_id": 76,
+    "unit_id": "W m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86617,7 +86617,7 @@
     "name": "residuum of soil moisture",
     "shortname": "resid_wso",
     "description": null,
-    "unit_id": 22,
+    "unit_id": "kg m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86632,7 +86632,7 @@
     "name": "Massflux at convective cloud base",
     "shortname": "mflx_con",
     "description": null,
-    "unit_id": 33,
+    "unit_id": "kg m-2 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86662,7 +86662,7 @@
     "name": "moisture convergence for Kuo-type closure",
     "shortname": "qcvg_con",
     "description": null,
-    "unit_id": 8,
+    "unit_id": "s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86827,7 +86827,7 @@
     "name": "analysis error(standard deviation), geopotential(gpm)",
     "shortname": "ana_err_fi",
     "description": null,
-    "unit_id": 28,
+    "unit_id": "gpm",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86842,7 +86842,7 @@
     "name": "analysis error(standard deviation), u-comp. of wind",
     "shortname": "ana_err_u",
     "description": null,
-    "unit_id": 15,
+    "unit_id": "m s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86857,7 +86857,7 @@
     "name": "analysis error(standard deviation), v-comp. of wind",
     "shortname": "ana_err_v",
     "description": null,
-    "unit_id": 15,
+    "unit_id": "m s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86872,7 +86872,7 @@
     "name": "zonal wind tendency due to subgrid scale oro.",
     "shortname": "du_sso",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m s-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86887,7 +86887,7 @@
     "name": "meridional wind tendency due to subgrid scale oro.",
     "shortname": "dv_sso",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m s-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86962,7 +86962,7 @@
     "name": "surface emissivity",
     "shortname": "emis_rad",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -86977,7 +86977,7 @@
     "name": "Soil Type",
     "shortname": "soiltyp",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87022,7 +87022,7 @@
     "name": "height of ozone maximum (climatological)",
     "shortname": "hmo3",
     "description": null,
-    "unit_id": 16,
+    "unit_id": "Pa",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87037,7 +87037,7 @@
     "name": "vertically integrated ozone content (climatological)",
     "shortname": "vio3",
     "description": null,
-    "unit_id": 16,
+    "unit_id": "Pa(O3)",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87217,7 +87217,7 @@
     "name": "ratio of monthly mean NDVI (normalized differential vegetation index) to annual maximum",
     "shortname": "ndvi_mrat",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87232,7 +87232,7 @@
     "name": "ratio of monthly mean NDVI (normalized differential vegetation index) to annual maximum",
     "shortname": "ndviratio",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87397,7 +87397,7 @@
     "name": "tendency of specific humidity",
     "shortname": "dqvdt",
     "description": null,
-    "unit_id": 8,
+    "unit_id": "s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87412,7 +87412,7 @@
     "name": "water vapor flux",
     "shortname": "qvsflx",
     "description": null,
-    "unit_id": 181,
+    "unit_id": "s-1 m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87427,7 +87427,7 @@
     "name": "Coriolis parameter",
     "shortname": "fc",
     "description": null,
-    "unit_id": 8,
+    "unit_id": "s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87487,7 +87487,7 @@
     "name": "Delay of the GPS signal trough the (total) atm.",
     "shortname": "ztd",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87502,7 +87502,7 @@
     "name": "Delay of the GPS signal trough wet atmos.",
     "shortname": "zwd",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -87517,7 +87517,7 @@
     "name": "Delay of the GPS signal trough dry atmos.",
     "shortname": "zhd",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88087,7 +88087,7 @@
     "name": "u-momentum flux due to SSO-effects",
     "shortname": "austr_sso",
     "description": null,
-    "unit_id": 32,
+    "unit_id": "N m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88102,7 +88102,7 @@
     "name": "u-momentum flux due to SSO-effects",
     "shortname": "ustr_sso",
     "description": null,
-    "unit_id": 32,
+    "unit_id": "N m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88117,7 +88117,7 @@
     "name": "v-momentum flux due to SSO-effects",
     "shortname": "avstr_sso",
     "description": null,
-    "unit_id": 32,
+    "unit_id": "N m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88132,7 +88132,7 @@
     "name": "v-momentum flux due to SSO-effects",
     "shortname": "vstr_sso",
     "description": null,
-    "unit_id": 32,
+    "unit_id": "N m-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88222,7 +88222,7 @@
     "name": "absolute vorticity advection",
     "shortname": "vabs",
     "description": null,
-    "unit_id": 89,
+    "unit_id": "s-2",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88237,7 +88237,7 @@
     "name": "NiederschlagBew.-ArtKombination Niederschl.-Bew.-Blautherm. (283..407)",
     "shortname": "cl_typ",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1"
     ],
@@ -88265,7 +88265,7 @@
     "name": "Konv.-U-Grenze-nn   Hoehe der Konvektionsuntergrenze ueber nn",
     "shortname": "ccl_nn",
     "description": null,
-    "unit_id": 4,
+    "unit_id": "m",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88295,7 +88295,7 @@
     "name": "geostrophische  Vorticityadvektion",
     "shortname": "advorg",
     "description": null,
-    "unit_id": 89,
+    "unit_id": "s-2",
     "encoding_ids": [
       "grib1"
     ],
@@ -88309,7 +88309,7 @@
     "name": "Geo Temperatur Adv  geostrophische Schichtdickenadvektion",
     "shortname": "advor",
     "description": null,
-    "unit_id": 184,
+    "unit_id": "m3 kg-1 s-1",
     "encoding_ids": [
       "grib1"
     ],
@@ -88323,7 +88323,7 @@
     "name": "Schichtdicken-Advektion",
     "shortname": "adrtg",
     "description": null,
-    "unit_id": 184,
+    "unit_id": "m3 kg-1 s-1",
     "encoding_ids": [
       "grib1"
     ],
@@ -88337,7 +88337,7 @@
     "name": "Winddivergenz",
     "shortname": "wdiv",
     "description": null,
-    "unit_id": 8,
+    "unit_id": "s-1",
     "encoding_ids": [
       "grib1"
     ],
@@ -88351,7 +88351,7 @@
     "name": "Qn-Vektor Q isother-senkr-KompQn ,Komp. Q-Vektor senkrecht zu den Isothermen",
     "shortname": "fqn",
     "description": null,
-    "unit_id": 185,
+    "unit_id": "m2 kg-1 s-1",
     "encoding_ids": [
       "grib1"
     ],
@@ -88365,7 +88365,7 @@
     "name": "Isentrope potentielle Vorticity",
     "shortname": "ipv",
     "description": null,
-    "unit_id": 18,
+    "unit_id": "K m2 kg-1 s-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88380,7 +88380,7 @@
     "name": "XIPV Wind X-Komp     Wind X-Komponente auf isentropen Flaechen",
     "shortname": "up",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m s-1",
     "encoding_ids": [
       "grib1"
     ],
@@ -88394,7 +88394,7 @@
     "name": "YIPV Wind Y-Komp     Wind Y-Komponente auf isentropen Flaechen",
     "shortname": "vp",
     "description": null,
-    "unit_id": 5,
+    "unit_id": "m s-1",
     "encoding_ids": [
       "grib1"
     ],
@@ -88483,7 +88483,7 @@
     "name": "modified cloud depth for media",
     "shortname": "cldepth",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88498,7 +88498,7 @@
     "name": "modified cloud cover for media",
     "shortname": "clct_mod",
     "description": null,
-    "unit_id": 7,
+    "unit_id": "Numeric",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88723,7 +88723,7 @@
     "name": "Monthly Mean of RMS of difference FG-AN of kinetic energy",
     "shortname": "efa-ke",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -88738,7 +88738,7 @@
     "name": "Monthly Mean of RMS of difference IA-AN of kinetic energy",
     "shortname": "eia-ke",
     "description": null,
-    "unit_id": 17,
+    "unit_id": "J kg-1",
     "encoding_ids": [
       "grib1",
       "grib2"
@@ -95360,5 +95360,4772 @@
     "name": "Diagnostic total mass concentration of volcanic ash",
     "shortname": "ASH_TOTAL_MC",
     "unit_id": "kg m-3"
+  },
+  "503714": {
+    "description": "Extreme weather index of total precipitation (Accumulation)",
+    "id": 503714,
+    "name": "Extreme weather index of total precipitation (Accumulation)",
+    "shortname": "TOT_PREC_EWI",
+    "unit_id": "kg m-2"
+  },
+  "503558": {
+    "description": "Duration of updraft",
+    "id": 503558,
+    "name": "Duration of updraft",
+    "shortname": "W_UP_DUR",
+    "unit_id": "s"
+  },
+  "503377": {
+    "description": "Number of alder (alnus) pollen in the reservoir (previous timestep)",
+    "id": 503377,
+    "name": "Number of alder (alnus) pollen in the reservoir (previous timestep)",
+    "shortname": "ALNUreso",
+    "unit_id": "m-2"
+  },
+  "500718": {
+    "description": "DUMMY_68",
+    "id": 500718,
+    "name": "DUMMY_68",
+    "shortname": "DUMMY_68",
+    "unit_id": 1
+  },
+  "503223": {
+    "description": "Relative geostrophic vorticity advection",
+    "id": 503223,
+    "name": "Relative geostrophic vorticity advection",
+    "shortname": "RELV_ADV_G",
+    "unit_id": "s-2"
+  },
+  "503441": {
+    "description": "Accumulated wet deposition of dust if rain reaches the surface for mode 2",
+    "id": 503441,
+    "name": "Accumulated wet deposition of dust if rain reaches the surface for mode 2",
+    "shortname": "ACCWETDEPO_RAIN_DUSTB",
+    "unit_id": "kg m-2"
+  },
+  "500635": {
+    "description": "Shear-production of TKE due to separated horizontal shear modes",
+    "id": 500635,
+    "name": "Shear-production of TKE due to separated horizontal shear modes",
+    "shortname": "DTKE_HSH",
+    "unit_id": "m2 s-3"
+  },
+  "500874": {
+    "description": "DUMMY_224",
+    "id": 500874,
+    "name": "DUMMY_224",
+    "shortname": "DUMMY_224",
+    "unit_id": 1
+  },
+  "503162": {
+    "description": "Percentage of convective precipitation (from total prec)",
+    "id": 503162,
+    "name": "Percentage of convective precipitation (from total prec)",
+    "shortname": "CONV_PERCENT",
+    "unit_id": "%"
+  },
+  "500747": {
+    "description": "DUMMY_97",
+    "id": 500747,
+    "name": "DUMMY_97",
+    "shortname": "DUMMY_97",
+    "unit_id": 1
+  },
+  "500726": {
+    "description": "DUMMY_76",
+    "id": 500726,
+    "name": "DUMMY_76",
+    "shortname": "DUMMY_76",
+    "unit_id": 1
+  },
+  "500622": {
+    "description": "Prob Schweres Gewitter",
+    "id": 500622,
+    "name": "Prob Schweres Gewitter",
+    "shortname": "TSXX",
+    "unit_id": "Numeric"
+  },
+  "503641": {
+    "description": "Height correction for emission (decreasing emission with height) for hazel (corylus)",
+    "id": 503641,
+    "name": "Height correction for emission (decreasing emission with height) for hazel (corylus)",
+    "shortname": "CORYhcem",
+    "unit_id": "0-1"
+  },
+  "500700": {
+    "description": "DUMMY_50",
+    "id": 500700,
+    "name": "DUMMY_50",
+    "shortname": "DUMMY_50",
+    "unit_id": 1
+  },
+  "502344": {
+    "description": "Albedo - diffusive solar - time average (UV: 0.3 - 0.7 m-6)",
+    "id": 502344,
+    "name": "Albedo - diffusive solar - time average (UV: 0.3 - 0.7 m-6)",
+    "shortname": "ALB_UV12",
+    "unit_id": "%"
+  },
+  "500884": {
+    "description": "DUMMY_234",
+    "id": 500884,
+    "name": "DUMMY_234",
+    "shortname": "DUMMY_234",
+    "unit_id": 1
+  },
+  "500527": {
+    "description": "Icing Degree Code (1=light,2=moderate,3=severe)",
+    "id": 500527,
+    "name": "Icing Degree Code (1=light,2=moderate,3=severe)",
+    "shortname": "PID_CODE",
+    "unit_id": "Numeric"
+  },
+  "500529": {
+    "description": "Icing Degree Code (1=light,2=moderate,3=severe)",
+    "id": 500529,
+    "name": "Icing Degree Code (1=light,2=moderate,3=severe)",
+    "shortname": "DID_CODE",
+    "unit_id": "Numeric"
+  },
+  "500777": {
+    "description": "DUMMY_127",
+    "id": 500777,
+    "name": "DUMMY_127",
+    "shortname": "DUMMY_127",
+    "unit_id": 1
+  },
+  "500792": {
+    "description": "DUMMY_142",
+    "id": 500792,
+    "name": "DUMMY_142",
+    "shortname": "DUMMY_142",
+    "unit_id": 1
+  },
+  "500542": {
+    "description": "Relative vorticity, v-component",
+    "id": 500542,
+    "name": "Relative vorticity, v-component",
+    "shortname": "VORTIC_V",
+    "unit_id": "s-1"
+  },
+  "500786": {
+    "description": "DUMMY_136",
+    "id": 500786,
+    "name": "DUMMY_136",
+    "shortname": "DUMMY_136",
+    "unit_id": 1
+  },
+  "500446": {
+    "description": "Probability of 6h accumulated snow >= 10cm",
+    "id": 500446,
+    "name": "Probability of 6h accumulated snow >= 10cm",
+    "shortname": "U_SFSK_06",
+    "unit_id": "kg m2"
+  },
+  "500857": {
+    "description": "DUMMY_207",
+    "id": 500857,
+    "name": "DUMMY_207",
+    "shortname": "DUMMY_207",
+    "unit_id": 1
+  },
+  "500847": {
+    "description": "DUMMY_197",
+    "id": 500847,
+    "name": "DUMMY_197",
+    "shortname": "DUMMY_197",
+    "unit_id": 1
+  },
+  "500826": {
+    "description": "DUMMY_176",
+    "id": 500826,
+    "name": "DUMMY_176",
+    "shortname": "DUMMY_176",
+    "unit_id": 1
+  },
+  "500481": {
+    "description": "Downward diffusive short wave radiation flux at surface (mean over forecast time)",
+    "id": 500481,
+    "name": "Downward diffusive short wave radiation flux at surface (mean over forecast time)",
+    "shortname": "ASWDIFD_S",
+    "unit_id": "W m-2"
+  },
+  "500644": {
+    "description": "Mass concentration of dust (maximum mode)",
+    "id": 500644,
+    "name": "Mass concentration of dust (maximum mode)",
+    "shortname": "VSOILC",
+    "unit_id": "kg m-3"
+  },
+  "500713": {
+    "description": "DUMMY_63",
+    "id": 500713,
+    "name": "DUMMY_63",
+    "shortname": "DUMMY_63",
+    "unit_id": 1
+  },
+  "503612": {
+    "description": "Number of active clouds per horizontal unit area",
+    "id": 503612,
+    "name": "Number of active clouds per horizontal unit area",
+    "shortname": "NCL_PUA_ACT",
+    "unit_id": "m-2"
+  },
+  "503351": {
+    "description": "mean radiation temperature of an environment assumed black body related to standing human",
+    "id": 503351,
+    "name": "mean radiation temperature of an environment assumed black body related to standing human",
+    "shortname": "T_MRT",
+    "unit_id": "K"
+  },
+  "500895": {
+    "description": "DUMMY_245",
+    "id": 500895,
+    "name": "DUMMY_245",
+    "shortname": "DUMMY_245",
+    "unit_id": 1
+  },
+  "503057": {
+    "description": "Specific cloud ice content (diagnostic)",
+    "id": 503057,
+    "name": "Specific cloud ice content (diagnostic)",
+    "shortname": "QI_DIA",
+    "unit_id": "kg kg-1"
+  },
+  "500438": {
+    "description": "Probability of 1h total precipitation >= 25mm",
+    "id": 500438,
+    "name": "Probability of 1h total precipitation >= 25mm",
+    "shortname": "U_SKRRH_01",
+    "unit_id": "kg m2"
+  },
+  "500462": {
+    "description": "Probability of strong snowdrift during 12h",
+    "id": 500462,
+    "name": "Probability of strong snowdrift during 12h",
+    "shortname": "U_SVWSK_12",
+    "unit_id": "Numeric"
+  },
+  "503053": {
+    "description": "Radar blacklist",
+    "id": 503053,
+    "name": "Radar blacklist",
+    "shortname": "RAD_BL",
+    "unit_id": "Numeric"
+  },
+  "500888": {
+    "description": "DUMMY_238",
+    "id": 500888,
+    "name": "DUMMY_238",
+    "shortname": "DUMMY_238",
+    "unit_id": 1
+  },
+  "500540": {
+    "description": "cloud top temperature",
+    "id": 500540,
+    "name": "cloud top temperature",
+    "shortname": "CL_TOP_TEMP",
+    "unit_id": "K"
+  },
+  "502352": {
+    "description": "Eddy Dissipation Rate Total Col-Max. Upper FIR",
+    "id": 502352,
+    "name": "Eddy Dissipation Rate Total Col-Max. Upper FIR",
+    "shortname": "EDP_MAX_UFIR",
+    "unit_id": "m2/3 s-1"
+  },
+  "500560": {
+    "description": "Frontogenesefunktion",
+    "id": 500560,
+    "name": "Frontogenesefunktion",
+    "shortname": "FRONTO",
+    "unit_id": "K2 m-2 s-1"
+  },
+  "500531": {
+    "description": "current weather (symbol number: 0..9)",
+    "id": 500531,
+    "name": "current weather (symbol number: 0..9)",
+    "shortname": "WW_0-9",
+    "unit_id": "Numeric"
+  },
+  "500795": {
+    "description": "DUMMY_145",
+    "id": 500795,
+    "name": "DUMMY_145",
+    "shortname": "DUMMY_145",
+    "unit_id": 1
+  },
+  "500771": {
+    "description": "DUMMY_121",
+    "id": 500771,
+    "name": "DUMMY_121",
+    "shortname": "DUMMY_121",
+    "unit_id": 1
+  },
+  "500696": {
+    "description": "DUMMY_46",
+    "id": 500696,
+    "name": "DUMMY_46",
+    "shortname": "DUMMY_46",
+    "unit_id": 1
+  },
+  "500879": {
+    "description": "DUMMY_229",
+    "id": 500879,
+    "name": "DUMMY_229",
+    "shortname": "DUMMY_229",
+    "unit_id": 1
+  },
+  "503199": {
+    "description": "Cross-wind velocity fluctuation (Hanna)",
+    "id": 503199,
+    "name": "Cross-wind velocity fluctuation (Hanna)",
+    "shortname": "SIGMAV",
+    "unit_id": "m s-1"
+  },
+  "503190": {
+    "description": "Downward long-wave radiation flux at surface based on T_G (time average)",
+    "id": 503190,
+    "name": "Downward long-wave radiation flux at surface based on T_G (time average)",
+    "shortname": "ATHD_S_TG",
+    "unit_id": "W m-2 "
+  },
+  "503427": {
+    "description": "U-component of (vertical) wind shear vector between two levels",
+    "id": 503427,
+    "name": "U-component of (vertical) wind shear vector between two levels",
+    "shortname": "WSHEAR_U",
+    "unit_id": "m s-1"
+  },
+  "503394": {
+    "description": "Sum of released grasses (poaceae) pollen into the reservoir (daily sum)",
+    "id": 503394,
+    "name": "Sum of released grasses (poaceae) pollen into the reservoir (daily sum)",
+    "shortname": "POACress",
+    "unit_id": "m-2"
+  },
+  "500524": {
+    "description": "Icing Top (hft) - Icing Scenario Composit",
+    "id": 500524,
+    "name": "Icing Top (hft) - Icing Scenario Composit",
+    "shortname": "DISC_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "500776": {
+    "description": "DUMMY_126",
+    "id": 500776,
+    "name": "DUMMY_126",
+    "shortname": "DUMMY_126",
+    "unit_id": 1
+  },
+  "503603": {
+    "description": "Soil water mass flux at layer interfaces (sum of conductive and diffusive fluxes)",
+    "id": 503603,
+    "name": "Soil water mass flux at layer interfaces (sum of conductive and diffusive fluxes)",
+    "shortname": "WSOIL_FLX",
+    "unit_id": "kg m-2 s-1"
+  },
+  "503124": {
+    "description": "Mass density of snow",
+    "id": 503124,
+    "name": "Mass density of snow",
+    "shortname": "DENS",
+    "unit_id": "kg m-3"
+  },
+  "500673": {
+    "description": "DUMMY_23",
+    "id": 500673,
+    "name": "DUMMY_23",
+    "shortname": "DUMMY_23",
+    "unit_id": 1
+  },
+  "500802": {
+    "description": "DUMMY_152",
+    "id": 500802,
+    "name": "DUMMY_152",
+    "shortname": "DUMMY_152",
+    "unit_id": 1
+  },
+  "500899": {
+    "description": "DUMMY_249",
+    "id": 500899,
+    "name": "DUMMY_249",
+    "shortname": "DUMMY_249",
+    "unit_id": 1
+  },
+  "503143": {
+    "description": "Rain drain from snowpack - accumulation",
+    "id": 503143,
+    "name": "Rain drain from snowpack - accumulation",
+    "shortname": "RD_SNOW",
+    "unit_id": "kg m-2"
+  },
+  "500463": {
+    "description": "Probability of temperature < 0 deg C during 1h",
+    "id": 500463,
+    "name": "Probability of temperature < 0 deg C during 1h",
+    "shortname": "W_FR_01",
+    "unit_id": "K"
+  },
+  "503226": {
+    "description": "Wind divergence (3D)",
+    "id": 503226,
+    "name": "Wind divergence (3D)",
+    "shortname": "WDIV_3D",
+    "unit_id": "s-1"
+  },
+  "503205": {
+    "description": "Percentage of precipitation in snow (from total prec.)",
+    "id": 503205,
+    "name": "Percentage of precipitation in snow (from total prec.)",
+    "shortname": "SNOW_PERCENT",
+    "unit_id": "%"
+  },
+  "500507": {
+    "description": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Degree Composit",
+    "id": 500507,
+    "name": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Degree Composit",
+    "shortname": "PIDC_VERT_CODE",
+    "unit_id": "Numeric"
+  },
+  "500634": {
+    "description": "Wake-production of TKE due to sub-grid scale orography",
+    "id": 500634,
+    "name": "Wake-production of TKE due to sub-grid scale orography",
+    "shortname": "DTKE_SSO",
+    "unit_id": "m2 s-3"
+  },
+  "500896": {
+    "description": "DUMMY_246",
+    "id": 500896,
+    "name": "DUMMY_246",
+    "shortname": "DUMMY_246",
+    "unit_id": 1
+  },
+  "500682": {
+    "description": "DUMMY_32",
+    "id": 500682,
+    "name": "DUMMY_32",
+    "shortname": "DUMMY_32",
+    "unit_id": 1
+  },
+  "503456": {
+    "description": "Accumulated sedimentation of dust number concentration for mode 2",
+    "id": 503456,
+    "name": "Accumulated sedimentation of dust number concentration for mode 2",
+    "shortname": "ACCSEDIM_DUSTB0",
+    "unit_id": "m-2"
+  },
+  "500822": {
+    "description": "DUMMY_172",
+    "id": 500822,
+    "name": "DUMMY_172",
+    "shortname": "DUMMY_172",
+    "unit_id": 1
+  },
+  "503395": {
+    "description": "State of the grasses (poaceae) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "id": 503395,
+    "name": "State of the grasses (poaceae) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "shortname": "POACsdes",
+    "unit_id": "0-1"
+  },
+  "500699": {
+    "description": "DUMMY_49",
+    "id": 500699,
+    "name": "DUMMY_49",
+    "shortname": "DUMMY_49",
+    "unit_id": 1
+  },
+  "500659": {
+    "description": "DUMMY_9",
+    "id": 500659,
+    "name": "DUMMY_9",
+    "shortname": "DUMMY_9",
+    "unit_id": 1
+  },
+  "500585": {
+    "description": "Eddy Dissipation Rate",
+    "id": 500585,
+    "name": "Eddy Dissipation Rate",
+    "shortname": "EDP",
+    "unit_id": "m2/3 s-1"
+  },
+  "503369": {
+    "description": "Cumulated weighted 2m temperature sum of daily values for birch (betula) pollen",
+    "id": 503369,
+    "name": "Cumulated weighted 2m temperature sum of daily values for birch (betula) pollen",
+    "shortname": "BETUctsum",
+    "unit_id": "deg C"
+  },
+  "500508": {
+    "description": "Icing Max Code (1=light,2=moderate,3=severe) - Icing Degree Composit",
+    "id": 500508,
+    "name": "Icing Max Code (1=light,2=moderate,3=severe) - Icing Degree Composit",
+    "shortname": "PIDC_MAX_CODE",
+    "unit_id": "Numeric"
+  },
+  "503178": {
+    "description": "Downward short wave radiation flux at surface on vertical surface facing south (time average)",
+    "id": 503178,
+    "name": "Downward short wave radiation flux at surface on vertical surface facing south (time average)",
+    "shortname": "ASOD_SvS",
+    "unit_id": "W m-2"
+  },
+  "503452": {
+    "description": "Accumulated wet deposition of dust number concentration  if rain reaches the surface for mode 1",
+    "id": 503452,
+    "name": "Accumulated wet deposition of dust number concentration  if rain reaches the surface for mode 1",
+    "shortname": "ACCWETDEPO_RAIN_DUSTA0",
+    "unit_id": "m-2"
+  },
+  "500658": {
+    "description": "DUMMY_8",
+    "id": 500658,
+    "name": "DUMMY_8",
+    "shortname": "DUMMY_8",
+    "unit_id": 1
+  },
+  "500437": {
+    "description": "Probability of 1h total precipitation >= 10mm",
+    "id": 500437,
+    "name": "Probability of 1h total precipitation >= 10mm",
+    "shortname": "W_SKRR_01",
+    "unit_id": "kg m2"
+  },
+  "503203": {
+    "description": "Vertical velocity fluctuation (Hanna)",
+    "id": 503203,
+    "name": "Vertical velocity fluctuation (Hanna)",
+    "shortname": "SIGMAZ",
+    "unit_id": "m s-1"
+  },
+  "500854": {
+    "description": "DUMMY_204",
+    "id": 500854,
+    "name": "DUMMY_204",
+    "shortname": "DUMMY_204",
+    "unit_id": 1
+  },
+  "500702": {
+    "description": "DUMMY_52",
+    "id": 500702,
+    "name": "DUMMY_52",
+    "shortname": "DUMMY_52",
+    "unit_id": 1
+  },
+  "500898": {
+    "description": "DUMMY_248",
+    "id": 500898,
+    "name": "DUMMY_248",
+    "shortname": "DUMMY_248",
+    "unit_id": 1
+  },
+  "503137": {
+    "description": "Eddy Dissipation Rate Total Col-Max. Lower FIR",
+    "id": 503137,
+    "name": "Eddy Dissipation Rate Total Col-Max. Lower FIR",
+    "shortname": "EDP_MAX_LFIR",
+    "unit_id": "m2/3 s-1"
+  },
+  "503217": {
+    "description": "2m temperature, corrected in presence of snow",
+    "id": 503217,
+    "name": "2m temperature, corrected in presence of snow",
+    "shortname": "T_2M_SNOWC",
+    "unit_id": "K"
+  },
+  "503117": {
+    "description": "Specific number concentration of snow",
+    "id": 503117,
+    "name": "Specific number concentration of snow",
+    "shortname": "NCSNOW",
+    "unit_id": "kg-1"
+  },
+  "500866": {
+    "description": "DUMMY_216",
+    "id": 500866,
+    "name": "DUMMY_216",
+    "shortname": "DUMMY_216",
+    "unit_id": 1
+  },
+  "500833": {
+    "description": "DUMMY_183",
+    "id": 500833,
+    "name": "DUMMY_183",
+    "shortname": "DUMMY_183",
+    "unit_id": 1
+  },
+  "503179": {
+    "description": "Downward short wave radiation flux at surface on vertical surface facing west (time average)",
+    "id": 503179,
+    "name": "Downward short wave radiation flux at surface on vertical surface facing west (time average)",
+    "shortname": "ASOD_SvW",
+    "unit_id": "W m-2"
+  },
+  "503122": {
+    "description": "Number density of hail",
+    "id": 503122,
+    "name": "Number density of hail",
+    "shortname": "NDHAIL",
+    "unit_id": "m-3"
+  },
+  "500684": {
+    "description": "DUMMY_34",
+    "id": 500684,
+    "name": "DUMMY_34",
+    "shortname": "DUMMY_34",
+    "unit_id": 1
+  },
+  "503609": {
+    "description": "Total column meridional water flux",
+    "id": 503609,
+    "name": "Total column meridional water flux",
+    "shortname": "TWATFLXV",
+    "unit_id": "kg m-1 s-1"
+  },
+  "500749": {
+    "description": "DUMMY_99",
+    "id": 500749,
+    "name": "DUMMY_99",
+    "shortname": "DUMMY_99",
+    "unit_id": 1
+  },
+  "503650": {
+    "description": "Number of days since the start of hazel (corylus) pollen season (if present day is outside the season: length of current season)",
+    "id": 503650,
+    "name": "Number of days since the start of hazel (corylus) pollen season (if present day is outside the season: length of current season)",
+    "shortname": "CORYsaisa",
+    "unit_id": "d"
+  },
+  "500773": {
+    "description": "DUMMY_123",
+    "id": 500773,
+    "name": "DUMMY_123",
+    "shortname": "DUMMY_123",
+    "unit_id": 1
+  },
+  "500685": {
+    "description": "DUMMY_35",
+    "id": 500685,
+    "name": "DUMMY_35",
+    "shortname": "DUMMY_35",
+    "unit_id": 1
+  },
+  "503448": {
+    "description": "Accumulated dry deposition of dust number concentration for mode 3",
+    "id": 503448,
+    "name": "Accumulated dry deposition of dust number concentration for mode 3",
+    "shortname": "ACCDRYDEPO_DUSTC0",
+    "unit_id": "m-2"
+  },
+  "503069": {
+    "description": "precipitation,BRD",
+    "id": 503069,
+    "name": "precipitation,BRD",
+    "shortname": "RADAR_RS",
+    "unit_id": "kg m-2"
+  },
+  "503604": {
+    "description": "Ground water runoff rate, aquifer",
+    "id": 503604,
+    "name": "Ground water runoff rate, aquifer",
+    "shortname": "Q_ROFF",
+    "unit_id": "kg m-3 s-1"
+  },
+  "503670": {
+    "description": "Volumetric heat capacity of urban material (capacity x density)",
+    "id": 503670,
+    "name": "Volumetric heat capacity of urban material (capacity x density)",
+    "shortname": "URB_HCAP",
+    "unit_id": "J m-3 K-1"
+  },
+  "500873": {
+    "description": "DUMMY_223",
+    "id": 500873,
+    "name": "DUMMY_223",
+    "shortname": "DUMMY_223",
+    "unit_id": 1
+  },
+  "500518": {
+    "description": "Icing Top (hft) - Icing Degree Composit",
+    "id": 500518,
+    "name": "Icing Top (hft) - Icing Degree Composit",
+    "shortname": "DIDC_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "500768": {
+    "description": "DUMMY_118",
+    "id": 500768,
+    "name": "DUMMY_118",
+    "shortname": "DUMMY_118",
+    "unit_id": 1
+  },
+  "500730": {
+    "description": "DUMMY_80",
+    "id": 500730,
+    "name": "DUMMY_80",
+    "shortname": "DUMMY_80",
+    "unit_id": 1
+  },
+  "500877": {
+    "description": "DUMMY_227",
+    "id": 500877,
+    "name": "DUMMY_227",
+    "shortname": "DUMMY_227",
+    "unit_id": 1
+  },
+  "503733": {
+    "description": "NowCastMIX-AutoWARN (Schneepolygon-Attribute)",
+    "id": 503733,
+    "name": "NowCastMIX-AutoWARN (Schneepolygon-Attribute)",
+    "shortname": "NCM_AW_SPA",
+    "unit_id": "numeric"
+  },
+  "500785": {
+    "description": "DUMMY_135",
+    "id": 500785,
+    "name": "DUMMY_135",
+    "shortname": "DUMMY_135",
+    "unit_id": 1
+  },
+  "503373": {
+    "description": "Length of birch (betula) pollen season",
+    "id": 503373,
+    "name": "Length of birch (betula) pollen season",
+    "shortname": "BETUsaisl",
+    "unit_id": "d"
+  },
+  "503152": {
+    "description": "Gauss Boaga Coordinates West to East, West Sector",
+    "id": 503152,
+    "name": "Gauss Boaga Coordinates West to East, West Sector",
+    "shortname": "BOAGAW_WE",
+    "unit_id": "m"
+  },
+  "500849": {
+    "description": "DUMMY_199",
+    "id": 500849,
+    "name": "DUMMY_199",
+    "shortname": "DUMMY_199",
+    "unit_id": 1
+  },
+  "500791": {
+    "description": "DUMMY_141",
+    "id": 500791,
+    "name": "DUMMY_141",
+    "shortname": "DUMMY_141",
+    "unit_id": 1
+  },
+  "503425": {
+    "description": "Skin conductivity (ratio ground heat flux to temperature difference soil-skin layer)",
+    "id": 503425,
+    "name": "Skin conductivity (ratio ground heat flux to temperature difference soil-skin layer)",
+    "shortname": "SKC",
+    "unit_id": "W m-2 K-1"
+  },
+  "500698": {
+    "description": "DUMMY_48",
+    "id": 500698,
+    "name": "DUMMY_48",
+    "shortname": "DUMMY_48",
+    "unit_id": 1
+  },
+  "503658": {
+    "description": "Height of new snow (without settling)",
+    "id": 503658,
+    "name": "Height of new snow (without settling)",
+    "shortname": "H_NEWSNOW_M",
+    "unit_id": "m"
+  },
+  "500810": {
+    "description": "DUMMY_160",
+    "id": 500810,
+    "name": "DUMMY_160",
+    "shortname": "DUMMY_160",
+    "unit_id": 1
+  },
+  "503189": {
+    "description": "Downward long-wave radiation flux at surface based on T_2M (time average)",
+    "id": 503189,
+    "name": "Downward long-wave radiation flux at surface based on T_2M (time average)",
+    "shortname": "ATHD_S_T2M",
+    "unit_id": "W m-2 "
+  },
+  "502345": {
+    "description": "Albedo - diffusive solar (UV: 0.3 - 0.7 m-6)",
+    "id": 502345,
+    "name": "Albedo - diffusive solar (UV: 0.3 - 0.7 m-6)",
+    "shortname": "ALB_UV",
+    "unit_id": "%"
+  },
+  "500728": {
+    "description": "DUMMY_78",
+    "id": 500728,
+    "name": "DUMMY_78",
+    "shortname": "DUMMY_78",
+    "unit_id": 1
+  },
+  "503756": {
+    "description": "Upward diffusive short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "id": 503756,
+    "name": "Upward diffusive short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "shortname": "ASWDIFU_S_OS",
+    "unit_id": "W m-2"
+  },
+  "503070": {
+    "description": "precipitation phase,BRD",
+    "id": 503070,
+    "name": "precipitation phase,BRD",
+    "shortname": "RADAR_RE",
+    "unit_id": "Numeric"
+  },
+  "503611": {
+    "description": "Total column meridional water flux - time average",
+    "id": 503611,
+    "name": "Total column meridional water flux - time average",
+    "shortname": "ATWATFLXV",
+    "unit_id": "kg m-1 s-1"
+  },
+  "500858": {
+    "description": "DUMMY_208",
+    "id": 500858,
+    "name": "DUMMY_208",
+    "shortname": "DUMMY_208",
+    "unit_id": 1
+  },
+  "500695": {
+    "description": "DUMMY_45",
+    "id": 500695,
+    "name": "DUMMY_45",
+    "shortname": "DUMMY_45",
+    "unit_id": 1
+  },
+  "503585": {
+    "description": "10m wind speed in wind sector (time average)",
+    "id": 503585,
+    "name": "10m wind speed in wind sector (time average)",
+    "shortname": "SP_10M_SECAV",
+    "unit_id": "m s-1"
+  },
+  "500904": {
+    "description": "DUMMY_254",
+    "id": 500904,
+    "name": "DUMMY_254",
+    "shortname": "DUMMY_254",
+    "unit_id": 1
+  },
+  "500694": {
+    "description": "DUMMY_44",
+    "id": 500694,
+    "name": "DUMMY_44",
+    "shortname": "DUMMY_44",
+    "unit_id": 1
+  },
+  "500766": {
+    "description": "DUMMY_116",
+    "id": 500766,
+    "name": "DUMMY_116",
+    "shortname": "DUMMY_116",
+    "unit_id": 1
+  },
+  "503740": {
+    "description": "NowCastMIX-AutoWARN (Gewitter-Warnkeulen mit variablen L??ngen)",
+    "id": 503740,
+    "name": "NowCastMIX-AutoWARN (Gewitter-Warnkeulen mit variablen L??ngen)",
+    "shortname": "NCM_AW_WKVL",
+    "unit_id": "numeric"
+  },
+  "503227": {
+    "description": "Mean vertical wind shear for specified layer or layer-mean vertical wind shear",
+    "id": 503227,
+    "name": "Mean vertical wind shear for specified layer or layer-mean vertical wind shear",
+    "shortname": "WSHEAR_INT",
+    "unit_id": "s-1"
+  },
+  "500903": {
+    "description": "DUMMY_253",
+    "id": 500903,
+    "name": "DUMMY_253",
+    "shortname": "DUMMY_253",
+    "unit_id": 1
+  },
+  "503367": {
+    "description": "Height correction for emission (decreasing emission with height) for birch (betula)",
+    "id": 503367,
+    "name": "Height correction for emission (decreasing emission with height) for birch (betula)",
+    "shortname": "BETUhcem",
+    "unit_id": "0-1"
+  },
+  "500757": {
+    "description": "DUMMY_107",
+    "id": 500757,
+    "name": "DUMMY_107",
+    "shortname": "DUMMY_107",
+    "unit_id": 1
+  },
+  "500449": {
+    "description": "Probability of 12h accumulated snow >= 15cm",
+    "id": 500449,
+    "name": "Probability of 12h accumulated snow >= 15cm",
+    "shortname": "U_SFSK_12",
+    "unit_id": "kg m2"
+  },
+  "500717": {
+    "description": "DUMMY_67",
+    "id": 500717,
+    "name": "DUMMY_67",
+    "shortname": "DUMMY_67",
+    "unit_id": 1
+  },
+  "500626": {
+    "description": "Prob Schneeverwehung",
+    "id": 500626,
+    "name": "Prob Schneeverwehung",
+    "shortname": "BLSN6",
+    "unit_id": "Numeric"
+  },
+  "503389": {
+    "description": "Pollen number emission flux for alder (alnus)",
+    "id": 503389,
+    "name": "Pollen number emission flux for alder (alnus)",
+    "shortname": "ALNUfe",
+    "unit_id": "m-2s-1"
+  },
+  "500832": {
+    "description": "DUMMY_182",
+    "id": 500832,
+    "name": "DUMMY_182",
+    "shortname": "DUMMY_182",
+    "unit_id": 1
+  },
+  "500686": {
+    "description": "DUMMY_36",
+    "id": 500686,
+    "name": "DUMMY_36",
+    "shortname": "DUMMY_36",
+    "unit_id": 1
+  },
+  "503359": {
+    "description": "Evaporation of plants (integrated since \"nightly reset\")",
+    "id": 503359,
+    "name": "Evaporation of plants (integrated since \"nightly reset\")",
+    "shortname": "EVAP_PL",
+    "unit_id": "kg m-2"
+  },
+  "500458": {
+    "description": "Probability of thunderstorm during 1h",
+    "id": 500458,
+    "name": "Probability of thunderstorm during 1h",
+    "shortname": "W_GEW_01",
+    "unit_id": "Numeric"
+  },
+  "500681": {
+    "description": "DUMMY_31",
+    "id": 500681,
+    "name": "DUMMY_31",
+    "shortname": "DUMMY_31",
+    "unit_id": 1
+  },
+  "503765": {
+    "description": "Temperature in lowest model layer - time-filtered assimilation increment, daytime weighting",
+    "id": 503765,
+    "name": "Temperature in lowest model layer - time-filtered assimilation increment, daytime weighting",
+    "shortname": "T_LML_DTWGT_FILTINC",
+    "unit_id": "K"
+  },
+  "500639": {
+    "description": "Height of thermals above MSL",
+    "id": 500639,
+    "name": "Height of thermals above MSL",
+    "shortname": "HTOP_THERM",
+    "unit_id": "m"
+  },
+  "502339": {
+    "description": "Downward direct short wave radiation flux at surface",
+    "id": 502339,
+    "name": "Downward direct short wave radiation flux at surface",
+    "shortname": "SWDIRS_RAD",
+    "unit_id": "W m-2"
+  },
+  "500637": {
+    "description": "Production of TKE",
+    "id": 500637,
+    "name": "Production of TKE",
+    "shortname": "DTKE",
+    "unit_id": "m2 s-3"
+  },
+  "500591": {
+    "description": "Niederschlagsdargebot: potential water supply (rain and snow melt) from snowpack - accumulation",
+    "id": 500591,
+    "name": "Niederschlagsdargebot: potential water supply (rain and snow melt) from snowpack - accumulation",
+    "shortname": "RR_SNOW",
+    "unit_id": "kg m-2"
+  },
+  "500665": {
+    "description": "DUMMY_15",
+    "id": 500665,
+    "name": "DUMMY_15",
+    "shortname": "DUMMY_15",
+    "unit_id": 1
+  },
+  "503096": {
+    "description": "Peak frequency (interpolated)",
+    "id": 503096,
+    "name": "Peak frequency (interpolated)",
+    "shortname": "PFRQ",
+    "unit_id": "Hz"
+  },
+  "503158": {
+    "description": "Deformation of horizontal wind field",
+    "id": 503158,
+    "name": "Deformation of horizontal wind field",
+    "shortname": "WDEF_H",
+    "unit_id": "s-1"
+  },
+  "500885": {
+    "description": "DUMMY_235",
+    "id": 500885,
+    "name": "DUMMY_235",
+    "shortname": "DUMMY_235",
+    "unit_id": 1
+  },
+  "500818": {
+    "description": "DUMMY_168",
+    "id": 500818,
+    "name": "DUMMY_168",
+    "shortname": "DUMMY_168",
+    "unit_id": 1
+  },
+  "503465": {
+    "description": "Accumulated wet deposition by convective precipitation of dust number concentration for mode 2",
+    "id": 503465,
+    "name": "Accumulated wet deposition by convective precipitation of dust number concentration for mode 2",
+    "shortname": "ACCWETDEPO_CON_DUSTB0",
+    "unit_id": "m-2"
+  },
+  "500675": {
+    "description": "DUMMY_25",
+    "id": 500675,
+    "name": "DUMMY_25",
+    "shortname": "DUMMY_25",
+    "unit_id": 1
+  },
+  "500654": {
+    "description": "DUMMY_4",
+    "id": 500654,
+    "name": "DUMMY_4",
+    "shortname": "DUMMY_4",
+    "unit_id": 1
+  },
+  "503416": {
+    "description": "Number of days since the start of ragweed  (ambrosia) pollen season (if present day is in the season: zero outside season)",
+    "id": 503416,
+    "name": "Number of days since the start of ragweed  (ambrosia) pollen season (if present day is in the season: zero outside season)",
+    "shortname": "AMBRsaisn",
+    "unit_id": "d"
+  },
+  "500825": {
+    "description": "DUMMY_175",
+    "id": 500825,
+    "name": "DUMMY_175",
+    "shortname": "DUMMY_175",
+    "unit_id": 1
+  },
+  "500708": {
+    "description": "DUMMY_58",
+    "id": 500708,
+    "name": "DUMMY_58",
+    "shortname": "DUMMY_58",
+    "unit_id": 1
+  },
+  "503591": {
+    "description": "Solar azimuth angle",
+    "id": 503591,
+    "name": "Solar azimuth angle",
+    "shortname": "SUN_AZI",
+    "unit_id": "Degree"
+  },
+  "500733": {
+    "description": "DUMMY_83",
+    "id": 500733,
+    "name": "DUMMY_83",
+    "shortname": "DUMMY_83",
+    "unit_id": 1
+  },
+  "500763": {
+    "description": "DUMMY_113",
+    "id": 500763,
+    "name": "DUMMY_113",
+    "shortname": "DUMMY_113",
+    "unit_id": 1
+  },
+  "503055": {
+    "description": "Specific humidity (diagnostic)",
+    "id": 503055,
+    "name": "Specific humidity (diagnostic)",
+    "shortname": "QV_DIA",
+    "unit_id": "kg kg-1"
+  },
+  "500834": {
+    "description": "DUMMY_184",
+    "id": 500834,
+    "name": "DUMMY_184",
+    "shortname": "DUMMY_184",
+    "unit_id": 1
+  },
+  "500893": {
+    "description": "DUMMY_243",
+    "id": 500893,
+    "name": "DUMMY_243",
+    "shortname": "DUMMY_243",
+    "unit_id": 1
+  },
+  "500510": {
+    "description": "Icing Signifikant Base (hft) - Icing Scenario Composit",
+    "id": 500510,
+    "name": "Icing Signifikant Base (hft) - Icing Scenario Composit",
+    "shortname": "PISC_SIG_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "500780": {
+    "description": "DUMMY_130",
+    "id": 500780,
+    "name": "DUMMY_130",
+    "shortname": "DUMMY_130",
+    "unit_id": 1
+  },
+  "500864": {
+    "description": "DUMMY_214",
+    "id": 500864,
+    "name": "DUMMY_214",
+    "shortname": "DUMMY_214",
+    "unit_id": 1
+  },
+  "503652": {
+    "description": "Emission tuning factor for birch (betula) pollen",
+    "id": 503652,
+    "name": "Emission tuning factor for birch (betula) pollen",
+    "shortname": "BETUtune",
+    "unit_id": "Numeric"
+  },
+  "500856": {
+    "description": "DUMMY_206",
+    "id": 500856,
+    "name": "DUMMY_206",
+    "shortname": "DUMMY_206",
+    "unit_id": 1
+  },
+  "500478": {
+    "description": "probability to perceive sultriness",
+    "id": 500478,
+    "name": "probability to perceive sultriness",
+    "shortname": "SUL_PROB",
+    "unit_id": "Numeric"
+  },
+  "500625": {
+    "description": "Prob Extrem ergiebiger Dauerregen",
+    "id": 500625,
+    "name": "Prob Extrem ergiebiger Dauerregen",
+    "shortname": "RA70",
+    "unit_id": "Numeric"
+  },
+  "500882": {
+    "description": "DUMMY_232",
+    "id": 500882,
+    "name": "DUMMY_232",
+    "shortname": "DUMMY_232",
+    "unit_id": 1
+  },
+  "503366": {
+    "description": "State of the birch (betula) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "id": 503366,
+    "name": "State of the birch (betula) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "shortname": "BETUsdes",
+    "unit_id": "0-1"
+  },
+  "503588": {
+    "description": "Downward direct short-wave radiation flux at surface on a plane normal to the sun (time average)",
+    "id": 503588,
+    "name": "Downward direct short-wave radiation flux at surface on a plane normal to the sun (time average)",
+    "shortname": "ASWDIR_SN",
+    "unit_id": "W m-2"
+  },
+  "503749": {
+    "description": "Photosynthetically active radiation at surface on tangent plane to terrain including orographic shading",
+    "id": 503749,
+    "name": "Photosynthetically active radiation at surface on tangent plane to terrain including orographic shading",
+    "shortname": "PABS_RAD_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "500831": {
+    "description": "DUMMY_181",
+    "id": 500831,
+    "name": "DUMMY_181",
+    "shortname": "DUMMY_181",
+    "unit_id": 1
+  },
+  "503450": {
+    "description": "Accumulated wet deposition by grid scale precipitation of dust number concentration for mode 2",
+    "id": 503450,
+    "name": "Accumulated wet deposition by grid scale precipitation of dust number concentration for mode 2",
+    "shortname": "ACCWETDEPO_GSP_DUSTB0",
+    "unit_id": "m-2"
+  },
+  "500869": {
+    "description": "DUMMY_219",
+    "id": 500869,
+    "name": "DUMMY_219",
+    "shortname": "DUMMY_219",
+    "unit_id": 1
+  },
+  "500846": {
+    "description": "DUMMY_196",
+    "id": 500846,
+    "name": "DUMMY_196",
+    "shortname": "DUMMY_196",
+    "unit_id": 1
+  },
+  "503299": {
+    "description": "Sky-view-factor",
+    "id": 503299,
+    "name": "Sky-view-factor",
+    "shortname": "SKYVIEW",
+    "unit_id": "Numeric"
+  },
+  "503655": {
+    "description": "Emission tuning factor for ragweed (ambrosia) pollen",
+    "id": 503655,
+    "name": "Emission tuning factor for ragweed (ambrosia) pollen",
+    "shortname": "AMBRtune",
+    "unit_id": "Numeric"
+  },
+  "500657": {
+    "description": "DUMMY_7",
+    "id": 500657,
+    "name": "DUMMY_7",
+    "shortname": "DUMMY_7",
+    "unit_id": 1
+  },
+  "500480": {
+    "description": "Downward direct short wave radiation flux at surface (mean over forecast time)",
+    "id": 500480,
+    "name": "Downward direct short wave radiation flux at surface (mean over forecast time)",
+    "shortname": "ASWDIR_S",
+    "unit_id": "W m-2"
+  },
+  "503358": {
+    "description": "Standard deviation of saturation deficit",
+    "id": 503358,
+    "name": "Standard deviation of saturation deficit",
+    "shortname": "RCLD",
+    "unit_id": "Numeric"
+  },
+  "500848": {
+    "description": "DUMMY_198",
+    "id": 500848,
+    "name": "DUMMY_198",
+    "shortname": "DUMMY_198",
+    "unit_id": 1
+  },
+  "503052": {
+    "description": "Radar quality information",
+    "id": 503052,
+    "name": "Radar quality information",
+    "shortname": "RAD_QUAL",
+    "unit_id": "Proportion"
+  },
+  "503187": {
+    "description": "Height of level of free convection of mixed (mean) layer parcel",
+    "id": 503187,
+    "name": "Height of level of free convection of mixed (mean) layer parcel",
+    "shortname": "LFC_ML",
+    "unit_id": "m"
+  },
+  "503177": {
+    "description": "Downward short wave radiation flux at surface on vertical surface facing north (time average)",
+    "id": 503177,
+    "name": "Downward short wave radiation flux at surface on vertical surface facing north (time average)",
+    "shortname": "ASOD_SvN",
+    "unit_id": "W m-2"
+  },
+  "500648": {
+    "description": "Mass concentration of dust (sum of all modes)",
+    "id": 500648,
+    "name": "Mass concentration of dust (sum of all modes)",
+    "shortname": "VSOILS",
+    "unit_id": "kg m-3"
+  },
+  "503754": {
+    "description": "Downward short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "id": 503754,
+    "name": "Downward short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "shortname": "ASOD_S_OS",
+    "unit_id": "W m-2"
+  },
+  "503640": {
+    "description": "State of the hazel (corylus) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "id": 503640,
+    "name": "State of the hazel (corylus) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "shortname": "CORYsdes",
+    "unit_id": "0-1"
+  },
+  "500674": {
+    "description": "DUMMY_24",
+    "id": 500674,
+    "name": "DUMMY_24",
+    "shortname": "DUMMY_24",
+    "unit_id": 1
+  },
+  "500517": {
+    "description": "Icing Max Top (hft) - Icing Degree Composit",
+    "id": 500517,
+    "name": "Icing Max Top (hft) - Icing Degree Composit",
+    "shortname": "DIDC_MAX_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "503149": {
+    "description": "Downward direct short wave radiation flux at surface on horizontal plane (time average)",
+    "id": 503149,
+    "name": "Downward direct short wave radiation flux at surface on horizontal plane (time average)",
+    "shortname": "ASWDIR_SH",
+    "unit_id": "W m-2"
+  },
+  "500804": {
+    "description": "DUMMY_154",
+    "id": 500804,
+    "name": "DUMMY_154",
+    "shortname": "DUMMY_154",
+    "unit_id": 1
+  },
+  "503201": {
+    "description": "Zonal velocity fluctuation (Hanna)",
+    "id": 503201,
+    "name": "Zonal velocity fluctuation (Hanna)",
+    "shortname": "SIGMAX",
+    "unit_id": "m s-1"
+  },
+  "500760": {
+    "description": "DUMMY_110",
+    "id": 500760,
+    "name": "DUMMY_110",
+    "shortname": "DUMMY_110",
+    "unit_id": 1
+  },
+  "500693": {
+    "description": "DUMMY_43",
+    "id": 500693,
+    "name": "DUMMY_43",
+    "shortname": "DUMMY_43",
+    "unit_id": 1
+  },
+  "503356": {
+    "description": "Maximum 10m convective gust",
+    "id": 503356,
+    "name": "Maximum 10m convective gust",
+    "shortname": "VGUST_CON_10M",
+    "unit_id": "ms-1"
+  },
+  "500516": {
+    "description": "Icing Max Base (hft) - Icing Degree Composit",
+    "id": 500516,
+    "name": "Icing Max Base (hft) - Icing Degree Composit",
+    "shortname": "DIDC_MAX_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "500751": {
+    "description": "DUMMY_101",
+    "id": 500751,
+    "name": "DUMMY_101",
+    "shortname": "DUMMY_101",
+    "unit_id": 1
+  },
+  "503464": {
+    "description": "Accumulated wet deposition by convective precipitation of dust number concentration for mode 3",
+    "id": 503464,
+    "name": "Accumulated wet deposition by convective precipitation of dust number concentration for mode 3",
+    "shortname": "ACCWETDEPO_CON_DUSTC0",
+    "unit_id": "m-2"
+  },
+  "500894": {
+    "description": "DUMMY_244",
+    "id": 500894,
+    "name": "DUMMY_244",
+    "shortname": "DUMMY_244",
+    "unit_id": 1
+  },
+  "500720": {
+    "description": "DUMMY_70",
+    "id": 500720,
+    "name": "DUMMY_70",
+    "shortname": "DUMMY_70",
+    "unit_id": 1
+  },
+  "503659": {
+    "description": "Volumetric ice content of snow layer - multi level",
+    "id": 503659,
+    "name": "Volumetric ice content of snow layer - multi level",
+    "shortname": "ICEinSNW_VC_M",
+    "unit_id": "m3 m-3"
+  },
+  "503363": {
+    "description": "Number of birch (betula) pollen in the reservoir (previous timestep)",
+    "id": 503363,
+    "name": "Number of birch (betula) pollen in the reservoir (previous timestep)",
+    "shortname": "BETUreso",
+    "unit_id": "m-2"
+  },
+  "503592": {
+    "description": "Turbulence intensity (time maximum)",
+    "id": 503592,
+    "name": "Turbulence intensity (time maximum)",
+    "shortname": "TURB_INTENS_MAX",
+    "unit_id": "Numeric"
+  },
+  "503745": {
+    "description": "Net short wave radiation flux at surface on horizontal plane including orographic shading",
+    "id": 503745,
+    "name": "Net short wave radiation flux at surface on horizontal plane including orographic shading",
+    "shortname": "SOBS_RAD_OS",
+    "unit_id": "W m-2"
+  },
+  "500803": {
+    "description": "DUMMY_153",
+    "id": 500803,
+    "name": "DUMMY_153",
+    "shortname": "DUMMY_153",
+    "unit_id": 1
+  },
+  "503761": {
+    "description": "Snow depth over sea ice (total depth)",
+    "id": 503761,
+    "name": "Snow depth over sea ice (total depth)",
+    "shortname": "H_SNOW_SEAICE",
+    "unit_id": "m"
+  },
+  "500748": {
+    "description": "DUMMY_98",
+    "id": 500748,
+    "name": "DUMMY_98",
+    "shortname": "DUMMY_98",
+    "unit_id": 1
+  },
+  "500811": {
+    "description": "DUMMY_161",
+    "id": 500811,
+    "name": "DUMMY_161",
+    "shortname": "DUMMY_161",
+    "unit_id": 1
+  },
+  "500586": {
+    "description": "Ellrod Index",
+    "id": 500586,
+    "name": "Ellrod Index",
+    "shortname": "ELD",
+    "unit_id": "10-7 s-2"
+  },
+  "503559": {
+    "description": "Updraft mask",
+    "id": 503559,
+    "name": "Updraft mask",
+    "shortname": "W_UP_MASK",
+    "unit_id": "s"
+  },
+  "503746": {
+    "description": "Net short wave radiation flux at surface on tangent plane to terrain including orographic shading",
+    "id": 503746,
+    "name": "Net short wave radiation flux at surface on tangent plane to terrain including orographic shading",
+    "shortname": "SOBS_RAD_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "500541": {
+    "description": "Relative vorticity, u-component",
+    "id": 500541,
+    "name": "Relative vorticity, u-component",
+    "shortname": "VORTIC_U",
+    "unit_id": "s-1"
+  },
+  "500523": {
+    "description": "Icing Signifikant Top (hft) - Icing Scenario Composit",
+    "id": 500523,
+    "name": "Icing Signifikant Top (hft) - Icing Scenario Composit",
+    "shortname": "DISC_SIG_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "500552": {
+    "description": "Forcing rechte Seite Omegagleichung",
+    "id": 500552,
+    "name": "Forcing rechte Seite Omegagleichung",
+    "shortname": "FORCOMEGA",
+    "unit_id": "m kg-1 s-1"
+  },
+  "503622": {
+    "description": "Lightning Potential Index from convection scheme, modified by convection index",
+    "id": 503622,
+    "name": "Lightning Potential Index from convection scheme, modified by convection index",
+    "shortname": "LPI_CON_CI",
+    "unit_id": "J kg-1"
+  },
+  "503715": {
+    "description": "Cloud cover for use in radiative transfer (modified where large hydrometeors are present)",
+    "id": 503715,
+    "name": "Cloud cover for use in radiative transfer (modified where large hydrometeors are present)",
+    "shortname": "CLC_RAD",
+    "unit_id": "%"
+  },
+  "503734": {
+    "description": "NowCastMIX-Aviation (Konvektiver Status, Radolan-Gebiet)",
+    "id": 503734,
+    "name": "NowCastMIX-Aviation (Konvektiver Status, Radolan-Gebiet)",
+    "shortname": "NCM_A_RADOLAN",
+    "unit_id": "numeric"
+  },
+  "503407": {
+    "description": "Number of ragweed  (ambrosia) pollen in the reservoir (previous timestep)",
+    "id": 503407,
+    "name": "Number of ragweed  (ambrosia) pollen in the reservoir (previous timestep)",
+    "shortname": "AMBRreso",
+    "unit_id": "m-2"
+  },
+  "503120": {
+    "description": "Number density of snow",
+    "id": 503120,
+    "name": "Number density of snow",
+    "shortname": "NDSNOW",
+    "unit_id": "m-3"
+  },
+  "503661": {
+    "description": "Volumetric air content of snow layer - multi level",
+    "id": 503661,
+    "name": "Volumetric air content of snow layer - multi level",
+    "shortname": "AIRinSNW_VC_M",
+    "unit_id": "m3 m-3"
+  },
+  "500632": {
+    "description": "Prob Tauwetter",
+    "id": 500632,
+    "name": "Prob Tauwetter",
+    "shortname": "TAU",
+    "unit_id": "Numeric"
+  },
+  "500647": {
+    "description": "Number concentration of dust (maximum mode)",
+    "id": 500647,
+    "name": "Number concentration of dust (maximum mode)",
+    "shortname": "VSOILC0",
+    "unit_id": "m-3"
+  },
+  "503720": {
+    "description": "Probability for freezing precipitation/wet snow",
+    "id": 503720,
+    "name": "Probability for freezing precipitation/wet snow",
+    "shortname": "FP",
+    "unit_id": "%"
+  },
+  "500843": {
+    "description": "DUMMY_193",
+    "id": 500843,
+    "name": "DUMMY_193",
+    "shortname": "DUMMY_193",
+    "unit_id": 1
+  },
+  "503653": {
+    "description": "Emission tuning factor for alder (alnus) pollen",
+    "id": 503653,
+    "name": "Emission tuning factor for alder (alnus) pollen",
+    "shortname": "ALNUtune",
+    "unit_id": "Numeric"
+  },
+  "503127": {
+    "description": "Mass density of cloud ice",
+    "id": 503127,
+    "name": "Mass density of cloud ice",
+    "shortname": "DENI",
+    "unit_id": "kg m-3"
+  },
+  "500556": {
+    "description": "Q-Vektor senkrecht zu d. Isothermen (geostrophisch)",
+    "id": 500556,
+    "name": "Q-Vektor senkrecht zu d. Isothermen (geostrophisch)",
+    "shortname": "QVNGEO",
+    "unit_id": "m2 kg-1 s-1"
+  },
+  "503639": {
+    "description": "Number of hazel (corylus) pollen released into the reservoir (new)",
+    "id": 503639,
+    "name": "Number of hazel (corylus) pollen released into the reservoir (new)",
+    "shortname": "CORYresn",
+    "unit_id": "m-2"
+  },
+  "500801": {
+    "description": "DUMMY_151",
+    "id": 500801,
+    "name": "DUMMY_151",
+    "shortname": "DUMMY_151",
+    "unit_id": 1
+  },
+  "500736": {
+    "description": "DUMMY_86",
+    "id": 500736,
+    "name": "DUMMY_86",
+    "shortname": "DUMMY_86",
+    "unit_id": 1
+  },
+  "500787": {
+    "description": "DUMMY_137",
+    "id": 500787,
+    "name": "DUMMY_137",
+    "shortname": "DUMMY_137",
+    "unit_id": 1
+  },
+  "503128": {
+    "description": "Mass density of hail",
+    "id": 503128,
+    "name": "Mass density of hail",
+    "shortname": "DENH",
+    "unit_id": "kg m-3"
+  },
+  "500839": {
+    "description": "DUMMY_189",
+    "id": 500839,
+    "name": "DUMMY_189",
+    "shortname": "DUMMY_189",
+    "unit_id": 1
+  },
+  "503123": {
+    "description": "Mass density of rain",
+    "id": 503123,
+    "name": "Mass density of rain",
+    "shortname": "DENR",
+    "unit_id": "kg m-3"
+  },
+  "503164": {
+    "description": "Wind direction in azimuth class",
+    "id": 503164,
+    "name": "Wind direction in azimuth class",
+    "shortname": "DDCLASS",
+    "unit_id": "Numeric"
+  },
+  "503151": {
+    "description": "Gauss Boaga Coordinates South to North,East Sector",
+    "id": 503151,
+    "name": "Gauss Boaga Coordinates South to North,East Sector",
+    "shortname": "BOAGAE_SN",
+    "unit_id": "m"
+  },
+  "503721": {
+    "description": "Probability for freezing precipitation with wind",
+    "id": 503721,
+    "name": "Probability for freezing precipitation with wind",
+    "shortname": "FPW",
+    "unit_id": "%"
+  },
+  "500705": {
+    "description": "DUMMY_55",
+    "id": 500705,
+    "name": "DUMMY_55",
+    "shortname": "DUMMY_55",
+    "unit_id": 1
+  },
+  "503449": {
+    "description": "Accumulated wet deposition by grid scale precipitation of dust number concentration for mode 1",
+    "id": 503449,
+    "name": "Accumulated wet deposition by grid scale precipitation of dust number concentration for mode 1",
+    "shortname": "ACCWETDEPO_GSP_DUSTA0",
+    "unit_id": "m-2"
+  },
+  "500863": {
+    "description": "DUMMY_213",
+    "id": 500863,
+    "name": "DUMMY_213",
+    "shortname": "DUMMY_213",
+    "unit_id": 1
+  },
+  "503586": {
+    "description": "10m wind speed in wind sector (time maximum)",
+    "id": 503586,
+    "name": "10m wind speed in wind sector (time maximum)",
+    "shortname": "SP_10M_SECMAX",
+    "unit_id": "m s-1"
+  },
+  "500671": {
+    "description": "DUMMY_21",
+    "id": 500671,
+    "name": "DUMMY_21",
+    "shortname": "DUMMY_21",
+    "unit_id": 1
+  },
+  "503668": {
+    "description": "Urban material thermal albedo",
+    "id": 503668,
+    "name": "Urban material thermal albedo",
+    "shortname": "URB_ALB_TH",
+    "unit_id": "%"
+  },
+  "503654": {
+    "description": "Emission tuning factor for grasses (poaceae) pollen",
+    "id": 503654,
+    "name": "Emission tuning factor for grasses (poaceae) pollen",
+    "shortname": "POACtune",
+    "unit_id": "Numeric"
+  },
+  "503171": {
+    "description": "Enthalpy",
+    "id": 503171,
+    "name": "Enthalpy",
+    "shortname": "ENTH",
+    "unit_id": "J kg-1"
+  },
+  "503426": {
+    "description": "Maximum snow height during contiguous accumulating snow period (coupled with snow age)",
+    "id": 503426,
+    "name": "Maximum snow height during contiguous accumulating snow period (coupled with snow age)",
+    "shortname": "HSNOW_MAX",
+    "unit_id": "m"
+  },
+  "500624": {
+    "description": "Prob Ergiebiger Dauerregen",
+    "id": 500624,
+    "name": "Prob Ergiebiger Dauerregen",
+    "shortname": "RA40",
+    "unit_id": "Numeric"
+  },
+  "500837": {
+    "description": "DUMMY_187",
+    "id": 500837,
+    "name": "DUMMY_187",
+    "shortname": "DUMMY_187",
+    "unit_id": 1
+  },
+  "500850": {
+    "description": "DUMMY_200",
+    "id": 500850,
+    "name": "DUMMY_200",
+    "shortname": "DUMMY_200",
+    "unit_id": 1
+  },
+  "500853": {
+    "description": "DUMMY_203",
+    "id": 500853,
+    "name": "DUMMY_203",
+    "shortname": "DUMMY_203",
+    "unit_id": 1
+  },
+  "500627": {
+    "description": "Prob Starke Schneeverwehung",
+    "id": 500627,
+    "name": "Prob Starke Schneeverwehung",
+    "shortname": "BLSN8",
+    "unit_id": "Numeric"
+  },
+  "500716": {
+    "description": "DUMMY_66",
+    "id": 500716,
+    "name": "DUMMY_66",
+    "shortname": "DUMMY_66",
+    "unit_id": 1
+  },
+  "503387": {
+    "description": "Number of days since the start of alder (alnus) pollen season (if present day is outside the season: length of current season)",
+    "id": 503387,
+    "name": "Number of days since the start of alder (alnus) pollen season (if present day is outside the season: length of current season)",
+    "shortname": "ALNUsaisa",
+    "unit_id": "d"
+  },
+  "503454": {
+    "description": "Accumulated wet deposition of dust number concentration  if rain reaches the surface for mode 3",
+    "id": 503454,
+    "name": "Accumulated wet deposition of dust number concentration  if rain reaches the surface for mode 3",
+    "shortname": "ACCWETDEPO_RAIN_DUSTC0",
+    "unit_id": "m-2"
+  },
+  "500775": {
+    "description": "DUMMY_125",
+    "id": 500775,
+    "name": "DUMMY_125",
+    "shortname": "DUMMY_125",
+    "unit_id": 1
+  },
+  "500737": {
+    "description": "DUMMY_87",
+    "id": 500737,
+    "name": "DUMMY_87",
+    "shortname": "DUMMY_87",
+    "unit_id": 1
+  },
+  "500444": {
+    "description": "Probability of 6h accumulated snow >=0.5cm",
+    "id": 500444,
+    "name": "Probability of 6h accumulated snow >=0.5cm",
+    "shortname": "W_SFL_06",
+    "unit_id": "kg m2"
+  },
+  "500841": {
+    "description": "DUMMY_191",
+    "id": 500841,
+    "name": "DUMMY_191",
+    "shortname": "DUMMY_191",
+    "unit_id": 1
+  },
+  "500691": {
+    "description": "DUMMY_41",
+    "id": 500691,
+    "name": "DUMMY_41",
+    "shortname": "DUMMY_41",
+    "unit_id": 1
+  },
+  "500630": {
+    "description": "Prob Glatteis",
+    "id": 500630,
+    "name": "Prob Glatteis",
+    "shortname": "FZRAX",
+    "unit_id": "Numeric"
+  },
+  "502347": {
+    "description": "Albedo - near infrared (0.7 - 5.0 m-6)",
+    "id": 502347,
+    "name": "Albedo - near infrared (0.7 - 5.0 m-6)",
+    "shortname": "ALB_NI",
+    "unit_id": "%"
+  },
+  "500564": {
+    "description": "Divergenz Qn",
+    "id": 500564,
+    "name": "Divergenz Qn",
+    "shortname": "DIVQN",
+    "unit_id": "m kg-1 s-1"
+  },
+  "503736": {
+    "description": "NowCastMIX-Winterwetter (Schnee, gefrierender Regen, Radolan-Gebiet)",
+    "id": 503736,
+    "name": "NowCastMIX-Winterwetter (Schnee, gefrierender Regen, Radolan-Gebiet)",
+    "shortname": "NCM_A_WINTER_W",
+    "unit_id": "numeric"
+  },
+  "500900": {
+    "description": "DUMMY_250",
+    "id": 500900,
+    "name": "DUMMY_250",
+    "shortname": "DUMMY_250",
+    "unit_id": 1
+  },
+  "503750": {
+    "description": "Net short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "id": 503750,
+    "name": "Net short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "shortname": "ASOB_S_OS",
+    "unit_id": "W m-2"
+  },
+  "503167": {
+    "description": "Possible astronomical maximum of sunshine",
+    "id": 503167,
+    "name": "Possible astronomical maximum of sunshine",
+    "shortname": "DURSUN_M",
+    "unit_id": "s"
+  },
+  "503388": {
+    "description": "Length of alder (alnus) pollen season",
+    "id": 503388,
+    "name": "Length of alder (alnus) pollen season",
+    "shortname": "ALNUsaisl",
+    "unit_id": "d"
+  },
+  "500707": {
+    "description": "DUMMY_57",
+    "id": 500707,
+    "name": "DUMMY_57",
+    "shortname": "DUMMY_57",
+    "unit_id": 1
+  },
+  "500528": {
+    "description": "Icing Scenario Code (1=general,2=convective,3=stratiform,4=freezing)",
+    "id": 500528,
+    "name": "Icing Scenario Code (1=general,2=convective,3=stratiform,4=freezing)",
+    "shortname": "PIS_CODE",
+    "unit_id": "Numeric"
+  },
+  "500735": {
+    "description": "DUMMY_85",
+    "id": 500735,
+    "name": "DUMMY_85",
+    "shortname": "DUMMY_85",
+    "unit_id": 1
+  },
+  "500779": {
+    "description": "DUMMY_129",
+    "id": 500779,
+    "name": "DUMMY_129",
+    "shortname": "DUMMY_129",
+    "unit_id": 1
+  },
+  "503185": {
+    "description": "Vertical Lagrangian time scale (direct) (Hanna)",
+    "id": 503185,
+    "name": "Vertical Lagrangian time scale (direct) (Hanna)",
+    "shortname": "LAGTIMEZ",
+    "unit_id": "s"
+  },
+  "500829": {
+    "description": "DUMMY_179",
+    "id": 500829,
+    "name": "DUMMY_179",
+    "shortname": "DUMMY_179",
+    "unit_id": 1
+  },
+  "500473": {
+    "description": "perceived temperature",
+    "id": 500473,
+    "name": "perceived temperature",
+    "shortname": "PT1M",
+    "unit_id": "K"
+  },
+  "500805": {
+    "description": "DUMMY_155",
+    "id": 500805,
+    "name": "DUMMY_155",
+    "shortname": "DUMMY_155",
+    "unit_id": 1
+  },
+  "503074": {
+    "description": "Area weights for regular lon-lat grid",
+    "id": 503074,
+    "name": "Area weights for regular lon-lat grid",
+    "shortname": "AW",
+    "unit_id": "Numeric"
+  },
+  "503372": {
+    "description": "Number of days since the start of birch (betula) pollen season (if present day is outside the season: length of current season)",
+    "id": 503372,
+    "name": "Number of days since the start of birch (betula) pollen season (if present day is outside the season: length of current season)",
+    "shortname": "BETUsaisa",
+    "unit_id": "d"
+  },
+  "500840": {
+    "description": "DUMMY_190",
+    "id": 500840,
+    "name": "DUMMY_190",
+    "shortname": "DUMMY_190",
+    "unit_id": 1
+  },
+  "500823": {
+    "description": "DUMMY_173",
+    "id": 500823,
+    "name": "DUMMY_173",
+    "shortname": "DUMMY_173",
+    "unit_id": 1
+  },
+  "500711": {
+    "description": "DUMMY_61",
+    "id": 500711,
+    "name": "DUMMY_61",
+    "shortname": "DUMMY_61",
+    "unit_id": 1
+  },
+  "500867": {
+    "description": "DUMMY_217",
+    "id": 500867,
+    "name": "DUMMY_217",
+    "shortname": "DUMMY_217",
+    "unit_id": 1
+  },
+  "503061": {
+    "description": "Downward diffusive short wave radiation flux at surface (mean over forecast time)",
+    "id": 503061,
+    "name": "Downward diffusive short wave radiation flux at surface (mean over forecast time)",
+    "shortname": "SWDIFDS_RAD",
+    "unit_id": "W m-2"
+  },
+  "500790": {
+    "description": "DUMMY_140",
+    "id": 500790,
+    "name": "DUMMY_140",
+    "shortname": "DUMMY_140",
+    "unit_id": 1
+  },
+  "500667": {
+    "description": "DUMMY_17",
+    "id": 500667,
+    "name": "DUMMY_17",
+    "shortname": "DUMMY_17",
+    "unit_id": 1
+  },
+  "500741": {
+    "description": "DUMMY_91",
+    "id": 500741,
+    "name": "DUMMY_91",
+    "shortname": "DUMMY_91",
+    "unit_id": 1
+  },
+  "502354": {
+    "description": "Eddy Dissipation Rate Total Col-Max. Upper UIR",
+    "id": 502354,
+    "name": "Eddy Dissipation Rate Total Col-Max. Upper UIR",
+    "shortname": "EDP_MAX_UUIR",
+    "unit_id": "m2/3 s-1"
+  },
+  "500755": {
+    "description": "DUMMY_105",
+    "id": 500755,
+    "name": "DUMMY_105",
+    "shortname": "DUMMY_105",
+    "unit_id": 1
+  },
+  "500719": {
+    "description": "DUMMY_69",
+    "id": 500719,
+    "name": "DUMMY_69",
+    "shortname": "DUMMY_69",
+    "unit_id": 1
+  },
+  "503079": {
+    "description": "Soil moisture index (multilayers)",
+    "id": 503079,
+    "name": "Soil moisture index (multilayers)",
+    "shortname": "SMI",
+    "unit_id": "Numeric"
+  },
+  "503365": {
+    "description": "Sum of released birch (betula) pollen into the reservoir (daily sum)",
+    "id": 503365,
+    "name": "Sum of released birch (betula) pollen into the reservoir (daily sum)",
+    "shortname": "BETUress",
+    "unit_id": "m-2"
+  },
+  "503339": {
+    "description": "Threshold friction velocity",
+    "id": 503339,
+    "name": "Threshold friction velocity",
+    "shortname": "USTAR_THRES",
+    "unit_id": "m s-1"
+  },
+  "503589": {
+    "description": "Downward direct short-wave radiation flux at surface on a plane normal to the sun without orographic shading (time average)",
+    "id": 503589,
+    "name": "Downward direct short-wave radiation flux at surface on a plane normal to the sun without orographic shading (time average)",
+    "shortname": "ASWDIR_SNO",
+    "unit_id": "W m-2"
+  },
+  "502332": {
+    "description": "Liquid water content in snow - multi level",
+    "id": 502332,
+    "name": "Liquid water content in snow - multi level",
+    "shortname": "WLIQ_SNOW_M",
+    "unit_id": "kg m-2"
+  },
+  "503400": {
+    "description": "Cumulated 2m temperature sum threshold for the end of  grasses (poaceae) pollen season (climatological)",
+    "id": 503400,
+    "name": "Cumulated 2m temperature sum threshold for the end of  grasses (poaceae) pollen season (climatological)",
+    "shortname": "POACtthre",
+    "unit_id": "deg C"
+  },
+  "503712": {
+    "description": "Extreme weather index of snow amount, grid-scale plus convective",
+    "id": 503712,
+    "name": "Extreme weather index of snow amount, grid-scale plus convective",
+    "shortname": "TOT_SNOW_EWI",
+    "unit_id": "kg m-2"
+  },
+  "503403": {
+    "description": "Length of grasses (poaceae) pollen season",
+    "id": 503403,
+    "name": "Length of grasses (poaceae) pollen season",
+    "shortname": "POACsaisl",
+    "unit_id": "d"
+  },
+  "500640": {
+    "description": "Mass concentration of dust (minimum mode)",
+    "id": 500640,
+    "name": "Mass concentration of dust (minimum mode)",
+    "shortname": "VSOILA",
+    "unit_id": "kg m-3"
+  },
+  "500744": {
+    "description": "DUMMY_94",
+    "id": 500744,
+    "name": "DUMMY_94",
+    "shortname": "DUMMY_94",
+    "unit_id": 1
+  },
+  "500562": {
+    "description": "Divergenz",
+    "id": 500562,
+    "name": "Divergenz",
+    "shortname": "DIVQ",
+    "unit_id": "m kg-1 s-1"
+  },
+  "503717": {
+    "description": "Volumetric ice content of snow layer (for use in tile approach) - multi level",
+    "id": 503717,
+    "name": "Volumetric ice content of snow layer (for use in tile approach) - multi level",
+    "shortname": "ICEinSNW_VC_T_M",
+    "unit_id": "m3 m-3"
+  },
+  "500820": {
+    "description": "DUMMY_170",
+    "id": 500820,
+    "name": "DUMMY_170",
+    "shortname": "DUMMY_170",
+    "unit_id": 1
+  },
+  "503348": {
+    "description": "Maximum of Lightning Potential Index (over given time interval)",
+    "id": 503348,
+    "name": "Maximum of Lightning Potential Index (over given time interval)",
+    "shortname": "LPI_MAX",
+    "unit_id": "J kg-1"
+  },
+  "503417": {
+    "description": "Number of days since the start of ragweed  (ambrosia) pollen season (if present day is outside the season: length of current season)",
+    "id": 503417,
+    "name": "Number of days since the start of ragweed  (ambrosia) pollen season (if present day is outside the season: length of current season)",
+    "shortname": "AMBRsaisa",
+    "unit_id": "d"
+  },
+  "503118": {
+    "description": "Specific number concentration of graupel",
+    "id": 503118,
+    "name": "Specific number concentration of graupel",
+    "shortname": "NCGRAUPEL",
+    "unit_id": "kg-1"
+  },
+  "503466": {
+    "description": "Accumulated wet deposition by convective precipitation of dust number concentration for mode 1",
+    "id": 503466,
+    "name": "Accumulated wet deposition by convective precipitation of dust number concentration for mode 1",
+    "shortname": "ACCWETDEPO_CON_DUSTA0",
+    "unit_id": "m-2"
+  },
+  "500465": {
+    "description": "UV Index, clear sky; corrected for albedo, aerosol and altitude",
+    "id": 500465,
+    "name": "UV Index, clear sky; corrected for albedo, aerosol and altitude",
+    "shortname": "UVI_CS_COR",
+    "unit_id": "Numeric"
+  },
+  "503218": {
+    "description": "Universal thermal climate index without direct incident short wave radiation",
+    "id": 503218,
+    "name": "Universal thermal climate index without direct incident short wave radiation",
+    "shortname": "UTCI_SHADOW",
+    "unit_id": "K"
+  },
+  "500796": {
+    "description": "DUMMY_146",
+    "id": 500796,
+    "name": "DUMMY_146",
+    "shortname": "DUMMY_146",
+    "unit_id": 1
+  },
+  "500651": {
+    "description": "DUMMY_2",
+    "id": 500651,
+    "name": "DUMMY_2",
+    "shortname": "DUMMY_2",
+    "unit_id": 1
+  },
+  "503206": {
+    "description": "Thunderstorm index for Switzerland (night time)",
+    "id": 503206,
+    "name": "Thunderstorm index for Switzerland (night time)",
+    "shortname": "SWISS00",
+    "unit_id": "K"
+  },
+  "500575": {
+    "description": "3 hour pressure change",
+    "id": 500575,
+    "name": "3 hour pressure change",
+    "shortname": "PPP",
+    "unit_id": "Pa-3h"
+  },
+  "503762": {
+    "description": "Stretching factor of rescaled height coordinate zstar - ocean modelling",
+    "id": 503762,
+    "name": "Stretching factor of rescaled height coordinate zstar - ocean modelling",
+    "shortname": "HSTRF_SEA",
+    "unit_id": "Numeric"
+  },
+  "503370": {
+    "description": "Cumulated 2m temperature sum threshold for the start of birch (betula) pollen season (climatological)",
+    "id": 503370,
+    "name": "Cumulated 2m temperature sum threshold for the start of birch (betula) pollen season (climatological)",
+    "shortname": "BETUtthrs",
+    "unit_id": "deg C"
+  },
+  "503181": {
+    "description": "Cross-wind Lagrangian time scale (Hanna)",
+    "id": 503181,
+    "name": "Cross-wind Lagrangian time scale (Hanna)",
+    "shortname": "LAGTIMEV",
+    "unit_id": "s"
+  },
+  "500453": {
+    "description": "Probability of 1h maximum wind gust speed >= 25m/s",
+    "id": 500453,
+    "name": "Probability of 1h maximum wind gust speed >= 25m/s",
+    "shortname": "W_STMSW_01",
+    "unit_id": "m s-1"
+  },
+  "503282": {
+    "description": "Diagnostic total column of activity concentration of radionuclides",
+    "id": 503282,
+    "name": "Diagnostic total column of activity concentration of radionuclides",
+    "shortname": "RADIONUC_AC_VI",
+    "unit_id": "Bq m-2"
+  },
+  "503157": {
+    "description": "Ellrod and Knapp turbulence index2",
+    "id": 503157,
+    "name": "Ellrod and Knapp turbulence index2",
+    "shortname": "CAT_TI2",
+    "unit_id": "s-2"
+  },
+  "500649": {
+    "description": "Number concentration of dust (sum of all modes)",
+    "id": 500649,
+    "name": "Number concentration of dust (sum of all modes)",
+    "shortname": "VSOILS0",
+    "unit_id": "m-3"
+  },
+  "500710": {
+    "description": "DUMMY_60",
+    "id": 500710,
+    "name": "DUMMY_60",
+    "shortname": "DUMMY_60",
+    "unit_id": 1
+  },
+  "503648": {
+    "description": "Length of hazel (corylus) pollen season",
+    "id": 503648,
+    "name": "Length of hazel (corylus) pollen season",
+    "shortname": "CORYsaisl",
+    "unit_id": "d"
+  },
+  "500878": {
+    "description": "DUMMY_228",
+    "id": 500878,
+    "name": "DUMMY_228",
+    "shortname": "DUMMY_228",
+    "unit_id": 1
+  },
+  "503757": {
+    "description": "Upward diffusive short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "id": 503757,
+    "name": "Upward diffusive short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "shortname": "ASWDIFU_S_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "503343": {
+    "description": "Maximum updraft track (over given time interval and column)",
+    "id": 503343,
+    "name": "Maximum updraft track (over given time interval and column)",
+    "shortname": "W_CTMAX",
+    "unit_id": "m s-1"
+  },
+  "500799": {
+    "description": "DUMMY_149",
+    "id": 500799,
+    "name": "DUMMY_149",
+    "shortname": "DUMMY_149",
+    "unit_id": 1
+  },
+  "500814": {
+    "description": "DUMMY_164",
+    "id": 500814,
+    "name": "DUMMY_164",
+    "shortname": "DUMMY_164",
+    "unit_id": 1
+  },
+  "500789": {
+    "description": "DUMMY_139",
+    "id": 500789,
+    "name": "DUMMY_139",
+    "shortname": "DUMMY_139",
+    "unit_id": 1
+  },
+  "500646": {
+    "description": "Number concentration of dust (medium mode)",
+    "id": 500646,
+    "name": "Number concentration of dust (medium mode)",
+    "shortname": "VSOILB0",
+    "unit_id": "m-3"
+  },
+  "503644": {
+    "description": "Cumulated weighted 2m temperature sum of daily values for hazel (corylus) pollen",
+    "id": 503644,
+    "name": "Cumulated weighted 2m temperature sum of daily values for hazel (corylus) pollen",
+    "shortname": "CORYctsum",
+    "unit_id": "deg C"
+  },
+  "503418": {
+    "description": "Length of ragweed  (ambrosia) pollen season",
+    "id": 503418,
+    "name": "Length of ragweed  (ambrosia) pollen season",
+    "shortname": "AMBRsaisl",
+    "unit_id": "d"
+  },
+  "500680": {
+    "description": "DUMMY_30",
+    "id": 500680,
+    "name": "DUMMY_30",
+    "shortname": "DUMMY_30",
+    "unit_id": 1
+  },
+  "503198": {
+    "description": "Along-wind velocity fluctuation (Hanna)",
+    "id": 503198,
+    "name": "Along-wind velocity fluctuation (Hanna)",
+    "shortname": "SIGMAU",
+    "unit_id": "m s-1"
+  },
+  "503072": {
+    "description": "snow_rate,BRD",
+    "id": 503072,
+    "name": "snow_rate,BRD",
+    "shortname": "RADAR_FS",
+    "unit_id": "0.01 m"
+  },
+  "503647": {
+    "description": "Number of days since the start of hazel (corylus) pollen season (if present day is in the season: zero outside season)",
+    "id": 503647,
+    "name": "Number of days since the start of hazel (corylus) pollen season (if present day is in the season: zero outside season)",
+    "shortname": "CORYsaisn",
+    "unit_id": "d"
+  },
+  "500750": {
+    "description": "DUMMY_100",
+    "id": 500750,
+    "name": "DUMMY_100",
+    "shortname": "DUMMY_100",
+    "unit_id": 1
+  },
+  "500845": {
+    "description": "DUMMY_195",
+    "id": 500845,
+    "name": "DUMMY_195",
+    "shortname": "DUMMY_195",
+    "unit_id": 1
+  },
+  "503396": {
+    "description": "Height correction for emission (decreasing emission with height) for grasses (poaceae)",
+    "id": 503396,
+    "name": "Height correction for emission (decreasing emission with height) for grasses (poaceae)",
+    "shortname": "POAChcem",
+    "unit_id": "0-1"
+  },
+  "500838": {
+    "description": "DUMMY_188",
+    "id": 500838,
+    "name": "DUMMY_188",
+    "shortname": "DUMMY_188",
+    "unit_id": 1
+  },
+  "500628": {
+    "description": "Prob Glaette",
+    "id": 500628,
+    "name": "Prob Glaette",
+    "shortname": "FZ",
+    "unit_id": "Numeric"
+  },
+  "503455": {
+    "description": "Accumulated sedimentation of dust number concentration for mode 1",
+    "id": 503455,
+    "name": "Accumulated sedimentation of dust number concentration for mode 1",
+    "shortname": "ACCSEDIM_DUSTA0",
+    "unit_id": "m-2"
+  },
+  "503222": {
+    "description": "Relative geostrophic vorticity",
+    "id": 503222,
+    "name": "Relative geostrophic vorticity",
+    "shortname": "RELV_G",
+    "unit_id": "s-1"
+  },
+  "500655": {
+    "description": "DUMMY_5",
+    "id": 500655,
+    "name": "DUMMY_5",
+    "shortname": "DUMMY_5",
+    "unit_id": 1
+  },
+  "500892": {
+    "description": "DUMMY_242",
+    "id": 500892,
+    "name": "DUMMY_242",
+    "shortname": "DUMMY_242",
+    "unit_id": 1
+  },
+  "503613": {
+    "description": "Number of passive clouds per horizontal unit area",
+    "id": 503613,
+    "name": "Number of passive clouds per horizontal unit area",
+    "shortname": "NCL_PUA_PSV",
+    "unit_id": "m-2"
+  },
+  "503228": {
+    "description": "Norm of (vertical) wind shear vector between two levels",
+    "id": 503228,
+    "name": "Norm of (vertical) wind shear vector between two levels",
+    "shortname": "WSHEAR_DIFF",
+    "unit_id": "m s-1"
+  },
+  "500645": {
+    "description": "Number concentration of dust (minimum mode)",
+    "id": 500645,
+    "name": "Number concentration of dust (minimum mode)",
+    "shortname": "VSOILA0",
+    "unit_id": "m-3"
+  },
+  "500758": {
+    "description": "DUMMY_108",
+    "id": 500758,
+    "name": "DUMMY_108",
+    "shortname": "DUMMY_108",
+    "unit_id": 1
+  },
+  "500875": {
+    "description": "DUMMY_225",
+    "id": 500875,
+    "name": "DUMMY_225",
+    "shortname": "DUMMY_225",
+    "unit_id": 1
+  },
+  "503378": {
+    "description": "Number of alder (alnus) pollen released into the reservoir (new)",
+    "id": 503378,
+    "name": "Number of alder (alnus) pollen released into the reservoir (new)",
+    "shortname": "ALNUresn",
+    "unit_id": "m-2"
+  },
+  "500781": {
+    "description": "DUMMY_131",
+    "id": 500781,
+    "name": "DUMMY_131",
+    "shortname": "DUMMY_131",
+    "unit_id": 1
+  },
+  "503383": {
+    "description": "Cumulated weighted 2m temperature sum of daily values for alder (alnus) pollen",
+    "id": 503383,
+    "name": "Cumulated weighted 2m temperature sum of daily values for alder (alnus) pollen",
+    "shortname": "ALNUctsum",
+    "unit_id": "deg C"
+  },
+  "503446": {
+    "description": "Accumulated dry deposition of dust number concentration for mode 1",
+    "id": 503446,
+    "name": "Accumulated dry deposition of dust number concentration for mode 1",
+    "shortname": "ACCDRYDEPO_DUSTA0",
+    "unit_id": "m-2"
+  },
+  "503374": {
+    "description": "Pollen number emission flux for birch (betula)",
+    "id": 503374,
+    "name": "Pollen number emission flux for birch (betula)",
+    "shortname": "BETUfe",
+    "unit_id": "m-2s-1"
+  },
+  "500883": {
+    "description": "DUMMY_233",
+    "id": 500883,
+    "name": "DUMMY_233",
+    "shortname": "DUMMY_233",
+    "unit_id": 1
+  },
+  "503447": {
+    "description": "Accumulated dry deposition of dust number concentration for mode 2",
+    "id": 503447,
+    "name": "Accumulated dry deposition of dust number concentration for mode 2",
+    "shortname": "ACCDRYDEPO_DUSTB0",
+    "unit_id": "m-2"
+  },
+  "503125": {
+    "description": "Mass density of graupel",
+    "id": 503125,
+    "name": "Mass density of graupel",
+    "shortname": "DENG",
+    "unit_id": "kg m-3"
+  },
+  "500670": {
+    "description": "DUMMY_20",
+    "id": 500670,
+    "name": "DUMMY_20",
+    "shortname": "DUMMY_20",
+    "unit_id": 1
+  },
+  "500724": {
+    "description": "DUMMY_74",
+    "id": 500724,
+    "name": "DUMMY_74",
+    "shortname": "DUMMY_74",
+    "unit_id": 1
+  },
+  "500513": {
+    "description": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Scenario Composit",
+    "id": 500513,
+    "name": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Scenario Composit",
+    "shortname": "PISC_VERT_CODE",
+    "unit_id": "Numeric"
+  },
+  "503623": {
+    "description": "Maximum Lightning Potential Index from convection scheme, modified by convection index",
+    "id": 503623,
+    "name": "Maximum Lightning Potential Index from convection scheme, modified by convection index",
+    "shortname": "LPI_CON_CI_MAX",
+    "unit_id": "J kg-1"
+  },
+  "500623": {
+    "description": "Prob Dauerregen",
+    "id": 500623,
+    "name": "Prob Dauerregen",
+    "shortname": "RA25",
+    "unit_id": "Numeric"
+  },
+  "503415": {
+    "description": "Cumulated 2m temperature sum threshold for the end of  ragweed  (ambrosia) pollen season (climatological)",
+    "id": 503415,
+    "name": "Cumulated 2m temperature sum threshold for the end of  ragweed  (ambrosia) pollen season (climatological)",
+    "shortname": "AMBRtthre",
+    "unit_id": "deg C"
+  },
+  "503409": {
+    "description": "Sum of released ragweed  (ambrosia) pollen into the reservoir (daily sum)",
+    "id": 503409,
+    "name": "Sum of released ragweed  (ambrosia) pollen into the reservoir (daily sum)",
+    "shortname": "AMBRress",
+    "unit_id": "m-2"
+  },
+  "500723": {
+    "description": "DUMMY_73",
+    "id": 500723,
+    "name": "DUMMY_73",
+    "shortname": "DUMMY_73",
+    "unit_id": 1
+  },
+  "500550": {
+    "description": "Potentielle Vorticity (auf Druckflaechen, nicht isentrop)",
+    "id": 500550,
+    "name": "Potentielle Vorticity (auf Druckflaechen, nicht isentrop)",
+    "shortname": "PVP",
+    "unit_id": "K m2 kg-1 s-1"
+  },
+  "503718": {
+    "description": "Volumetric water content of snow layer (for use in tile approach) - multi level",
+    "id": 503718,
+    "name": "Volumetric water content of snow layer (for use in tile approach) - multi level",
+    "shortname": "H2OinSNW_VC_T_M",
+    "unit_id": "m3 m-3"
+  },
+  "500764": {
+    "description": "DUMMY_114",
+    "id": 500764,
+    "name": "DUMMY_114",
+    "shortname": "DUMMY_114",
+    "unit_id": 1
+  },
+  "500441": {
+    "description": "Probability of 12h total precipitation >= 25mm",
+    "id": 500441,
+    "name": "Probability of 12h total precipitation >= 25mm",
+    "shortname": "W_DRR_12",
+    "unit_id": "kg m2"
+  },
+  "503054": {
+    "description": "Height of radar beam above ground",
+    "id": 503054,
+    "name": "Height of radar beam above ground",
+    "shortname": "RAD_HEIGHT",
+    "unit_id": "m"
+  },
+  "500692": {
+    "description": "DUMMY_42",
+    "id": 500692,
+    "name": "DUMMY_42",
+    "shortname": "DUMMY_42",
+    "unit_id": 1
+  },
+  "503068": {
+    "description": "precipitation, qualified,BRD",
+    "id": 503068,
+    "name": "precipitation, qualified,BRD",
+    "shortname": "RADAR_RQ",
+    "unit_id": "kg m-2"
+  },
+  "500734": {
+    "description": "DUMMY_84",
+    "id": 500734,
+    "name": "DUMMY_84",
+    "shortname": "DUMMY_84",
+    "unit_id": 1
+  },
+  "500450": {
+    "description": "Probability of 12h accumulated snow >= 25cm",
+    "id": 500450,
+    "name": "Probability of 12h accumulated snow >= 25cm",
+    "shortname": "E_SF_12",
+    "unit_id": "kg m2"
+  },
+  "503656": {
+    "description": "Emission tuning factor for hazel (corylus) pollen",
+    "id": 503656,
+    "name": "Emission tuning factor for hazel (corylus) pollen",
+    "shortname": "CORYtune",
+    "unit_id": "Numeric"
+  },
+  "503646": {
+    "description": "Cumulated 2m temperature sum threshold for the end of hazel (corylus) pollen season (climatological)",
+    "id": 503646,
+    "name": "Cumulated 2m temperature sum threshold for the end of hazel (corylus) pollen season (climatological)",
+    "shortname": "CORYtthre",
+    "unit_id": "deg C"
+  },
+  "500662": {
+    "description": "DUMMY_12",
+    "id": 500662,
+    "name": "DUMMY_12",
+    "shortname": "DUMMY_12",
+    "unit_id": 1
+  },
+  "500743": {
+    "description": "DUMMY_93",
+    "id": 500743,
+    "name": "DUMMY_93",
+    "shortname": "DUMMY_93",
+    "unit_id": 1
+  },
+  "503191": {
+    "description": "Downward long-wave radiation flux at surface based on T_SO(0) (time average)",
+    "id": 503191,
+    "name": "Downward long-wave radiation flux at surface based on T_SO(0) (time average)",
+    "shortname": "ATHD_S_TS",
+    "unit_id": "W m-2 "
+  },
+  "503208": {
+    "description": "Swiss coordinate (south-north)",
+    "id": 503208,
+    "name": "Swiss coordinate (south-north)",
+    "shortname": "SWISS_SN",
+    "unit_id": "m"
+  },
+  "500452": {
+    "description": "Probability of 1h maximum wind gust speed >= 18m/s",
+    "id": 500452,
+    "name": "Probability of 1h maximum wind gust speed >= 18m/s",
+    "shortname": "W_STM_01",
+    "unit_id": "m s-1"
+  },
+  "500745": {
+    "description": "DUMMY_95",
+    "id": 500745,
+    "name": "DUMMY_95",
+    "shortname": "DUMMY_95",
+    "unit_id": 1
+  },
+  "500765": {
+    "description": "DUMMY_115",
+    "id": 500765,
+    "name": "DUMMY_115",
+    "shortname": "DUMMY_115",
+    "unit_id": 1
+  },
+  "500891": {
+    "description": "DUMMY_241",
+    "id": 500891,
+    "name": "DUMMY_241",
+    "shortname": "DUMMY_241",
+    "unit_id": 1
+  },
+  "503582": {
+    "description": "Frequency of winds in defined wind sector for defined time interval",
+    "id": 503582,
+    "name": "Frequency of winds in defined wind sector for defined time interval",
+    "shortname": "DD_10M_SECFREQ",
+    "unit_id": "Numeric"
+  },
+  "500461": {
+    "description": "Probability of snowdrift during 12h",
+    "id": 500461,
+    "name": "Probability of snowdrift during 12h",
+    "shortname": "W_SVW_12",
+    "unit_id": "Numeric"
+  },
+  "503284": {
+    "description": "Total water specific humidity variance",
+    "id": 503284,
+    "name": "Total water specific humidity variance",
+    "shortname": "QTQTCOV",
+    "unit_id": "kg2 kg-2"
+  },
+  "500793": {
+    "description": "DUMMY_143",
+    "id": 500793,
+    "name": "DUMMY_143",
+    "shortname": "DUMMY_143",
+    "unit_id": 1
+  },
+  "500889": {
+    "description": "DUMMY_239",
+    "id": 500889,
+    "name": "DUMMY_239",
+    "shortname": "DUMMY_239",
+    "unit_id": 1
+  },
+  "503555": {
+    "description": "Average hail diameter",
+    "id": 503555,
+    "name": "Average hail diameter",
+    "shortname": "DHAIL_AV",
+    "unit_id": "mm"
+  },
+  "503300": {
+    "description": "Horizon angle - topography",
+    "id": 503300,
+    "name": "Horizon angle - topography",
+    "shortname": "HORIZON",
+    "unit_id": "Numeric"
+  },
+  "500721": {
+    "description": "DUMMY_71",
+    "id": 500721,
+    "name": "DUMMY_71",
+    "shortname": "DUMMY_71",
+    "unit_id": 1
+  },
+  "503671": {
+    "description": "Heat conductivity of urban material",
+    "id": 503671,
+    "name": "Heat conductivity of urban material",
+    "shortname": "URB_HCON",
+    "unit_id": "W m-1 K-1"
+  },
+  "503748": {
+    "description": "Upward diffusive short wave radiation flux at surface on tangent plane to terrain including orographic shading",
+    "id": 503748,
+    "name": "Upward diffusive short wave radiation flux at surface on tangent plane to terrain including orographic shading",
+    "shortname": "SWDIFUS_RAD_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "503207": {
+    "description": "Thunderstorm index for Switzerland (day time)",
+    "id": 503207,
+    "name": "Thunderstorm index for Switzerland (day time)",
+    "shortname": "SWISS12",
+    "unit_id": "K"
+  },
+  "503410": {
+    "description": "State of the ragweed  (ambrosia) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "id": 503410,
+    "name": "State of the ragweed  (ambrosia) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "shortname": "AMBRsdes",
+    "unit_id": "0-1"
+  },
+  "503049": {
+    "description": "Eddy dissipitation rate of TKE",
+    "id": 503049,
+    "name": "Eddy dissipitation rate of TKE",
+    "shortname": "EDR",
+    "unit_id": "m2 s-3"
+  },
+  "500504": {
+    "description": "Icing Max Base (hft) - Icing Degree Composit",
+    "id": 500504,
+    "name": "Icing Max Base (hft) - Icing Degree Composit",
+    "shortname": "PIDC_MAX_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "500467": {
+    "description": "UV Index, clouded sky; corrected for albedo, aerosol, altitude and clouds",
+    "id": 500467,
+    "name": "UV Index, clouded sky; corrected for albedo, aerosol, altitude and clouds",
+    "shortname": "UVI_CL_COR",
+    "unit_id": "Numeric"
+  },
+  "503453": {
+    "description": "Accumulated wet deposition of dust number concentration  if rain reaches the surface for mode 2",
+    "id": 503453,
+    "name": "Accumulated wet deposition of dust number concentration  if rain reaches the surface for mode 2",
+    "shortname": "ACCWETDEPO_RAIN_DUSTB0",
+    "unit_id": "m-2"
+  },
+  "500871": {
+    "description": "DUMMY_221",
+    "id": 500871,
+    "name": "DUMMY_221",
+    "shortname": "DUMMY_221",
+    "unit_id": 1
+  },
+  "503716": {
+    "description": "Snow temperature at node (i.e. at snow layer interface or boundary) - multi level",
+    "id": 503716,
+    "name": "Snow temperature at node (i.e. at snow layer interface or boundary) - multi level",
+    "shortname": "TofSNW_NODE_M",
+    "unit_id": "K"
+  },
+  "500439": {
+    "description": "Probability of 6h total precipitation >= 20mm",
+    "id": 500439,
+    "name": "Probability of 6h total precipitation >= 20mm",
+    "shortname": "W_SKRR_06",
+    "unit_id": "kg m2"
+  },
+  "500815": {
+    "description": "DUMMY_165",
+    "id": 500815,
+    "name": "DUMMY_165",
+    "shortname": "DUMMY_165",
+    "unit_id": 1
+  },
+  "503549": {
+    "description": "Swiss coordinate LV 95 (south-north)",
+    "id": 503549,
+    "name": "Swiss coordinate LV 95 (south-north)",
+    "shortname": "SWISS_LV95_SN",
+    "unit_id": "m"
+  },
+  "503398": {
+    "description": "Cumulated weighted 2m temperature sum of daily values for grasses (poaceae) pollen",
+    "id": 503398,
+    "name": "Cumulated weighted 2m temperature sum of daily values for grasses (poaceae) pollen",
+    "shortname": "POACctsum",
+    "unit_id": "deg C"
+  },
+  "500666": {
+    "description": "DUMMY_16",
+    "id": 500666,
+    "name": "DUMMY_16",
+    "shortname": "DUMMY_16",
+    "unit_id": 1
+  },
+  "500466": {
+    "description": "Basic UV Index, clear sky; MSL, fixed albedo, fixed aerosol",
+    "id": 500466,
+    "name": "Basic UV Index, clear sky; MSL, fixed albedo, fixed aerosol",
+    "shortname": "UVI_B_CS",
+    "unit_id": "Numeric"
+  },
+  "500861": {
+    "description": "DUMMY_211",
+    "id": 500861,
+    "name": "DUMMY_211",
+    "shortname": "DUMMY_211",
+    "unit_id": 1
+  },
+  "500558": {
+    "description": "Divergenz Qn geostrophisch",
+    "id": 500558,
+    "name": "Divergenz Qn geostrophisch",
+    "shortname": "DIVQNGEO",
+    "unit_id": "m kg-1 s-1"
+  },
+  "500714": {
+    "description": "DUMMY_64",
+    "id": 500714,
+    "name": "DUMMY_64",
+    "shortname": "DUMMY_64",
+    "unit_id": 1
+  },
+  "500459": {
+    "description": "Probability of heavy thunderstorm during 1h",
+    "id": 500459,
+    "name": "Probability of heavy thunderstorm during 1h",
+    "shortname": "W_GEWSK_01",
+    "unit_id": "Numeric"
+  },
+  "503381": {
+    "description": "Height correction for emission (decreasing emission with height) for alder (alnus)",
+    "id": 503381,
+    "name": "Height correction for emission (decreasing emission with height) for alder (alnus)",
+    "shortname": "ALNUhcem",
+    "unit_id": "0-1"
+  },
+  "503645": {
+    "description": "Cumulated 2m temperature sum threshold for the start of hazel (corylus) pollen season (climatological)",
+    "id": 503645,
+    "name": "Cumulated 2m temperature sum threshold for the start of hazel (corylus) pollen season (climatological)",
+    "shortname": "CORYtthrs",
+    "unit_id": "deg C"
+  },
+  "500555": {
+    "description": "Divergenz Q (geostrophisch)",
+    "id": 500555,
+    "name": "Divergenz Q (geostrophisch)",
+    "shortname": "DIVGEO",
+    "unit_id": "m kg-1 s-1"
+  },
+  "500572": {
+    "description": "Tidal tendencies",
+    "id": 500572,
+    "name": "Tidal tendencies",
+    "shortname": "TIDAL",
+    "unit_id": "s2 m-2"
+  },
+  "500573": {
+    "description": "Sea surface temperature interpolated in time in C",
+    "id": 500573,
+    "name": "Sea surface temperature interpolated in time in C",
+    "shortname": "SST_IC",
+    "unit_id": "C"
+  },
+  "500722": {
+    "description": "DUMMY_72",
+    "id": 500722,
+    "name": "DUMMY_72",
+    "shortname": "DUMMY_72",
+    "unit_id": 1
+  },
+  "503615": {
+    "description": "Cloud base mass flux associated with passive clouds",
+    "id": 503615,
+    "name": "Cloud base mass flux associated with passive clouds",
+    "shortname": "CBMFLX_PSV",
+    "unit_id": "kg m-2 s-1"
+  },
+  "500816": {
+    "description": "DUMMY_166",
+    "id": 500816,
+    "name": "DUMMY_166",
+    "shortname": "DUMMY_166",
+    "unit_id": 1
+  },
+  "500725": {
+    "description": "DUMMY_75",
+    "id": 500725,
+    "name": "DUMMY_75",
+    "shortname": "DUMMY_75",
+    "unit_id": 1
+  },
+  "500754": {
+    "description": "DUMMY_104",
+    "id": 500754,
+    "name": "DUMMY_104",
+    "shortname": "DUMMY_104",
+    "unit_id": 1
+  },
+  "503667": {
+    "description": "Height of building",
+    "id": 503667,
+    "name": "Height of building",
+    "shortname": "URB_H_BLD",
+    "unit_id": "m"
+  },
+  "500471": {
+    "description": "Time of maximum of UV Index, clouded",
+    "id": 500471,
+    "name": "Time of maximum of UV Index, clouded",
+    "shortname": "UVI_MAX_H",
+    "unit_id": "Numeric"
+  },
+  "503605": {
+    "description": "Water table depth",
+    "id": 503605,
+    "name": "Water table depth",
+    "shortname": "WT_DEPTH",
+    "unit_id": "m"
+  },
+  "503073": {
+    "description": "snow_rate,qualified,BRD",
+    "id": 503073,
+    "name": "snow_rate,qualified,BRD",
+    "shortname": "RADAR_FQ",
+    "unit_id": "0.01 m"
+  },
+  "503194": {
+    "description": "Pressure difference between cloud base and cloud top",
+    "id": 503194,
+    "name": "Pressure difference between cloud base and cloud top",
+    "shortname": "PDIFF_CON",
+    "unit_id": "Pa"
+  },
+  "503379": {
+    "description": "Sum of released alder (alnus) pollen into the reservoir (daily sum)",
+    "id": 503379,
+    "name": "Sum of released alder (alnus) pollen into the reservoir (daily sum)",
+    "shortname": "ALNUress",
+    "unit_id": "m-2"
+  },
+  "503116": {
+    "description": "Number density of rain",
+    "id": 503116,
+    "name": "Number density of rain",
+    "shortname": "NDRAIN",
+    "unit_id": "m-3"
+  },
+  "500526": {
+    "description": "Icing Signifikant Code (1=general,2=convective,3=stratiform,4=freezing) - Icing Scenario Composit",
+    "id": 500526,
+    "name": "Icing Signifikant Code (1=general,2=convective,3=stratiform,4=freezing) - Icing Scenario Composit",
+    "shortname": "DISC_SIG_CODE",
+    "unit_id": "Numeric"
+  },
+  "503399": {
+    "description": "Cumulated 2m temperature sum threshold for the start of  grasses (poaceae) pollen season (climatological)",
+    "id": 503399,
+    "name": "Cumulated 2m temperature sum threshold for the start of  grasses (poaceae) pollen season (climatological)",
+    "shortname": "POACtthrs",
+    "unit_id": "deg C"
+  },
+  "500525": {
+    "description": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Scenario Composit",
+    "id": 500525,
+    "name": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Scenario Composit",
+    "shortname": "DISC_VERT_CODE",
+    "unit_id": "Numeric"
+  },
+  "500697": {
+    "description": "DUMMY_47",
+    "id": 500697,
+    "name": "DUMMY_47",
+    "shortname": "DUMMY_47",
+    "unit_id": 1
+  },
+  "503160": {
+    "description": "Divergence modified turbulence index (Ellrod and Knox)",
+    "id": 503160,
+    "name": "Divergence modified turbulence index (Ellrod and Knox)",
+    "shortname": "CAT_DTI",
+    "unit_id": "s-2"
+  },
+  "500835": {
+    "description": "DUMMY_185",
+    "id": 500835,
+    "name": "DUMMY_185",
+    "shortname": "DUMMY_185",
+    "unit_id": 1
+  },
+  "503408": {
+    "description": "Number of ragweed  (ambrosia) pollen released into the reservoir (new)",
+    "id": 503408,
+    "name": "Number of ragweed  (ambrosia) pollen released into the reservoir (new)",
+    "shortname": "AMBRresn",
+    "unit_id": "m-2"
+  },
+  "503766": {
+    "description": "Relative Humidity in lowest model layer - time-filtered assimilation increment, daytime weighting",
+    "id": 503766,
+    "name": "Relative Humidity in lowest model layer - time-filtered assimilation increment, daytime weighting",
+    "shortname": "RELHUM_LML_DTWGT_FILTINC",
+    "unit_id": "Proportion"
+  },
+  "500794": {
+    "description": "DUMMY_144",
+    "id": 500794,
+    "name": "DUMMY_144",
+    "shortname": "DUMMY_144",
+    "unit_id": 1
+  },
+  "503665": {
+    "description": "Building area fraction (proportion: 0=no building, 1=whole urban area)",
+    "id": 503665,
+    "name": "Building area fraction (proportion: 0=no building, 1=whole urban area)",
+    "shortname": "URB_FR_BLD",
+    "unit_id": "Proportion"
+  },
+  "500772": {
+    "description": "DUMMY_122",
+    "id": 500772,
+    "name": "DUMMY_122",
+    "shortname": "DUMMY_122",
+    "unit_id": 1
+  },
+  "500621": {
+    "description": "Prob Starkes Gewitter",
+    "id": 500621,
+    "name": "Prob Starkes Gewitter",
+    "shortname": "TSX",
+    "unit_id": "Numeric"
+  },
+  "500509": {
+    "description": "Icing Base (hft) - Icing Scenario Composit",
+    "id": 500509,
+    "name": "Icing Base (hft) - Icing Scenario Composit",
+    "shortname": "PISC_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "503121": {
+    "description": "Number density of graupel",
+    "id": 503121,
+    "name": "Number density of graupel",
+    "shortname": "NDGRAUPEL",
+    "unit_id": "m-3"
+  },
+  "500852": {
+    "description": "DUMMY_202",
+    "id": 500852,
+    "name": "DUMMY_202",
+    "shortname": "DUMMY_202",
+    "unit_id": 1
+  },
+  "500442": {
+    "description": "Probability of 12h total precipitation >= 40mm",
+    "id": 500442,
+    "name": "Probability of 12h total precipitation >= 40mm",
+    "shortname": "U_DRRER_12",
+    "unit_id": "kg m2"
+  },
+  "503704": {
+    "description": "Potential flight distance PFD (gliding)",
+    "id": 503704,
+    "name": "Potential flight distance PFD (gliding)",
+    "shortname": "POT_FLT_DIST",
+    "unit_id": "m"
+  },
+  "503342": {
+    "description": "Maximum rotation amplitude (positive or negative) (over given time interval and column)",
+    "id": 503342,
+    "name": "Maximum rotation amplitude (positive or negative) (over given time interval and column)",
+    "shortname": "VORW_CTMAX",
+    "unit_id": "s-1"
+  },
+  "500746": {
+    "description": "DUMMY_96",
+    "id": 500746,
+    "name": "DUMMY_96",
+    "shortname": "DUMMY_96",
+    "unit_id": 1
+  },
+  "503115": {
+    "description": "Specific number concentration of rain",
+    "id": 503115,
+    "name": "Specific number concentration of rain",
+    "shortname": "NCRAIN",
+    "unit_id": "kg-1"
+  },
+  "503442": {
+    "description": "Accumulated wet deposition of dust if rain reaches the surface for mode 3",
+    "id": 503442,
+    "name": "Accumulated wet deposition of dust if rain reaches the surface for mode 3",
+    "shortname": "ACCWETDEPO_RAIN_DUSTC",
+    "unit_id": "kg m-2"
+  },
+  "500506": {
+    "description": "Icing Top (hft) - Icing Degree Composit",
+    "id": 500506,
+    "name": "Icing Top (hft) - Icing Degree Composit",
+    "shortname": "PIDC_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "500656": {
+    "description": "DUMMY_6",
+    "id": 500656,
+    "name": "DUMMY_6",
+    "shortname": "DUMMY_6",
+    "unit_id": 1
+  },
+  "500553": {
+    "description": "Q-Vektor X-Komponente (geostrophisch)",
+    "id": 500553,
+    "name": "Q-Vektor X-Komponente (geostrophisch)",
+    "shortname": "QVX",
+    "unit_id": "m2 kg-1 s-1"
+  },
+  "502353": {
+    "description": "Eddy Dissipation Rate Total Col-Max. Lower UIR",
+    "id": 502353,
+    "name": "Eddy Dissipation Rate Total Col-Max. Lower UIR",
+    "shortname": "EDP_MAX_LUIR",
+    "unit_id": "m2/3 s-1"
+  },
+  "500505": {
+    "description": "Icing Max Top (hft) - Icing Degree Composit",
+    "id": 500505,
+    "name": "Icing Max Top (hft) - Icing Degree Composit",
+    "shortname": "PIDC_MAX_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "503424": {
+    "description": "Random pattern for  the stochastically perturbed parametrization tendencies (SPPT) scheme at levels without tapering. If multi-scale random patterns are used, RAPA_SPPT is the sum of those.",
+    "id": 503424,
+    "name": "Random pattern for  the stochastically perturbed parametrization tendencies (SPPT) scheme at levels without tapering. If multi-scale random patterns are used, RAPA_SPPT is the sum of those.",
+    "shortname": "RAPA_SPPT",
+    "unit_id": "Numeric"
+  },
+  "500567": {
+    "description": "Clear Air Turbulence Index",
+    "id": 500567,
+    "name": "Clear Air Turbulence Index",
+    "shortname": "CATIX",
+    "unit_id": "s-1"
+  },
+  "503165": {
+    "description": "Wind direction in azimuth class",
+    "id": 503165,
+    "name": "Wind direction in azimuth class",
+    "shortname": "DDCLASS_10M",
+    "unit_id": "Numeric"
+  },
+  "503556": {
+    "description": "Standard deviation of hail diameter",
+    "id": 503556,
+    "name": "Standard deviation of hail diameter",
+    "shortname": "DHAIL_SD",
+    "unit_id": "mm"
+  },
+  "500784": {
+    "description": "DUMMY_134",
+    "id": 500784,
+    "name": "DUMMY_134",
+    "shortname": "DUMMY_134",
+    "unit_id": 1
+  },
+  "503402": {
+    "description": "Number of days since the start of grasses (poaceae) pollen season (if present day is outside the season: length of current season)",
+    "id": 503402,
+    "name": "Number of days since the start of grasses (poaceae) pollen season (if present day is outside the season: length of current season)",
+    "shortname": "POACsaisa",
+    "unit_id": "d"
+  },
+  "500740": {
+    "description": "DUMMY_90",
+    "id": 500740,
+    "name": "DUMMY_90",
+    "shortname": "DUMMY_90",
+    "unit_id": 1
+  },
+  "503147": {
+    "description": "probability density function of EDP for turbulence  greater well defined threshold and model grid box",
+    "id": 503147,
+    "name": "probability density function of EDP for turbulence  greater well defined threshold and model grid box",
+    "shortname": "EDPP",
+    "unit_id": "%"
+  },
+  "503404": {
+    "description": "Pollen number emission flux for grasses (poaceae)",
+    "id": 503404,
+    "name": "Pollen number emission flux for grasses (poaceae)",
+    "shortname": "POACfe",
+    "unit_id": "m-2s-1"
+  },
+  "503126": {
+    "description": "Mass density of cloud droplets",
+    "id": 503126,
+    "name": "Mass density of cloud droplets",
+    "shortname": "DENC",
+    "unit_id": "kg m-3"
+  },
+  "500668": {
+    "description": "DUMMY_18",
+    "id": 500668,
+    "name": "DUMMY_18",
+    "shortname": "DUMMY_18",
+    "unit_id": 1
+  },
+  "503550": {
+    "description": "Swiss coordinate LV 95 (west-east)",
+    "id": 503550,
+    "name": "Swiss coordinate LV 95 (west-east)",
+    "shortname": "SWISS_LV95_WE",
+    "unit_id": "m"
+  },
+  "503735": {
+    "description": "NowCastMIX-Aviation (Konvektiver Status, EuCOM-Gebiet)",
+    "id": 503735,
+    "name": "NowCastMIX-Aviation (Konvektiver Status, EuCOM-Gebiet)",
+    "shortname": "NCM_A_EUCOM",
+    "unit_id": "numeric"
+  },
+  "500759": {
+    "description": "DUMMY_109",
+    "id": 500759,
+    "name": "DUMMY_109",
+    "shortname": "DUMMY_109",
+    "unit_id": 1
+  },
+  "500798": {
+    "description": "DUMMY_148",
+    "id": 500798,
+    "name": "DUMMY_148",
+    "shortname": "DUMMY_148",
+    "unit_id": 1
+  },
+  "500868": {
+    "description": "DUMMY_218",
+    "id": 500868,
+    "name": "DUMMY_218",
+    "shortname": "DUMMY_218",
+    "unit_id": 1
+  },
+  "503180": {
+    "description": "Along-wind Lagrangian time scale (Hanna)",
+    "id": 503180,
+    "name": "Along-wind Lagrangian time scale (Hanna)",
+    "shortname": "LAGTIMEU",
+    "unit_id": "s"
+  },
+  "500570": {
+    "description": "Dry convection top index",
+    "id": 500570,
+    "name": "Dry convection top index",
+    "shortname": "TOP_DCON",
+    "unit_id": "Numeric"
+  },
+  "503413": {
+    "description": "Cumulated weighted 2m temperature sum of daily values for ragweed  (ambrosia) pollen",
+    "id": 503413,
+    "name": "Cumulated weighted 2m temperature sum of daily values for ragweed  (ambrosia) pollen",
+    "shortname": "AMBRctsum",
+    "unit_id": "deg C"
+  },
+  "500445": {
+    "description": "Probability of 6h accumulated snow >= 5cm",
+    "id": 500445,
+    "name": "Probability of 6h accumulated snow >= 5cm",
+    "shortname": "W_SF_06",
+    "unit_id": "kg m2"
+  },
+  "503607": {
+    "description": "Slope of orography (using average of maximum gradient in different directions)",
+    "id": 503607,
+    "name": "Slope of orography (using average of maximum gradient in different directions)",
+    "shortname": "S_ORO_MAX",
+    "unit_id": "Numeric"
+  },
+  "503163": {
+    "description": "Deep convection index",
+    "id": 503163,
+    "name": "Deep convection index",
+    "shortname": "DCI",
+    "unit_id": "K"
+  },
+  "503642": {
+    "description": "Sum of released hazel (corylus) pollen into the reservoir (daily sum)",
+    "id": 503642,
+    "name": "Sum of released hazel (corylus) pollen into the reservoir (daily sum)",
+    "shortname": "CORYress",
+    "unit_id": "m-2"
+  },
+  "500727": {
+    "description": "DUMMY_77",
+    "id": 500727,
+    "name": "DUMMY_77",
+    "shortname": "DUMMY_77",
+    "unit_id": 1
+  },
+  "500870": {
+    "description": "DUMMY_220",
+    "id": 500870,
+    "name": "DUMMY_220",
+    "shortname": "DUMMY_220",
+    "unit_id": 1
+  },
+  "500566": {
+    "description": "Frontogenesis function",
+    "id": 500566,
+    "name": "Frontogenesis function",
+    "shortname": "FRONTOF",
+    "unit_id": "Km kg-1 s-1"
+  },
+  "500824": {
+    "description": "DUMMY_174",
+    "id": 500824,
+    "name": "DUMMY_174",
+    "shortname": "DUMMY_174",
+    "unit_id": 1
+  },
+  "503753": {
+    "description": "Downward direct short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "id": 503753,
+    "name": "Downward direct short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "shortname": "ASWDIR_S_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "500812": {
+    "description": "DUMMY_162",
+    "id": 500812,
+    "name": "DUMMY_162",
+    "shortname": "DUMMY_162",
+    "unit_id": 1
+  },
+  "503747": {
+    "description": "Upward diffusive short wave radiation flux at surface on horizontal plane including orographic shading",
+    "id": 503747,
+    "name": "Upward diffusive short wave radiation flux at surface on horizontal plane including orographic shading",
+    "shortname": "SWDIFUS_RAD_OS",
+    "unit_id": "W m-2"
+  },
+  "503457": {
+    "description": "Accumulated sedimentation of dust number concentration for mode 3",
+    "id": 503457,
+    "name": "Accumulated sedimentation of dust number concentration for mode 3",
+    "shortname": "ACCSEDIM_DUSTC0",
+    "unit_id": "m-2"
+  },
+  "500636": {
+    "description": "Buoyancy-production of TKE due to sub-grid scale convection",
+    "id": 500636,
+    "name": "Buoyancy-production of TKE due to sub-grid scale convection",
+    "shortname": "DTKE_CON",
+    "unit_id": "m2 s-3"
+  },
+  "503142": {
+    "description": "Lightning Potential Index",
+    "id": 503142,
+    "name": "Lightning Potential Index",
+    "shortname": "LPI",
+    "unit_id": "J kg-1"
+  },
+  "503292": {
+    "description": "Sea ice albedo - diffusive solar (0.3 - 5.0 m-6)",
+    "id": 503292,
+    "name": "Sea ice albedo - diffusive solar (0.3 - 5.0 m-6)",
+    "shortname": "ALB_SEAICE",
+    "unit_id": "%"
+  },
+  "503414": {
+    "description": "Cumulated 2m temperature sum threshold for the start of  ragweed  (ambrosia) pollen season (climatological)",
+    "id": 503414,
+    "name": "Cumulated 2m temperature sum threshold for the start of  ragweed  (ambrosia) pollen season (climatological)",
+    "shortname": "AMBRtthrs",
+    "unit_id": "deg C"
+  },
+  "500519": {
+    "description": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Degree Composit",
+    "id": 500519,
+    "name": "Icing Vertical Code (1=continuous,2=discontinuous) - Icing Degree Composit",
+    "shortname": "DIDC_VERT_CODE",
+    "unit_id": "Numeric"
+  },
+  "503371": {
+    "description": "Cumulated 2m temperature sum threshold for the end of birch (betula) pollen season (climatological)",
+    "id": 503371,
+    "name": "Cumulated 2m temperature sum threshold for the end of birch (betula) pollen season (climatological)",
+    "shortname": "BETUtthre",
+    "unit_id": "deg C"
+  },
+  "503460": {
+    "description": "Mineral dust backscatter (not attenuated, for given wave length)",
+    "id": 503460,
+    "name": "Mineral dust backscatter (not attenuated, for given wave length)",
+    "shortname": "BSC_DUST",
+    "unit_id": "m-1 sr-1"
+  },
+  "500447": {
+    "description": "Probability of 12h accumulated snow >=0.5cm",
+    "id": 500447,
+    "name": "Probability of 12h accumulated snow >=0.5cm",
+    "shortname": "W_SFL_12",
+    "unit_id": "kg m2"
+  },
+  "500538": {
+    "description": "cloud type",
+    "id": 500538,
+    "name": "cloud type",
+    "shortname": "CL_TYPE_SAT",
+    "unit_id": "Numeric"
+  },
+  "503719": {
+    "description": "Volumetric air content of snow layer (for use in tile approach) - multi level",
+    "id": 503719,
+    "name": "Volumetric air content of snow layer (for use in tile approach) - multi level",
+    "shortname": "AIRinSNW_VC_T_M",
+    "unit_id": "m3 m-3"
+  },
+  "500688": {
+    "description": "DUMMY_38",
+    "id": 500688,
+    "name": "DUMMY_38",
+    "shortname": "DUMMY_38",
+    "unit_id": 1
+  },
+  "503078": {
+    "description": "Relative humidity over mixed phase",
+    "id": 503078,
+    "name": "Relative humidity over mixed phase",
+    "shortname": "RH_MIX_EC",
+    "unit_id": "%"
+  },
+  "500881": {
+    "description": "DUMMY_231",
+    "id": 500881,
+    "name": "DUMMY_231",
+    "shortname": "DUMMY_231",
+    "unit_id": 1
+  },
+  "503200": {
+    "description": "Vertical velocity fluctuation (Hanna)",
+    "id": 503200,
+    "name": "Vertical velocity fluctuation (Hanna)",
+    "shortname": "SIGMAW",
+    "unit_id": "m s-1"
+  },
+  "500762": {
+    "description": "DUMMY_112",
+    "id": 500762,
+    "name": "DUMMY_112",
+    "shortname": "DUMMY_112",
+    "unit_id": 1
+  },
+  "500855": {
+    "description": "DUMMY_205",
+    "id": 500855,
+    "name": "DUMMY_205",
+    "shortname": "DUMMY_205",
+    "unit_id": 1
+  },
+  "500578": {
+    "description": "Covariance of soil moisture content",
+    "id": 500578,
+    "name": "Covariance of soil moisture content",
+    "shortname": "WCOV",
+    "unit_id": "kg2 m-4"
+  },
+  "503168": {
+    "description": "Relative duration of sunshine (DURSUN * 100 / DURSUN_M)",
+    "id": 503168,
+    "name": "Relative duration of sunshine (DURSUN * 100 / DURSUN_M)",
+    "shortname": "DURSUN_R",
+    "unit_id": "%"
+  },
+  "500800": {
+    "description": "DUMMY_150",
+    "id": 500800,
+    "name": "DUMMY_150",
+    "shortname": "DUMMY_150",
+    "unit_id": 1
+  },
+  "500732": {
+    "description": "DUMMY_82",
+    "id": 500732,
+    "name": "DUMMY_82",
+    "shortname": "DUMMY_82",
+    "unit_id": 1
+  },
+  "500797": {
+    "description": "DUMMY_147",
+    "id": 500797,
+    "name": "DUMMY_147",
+    "shortname": "DUMMY_147",
+    "unit_id": 1
+  },
+  "500827": {
+    "description": "DUMMY_177",
+    "id": 500827,
+    "name": "DUMMY_177",
+    "shortname": "DUMMY_177",
+    "unit_id": 1
+  },
+  "500521": {
+    "description": "Icing Base (hft) - Icing Scenario Composit",
+    "id": 500521,
+    "name": "Icing Base (hft) - Icing Scenario Composit",
+    "shortname": "DISC_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "503071": {
+    "description": "hail flag,BRD",
+    "id": 503071,
+    "name": "hail flag,BRD",
+    "shortname": "RADAR_RH",
+    "unit_id": "Numeric"
+  },
+  "503119": {
+    "description": "Specific number concentration of hail",
+    "id": 503119,
+    "name": "Specific number concentration of hail",
+    "shortname": "NCHAIL",
+    "unit_id": "kg-1"
+  },
+  "500669": {
+    "description": "DUMMY_19",
+    "id": 500669,
+    "name": "DUMMY_19",
+    "shortname": "DUMMY_19",
+    "unit_id": 1
+  },
+  "503182": {
+    "description": "Vertical Lagrangian time scale (Hanna)",
+    "id": 503182,
+    "name": "Vertical Lagrangian time scale (Hanna)",
+    "shortname": "LAGTIMEW",
+    "unit_id": "s"
+  },
+  "503705": {
+    "description": "Lifting ratio VST (gliding)",
+    "id": 503705,
+    "name": "Lifting ratio VST (gliding)",
+    "shortname": "LIFT_RATIO",
+    "unit_id": "m s-1"
+  },
+  "500565": {
+    "description": "Divergenz Qs",
+    "id": 500565,
+    "name": "Divergenz Qs",
+    "shortname": "DIVQS",
+    "unit_id": "m kg-1 s-1"
+  },
+  "503626": {
+    "description": "Mass median diameter of dust for mode 2",
+    "id": 503626,
+    "name": "Mass median diameter of dust for mode 2",
+    "shortname": "MMD_DUSTB",
+    "unit_id": "m"
+  },
+  "500876": {
+    "description": "DUMMY_226",
+    "id": 500876,
+    "name": "DUMMY_226",
+    "shortname": "DUMMY_226",
+    "unit_id": 1
+  },
+  "500652": {
+    "description": "DUMMY_3",
+    "id": 500652,
+    "name": "DUMMY_3",
+    "shortname": "DUMMY_3",
+    "unit_id": 1
+  },
+  "500828": {
+    "description": "DUMMY_178",
+    "id": 500828,
+    "name": "DUMMY_178",
+    "shortname": "DUMMY_178",
+    "unit_id": 1
+  },
+  "503590": {
+    "description": "Solar elevation angle",
+    "id": 503590,
+    "name": "Solar elevation angle",
+    "shortname": "SUN_EL",
+    "unit_id": "Degree"
+  },
+  "500704": {
+    "description": "DUMMY_54",
+    "id": 500704,
+    "name": "DUMMY_54",
+    "shortname": "DUMMY_54",
+    "unit_id": 1
+  },
+  "500712": {
+    "description": "DUMMY_62",
+    "id": 500712,
+    "name": "DUMMY_62",
+    "shortname": "DUMMY_62",
+    "unit_id": 1
+  },
+  "503355": {
+    "description": "Maximum 10m dynamical gust",
+    "id": 503355,
+    "name": "Maximum 10m dynamical gust",
+    "shortname": "VGUST_DYN_10M",
+    "unit_id": "m s-1"
+  },
+  "500503": {
+    "description": "Icing Base (hft) - Icing Degree Composit",
+    "id": 500503,
+    "name": "Icing Base (hft) - Icing Degree Composit",
+    "shortname": "PIDC_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "500663": {
+    "description": "DUMMY_13",
+    "id": 500663,
+    "name": "DUMMY_13",
+    "shortname": "DUMMY_13",
+    "unit_id": 1
+  },
+  "500761": {
+    "description": "DUMMY_111",
+    "id": 500761,
+    "name": "DUMMY_111",
+    "shortname": "DUMMY_111",
+    "unit_id": 1
+  },
+  "500715": {
+    "description": "DUMMY_65",
+    "id": 500715,
+    "name": "DUMMY_65",
+    "shortname": "DUMMY_65",
+    "unit_id": 1
+  },
+  "500460": {
+    "description": "Probability of severe thunderstorm during 1h",
+    "id": 500460,
+    "name": "Probability of severe thunderstorm during 1h",
+    "shortname": "U_GEWSW_01",
+    "unit_id": "Numeric"
+  },
+  "500554": {
+    "description": "Q-Vektor Y-Komponente (geostrophisch)",
+    "id": 500554,
+    "name": "Q-Vektor Y-Komponente (geostrophisch)",
+    "shortname": "QVY",
+    "unit_id": "m2 kg-1 s-1"
+  },
+  "503209": {
+    "description": "Swiss coordinate (west-east)",
+    "id": 503209,
+    "name": "Swiss coordinate (west-east)",
+    "shortname": "SWISS_WE",
+    "unit_id": "m"
+  },
+  "503751": {
+    "description": "Net short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "id": 503751,
+    "name": "Net short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "shortname": "ASOB_S_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "500753": {
+    "description": "DUMMY_103",
+    "id": 500753,
+    "name": "DUMMY_103",
+    "shortname": "DUMMY_103",
+    "unit_id": 1
+  },
+  "500451": {
+    "description": "Probability of 1h maximum wind gust speed >= 14m/s",
+    "id": 500451,
+    "name": "Probability of 1h maximum wind gust speed >= 14m/s",
+    "shortname": "W_WND_01",
+    "unit_id": "m s-1"
+  },
+  "503148": {
+    "description": "Adedokun 2 Index",
+    "id": 503148,
+    "name": "Adedokun 2 Index",
+    "shortname": "ADEDO2",
+    "unit_id": "K"
+  },
+  "503202": {
+    "description": "Meridional velocity fluctuation (Hanna)",
+    "id": 503202,
+    "name": "Meridional velocity fluctuation (Hanna)",
+    "shortname": "SIGMAY",
+    "unit_id": "m s-1"
+  },
+  "500522": {
+    "description": "Icing Signifikant Base (hft) - Icing Scenario Composit",
+    "id": 500522,
+    "name": "Icing Signifikant Base (hft) - Icing Scenario Composit",
+    "shortname": "DISC_SIG_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "503614": {
+    "description": "Cloud base mass flux associated with active clouds",
+    "id": 503614,
+    "name": "Cloud base mass flux associated with active clouds",
+    "shortname": "CBMFLX_ACT",
+    "unit_id": "kg m-2 s-1"
+  },
+  "503176": {
+    "description": "Downward short wave radiation flux at surface on vertical surface facing east (time average)",
+    "id": 503176,
+    "name": "Downward short wave radiation flux at surface on vertical surface facing east (time average)",
+    "shortname": "ASOD_SvE",
+    "unit_id": "W m-2"
+  },
+  "502346": {
+    "description": "Albedo - near infrared - time average (0.7 - 5.0 m-6)",
+    "id": 502346,
+    "name": "Albedo - near infrared - time average (0.7 - 5.0 m-6)",
+    "shortname": "ALB_NI12",
+    "unit_id": "%"
+  },
+  "503056": {
+    "description": "Specific cloud water content (diagnostic)",
+    "id": 503056,
+    "name": "Specific cloud water content (diagnostic)",
+    "shortname": "QC_DIA",
+    "unit_id": "kg kg-1"
+  },
+  "500808": {
+    "description": "DUMMY_158",
+    "id": 500808,
+    "name": "DUMMY_158",
+    "shortname": "DUMMY_158",
+    "unit_id": 1
+  },
+  "503146": {
+    "description": "Height of -10 degree Celsius isotherm",
+    "id": 503146,
+    "name": "Height of -10 degree Celsius isotherm",
+    "shortname": "HMIN10CL",
+    "unit_id": "m"
+  },
+  "503188": {
+    "description": "Luminosity",
+    "id": 503188,
+    "name": "Luminosity",
+    "shortname": "LUM",
+    "unit_id": "klux"
+  },
+  "503380": {
+    "description": "State of the alder (alnus) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "id": 503380,
+    "name": "State of the alder (alnus) season (eq.zero before and after season, the higher, the more plants are flowering)",
+    "shortname": "ALNUsdes",
+    "unit_id": "0-1"
+  },
+  "500859": {
+    "description": "DUMMY_209",
+    "id": 500859,
+    "name": "DUMMY_209",
+    "shortname": "DUMMY_209",
+    "unit_id": 1
+  },
+  "503153": {
+    "description": "Gauss Boaga Coordinates South to North, West Sector",
+    "id": 503153,
+    "name": "Gauss Boaga Coordinates South to North, West Sector",
+    "shortname": "BOAGAW_SN",
+    "unit_id": "m"
+  },
+  "503159": {
+    "description": "Divergence trend (scaled divergence tendency needed for CAT_DVI)",
+    "id": 503159,
+    "name": "Divergence trend (scaled divergence tendency needed for CAT_DVI)",
+    "shortname": "CAT_DVT",
+    "unit_id": "s-2"
+  },
+  "500457": {
+    "description": "Probability of black ice during 1h",
+    "id": 500457,
+    "name": "Probability of black ice during 1h",
+    "shortname": "W_GLEIS_01",
+    "unit_id": "Numeric"
+  },
+  "503392": {
+    "description": "Number of grasses (poaceae) pollen in the reservoir (previous timestep)",
+    "id": 503392,
+    "name": "Number of grasses (poaceae) pollen in the reservoir (previous timestep)",
+    "shortname": "POACreso",
+    "unit_id": "m-2"
+  },
+  "500774": {
+    "description": "DUMMY_124",
+    "id": 500774,
+    "name": "DUMMY_124",
+    "shortname": "DUMMY_124",
+    "unit_id": 1
+  },
+  "503301": {
+    "description": "Slope aspect - topography",
+    "id": 503301,
+    "name": "Slope aspect - topography",
+    "shortname": "SLO_ASP",
+    "unit_id": "Numeric"
+  },
+  "503419": {
+    "description": "Pollen number emission flux for ragweed  (ambrosia)",
+    "id": 503419,
+    "name": "Pollen number emission flux for ragweed  (ambrosia)",
+    "shortname": "AMBRfe",
+    "unit_id": "m-2s-1"
+  },
+  "500706": {
+    "description": "DUMMY_56",
+    "id": 500706,
+    "name": "DUMMY_56",
+    "shortname": "DUMMY_56",
+    "unit_id": 1
+  },
+  "500860": {
+    "description": "DUMMY_210",
+    "id": 500860,
+    "name": "DUMMY_210",
+    "shortname": "DUMMY_210",
+    "unit_id": 1
+  },
+  "500620": {
+    "description": "Prob Gewitter",
+    "id": 500620,
+    "name": "Prob Gewitter",
+    "shortname": "TS",
+    "unit_id": "Numeric"
+  },
+  "503649": {
+    "description": "Pollen number emission flux for hazel (corylus)",
+    "id": 503649,
+    "name": "Pollen number emission flux for hazel (corylus)",
+    "shortname": "CORYfe",
+    "unit_id": "m-2 s-1"
+  },
+  "503420": {
+    "description": "Number of days since the start of birch (betula) pollen season (if present day is in the season: zero outside season)",
+    "id": 503420,
+    "name": "Number of days since the start of birch (betula) pollen season (if present day is in the season: zero outside season)",
+    "shortname": "BETUsaisn",
+    "unit_id": "d"
+  },
+  "500886": {
+    "description": "DUMMY_236",
+    "id": 500886,
+    "name": "DUMMY_236",
+    "shortname": "DUMMY_236",
+    "unit_id": 1
+  },
+  "503663": {
+    "description": "Number of snow layer - multi level",
+    "id": 503663,
+    "name": "Number of snow layer - multi level",
+    "shortname": "N_SNOW_M",
+    "unit_id": "Numeric"
+  },
+  "500851": {
+    "description": "DUMMY_201",
+    "id": 500851,
+    "name": "DUMMY_201",
+    "shortname": "DUMMY_201",
+    "unit_id": 1
+  },
+  "500577": {
+    "description": "Variance of soil moisture content",
+    "id": 500577,
+    "name": "Variance of soil moisture content",
+    "shortname": "WVAR",
+    "unit_id": "kg2 m-4"
+  },
+  "503172": {
+    "description": "2m Enthalpy",
+    "id": 503172,
+    "name": "2m Enthalpy",
+    "shortname": "ENTH_2M",
+    "unit_id": "J kg-1"
+  },
+  "503156": {
+    "description": "Ellrod and Knapp turbulence index1",
+    "id": 503156,
+    "name": "Ellrod and Knapp turbulence index1",
+    "shortname": "CAT_TI1",
+    "unit_id": "s-2"
+  },
+  "503401": {
+    "description": "Number of days since the start of grasses (poaceae) pollen season (if present day is in the season: zero outside season)",
+    "id": 503401,
+    "name": "Number of days since the start of grasses (poaceae) pollen season (if present day is in the season: zero outside season)",
+    "shortname": "POACsaisn",
+    "unit_id": "d"
+  },
+  "503638": {
+    "description": "Number of hazel (corylus) pollen in the reservoir (previous timestep)",
+    "id": 503638,
+    "name": "Number of hazel (corylus) pollen in the reservoir (previous timestep)",
+    "shortname": "CORYreso",
+    "unit_id": "m-2"
+  },
+  "500676": {
+    "description": "DUMMY_26",
+    "id": 500676,
+    "name": "DUMMY_26",
+    "shortname": "DUMMY_26",
+    "unit_id": 1
+  },
+  "500865": {
+    "description": "DUMMY_215",
+    "id": 500865,
+    "name": "DUMMY_215",
+    "shortname": "DUMMY_215",
+    "unit_id": 1
+  },
+  "500514": {
+    "description": "Icing Signifikant Code (1=general,2=convective,3=stratiform,4=freezing) - Icing Scenario Composit",
+    "id": 500514,
+    "name": "Icing Signifikant Code (1=general,2=convective,3=stratiform,4=freezing) - Icing Scenario Composit",
+    "shortname": "PISC_SIG_CODE",
+    "unit_id": "Numeric"
+  },
+  "500788": {
+    "description": "DUMMY_138",
+    "id": 500788,
+    "name": "DUMMY_138",
+    "shortname": "DUMMY_138",
+    "unit_id": 1
+  },
+  "500690": {
+    "description": "DUMMY_40",
+    "id": 500690,
+    "name": "DUMMY_40",
+    "shortname": "DUMMY_40",
+    "unit_id": 1
+  },
+  "500778": {
+    "description": "DUMMY_128",
+    "id": 500778,
+    "name": "DUMMY_128",
+    "shortname": "DUMMY_128",
+    "unit_id": 1
+  },
+  "503619": {
+    "description": "Single scan reflectivity - observation",
+    "id": 503619,
+    "name": "Single scan reflectivity - observation",
+    "shortname": "DBZSCAN_OBS",
+    "unit_id": "dB"
+  },
+  "500806": {
+    "description": "DUMMY_156",
+    "id": 500806,
+    "name": "DUMMY_156",
+    "shortname": "DUMMY_156",
+    "unit_id": 1
+  },
+  "500679": {
+    "description": "DUMMY_29",
+    "id": 500679,
+    "name": "DUMMY_29",
+    "shortname": "DUMMY_29",
+    "unit_id": 1
+  },
+  "500559": {
+    "description": "Divergenz Qs geostrophisch",
+    "id": 500559,
+    "name": "Divergenz Qs geostrophisch",
+    "shortname": "DIVQSGEO",
+    "unit_id": "m kg-1 s-1"
+  },
+  "503285": {
+    "description": "Liquid water potential temperature - total water specific humidity covariance",
+    "id": 503285,
+    "name": "Liquid water potential temperature - total water specific humidity covariance",
+    "shortname": "THLQTCOV",
+    "unit_id": "K kg kg-1"
+  },
+  "503742": {
+    "description": "NowCastMIX-AutoWARN (Schneefallgrenze)",
+    "id": 503742,
+    "name": "NowCastMIX-AutoWARN (Schneefallgrenze)",
+    "shortname": "NCM_AW_SFG",
+    "unit_id": "m"
+  },
+  "503060": {
+    "description": "Total column integrated cloud ice (diagnostic)",
+    "id": 503060,
+    "name": "Total column integrated cloud ice (diagnostic)",
+    "shortname": "TQI_DIA",
+    "unit_id": "kg m-2"
+  },
+  "500520": {
+    "description": "Icing Max Code (1=light,2=moderate,3=severe) - Icing Degree Composit",
+    "id": 500520,
+    "name": "Icing Max Code (1=light,2=moderate,3=severe) - Icing Degree Composit",
+    "shortname": "DIDC_MAX_CODE",
+    "unit_id": "Numeric"
+  },
+  "500862": {
+    "description": "DUMMY_212",
+    "id": 500862,
+    "name": "DUMMY_212",
+    "shortname": "DUMMY_212",
+    "unit_id": 1
+  },
+  "500731": {
+    "description": "DUMMY_81",
+    "id": 500731,
+    "name": "DUMMY_81",
+    "shortname": "DUMMY_81",
+    "unit_id": 1
+  },
+  "503606": {
+    "description": "Soil moisture saturation level",
+    "id": 503606,
+    "name": "Soil moisture saturation level",
+    "shortname": "W_SO_SL",
+    "unit_id": "-"
+  },
+  "500479": {
+    "description": "value of isolation of clothes",
+    "id": 500479,
+    "name": "value of isolation of clothes",
+    "shortname": "CLO",
+    "unit_id": "Numeric"
+  },
+  "503713": {
+    "description": "Extreme weather index of maximum Wind 10m",
+    "id": 503713,
+    "name": "Extreme weather index of maximum Wind 10m",
+    "shortname": "VMAX_10M_EWI",
+    "unit_id": "m s-1"
+  },
+  "503058": {
+    "description": "Total column integrated water vapour (diagnostic)",
+    "id": 503058,
+    "name": "Total column integrated water vapour (diagnostic)",
+    "shortname": "TQV_DIA",
+    "unit_id": "kg m-2"
+  },
+  "500530": {
+    "description": "Icing Scenario Code (1=general,2=convective,3=stratiform,4=freezing)",
+    "id": 500530,
+    "name": "Icing Scenario Code (1=general,2=convective,3=stratiform,4=freezing)",
+    "shortname": "DIS_CODE",
+    "unit_id": "Numeric"
+  },
+  "503364": {
+    "description": "Number of birch (betula) pollen released into the reservoir (new)",
+    "id": 503364,
+    "name": "Number of birch (betula) pollen released into the reservoir (new)",
+    "shortname": "BETUresn",
+    "unit_id": "m-2"
+  },
+  "503386": {
+    "description": "Number of days since the start of alder (alnus) pollen season (if present day is in the season: zero outside season)",
+    "id": 503386,
+    "name": "Number of days since the start of alder (alnus) pollen season (if present day is in the season: zero outside season)",
+    "shortname": "ALNUsaisn",
+    "unit_id": "d"
+  },
+  "500880": {
+    "description": "DUMMY_230",
+    "id": 500880,
+    "name": "DUMMY_230",
+    "shortname": "DUMMY_230",
+    "unit_id": 1
+  },
+  "500664": {
+    "description": "DUMMY_14",
+    "id": 500664,
+    "name": "DUMMY_14",
+    "shortname": "DUMMY_14",
+    "unit_id": 1
+  },
+  "500677": {
+    "description": "DUMMY_27",
+    "id": 500677,
+    "name": "DUMMY_27",
+    "shortname": "DUMMY_27",
+    "unit_id": 1
+  },
+  "503428": {
+    "description": "V-component of (vertical) wind shear vector between two levels",
+    "id": 503428,
+    "name": "V-component of (vertical) wind shear vector between two levels",
+    "shortname": "WSHEAR_V",
+    "unit_id": "m s-1"
+  },
+  "503557": {
+    "description": "Maximum hail diameter",
+    "id": 503557,
+    "name": "Maximum hail diameter",
+    "shortname": "DHAIL_MX",
+    "unit_id": "mm"
+  },
+  "503755": {
+    "description": "Downward short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "id": 503755,
+    "name": "Downward short wave radiation flux at surface on tangent plane to terrain including orographic shading - time average",
+    "shortname": "ASOD_S_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "500448": {
+    "description": "Probability of 12h accumulated snow >= 10cm",
+    "id": 500448,
+    "name": "Probability of 12h accumulated snow >= 10cm",
+    "shortname": "W_SF_12",
+    "unit_id": "kg m2"
+  },
+  "500455": {
+    "description": "Probability of 1h maximum wind gust speed >= 33m/s",
+    "id": 500455,
+    "name": "Probability of 1h maximum wind gust speed >= 33m/s",
+    "shortname": "U_ORK_01",
+    "unit_id": "m s-1"
+  },
+  "500631": {
+    "description": "Prob Nebel (ueberoertl. Sichtweite < 150 m)",
+    "id": 500631,
+    "name": "Prob Nebel (ueberoertl. Sichtweite < 150 m)",
+    "shortname": "FG",
+    "unit_id": "Numeric"
+  },
+  "500902": {
+    "description": "DUMMY_252",
+    "id": 500902,
+    "name": "DUMMY_252",
+    "shortname": "DUMMY_252",
+    "unit_id": 1
+  },
+  "503669": {
+    "description": "Urban material shortwave (solar) albedo",
+    "id": 503669,
+    "name": "Urban material shortwave (solar) albedo",
+    "shortname": "URB_ALB_SO",
+    "unit_id": "%"
+  },
+  "500817": {
+    "description": "DUMMY_167",
+    "id": 500817,
+    "name": "DUMMY_167",
+    "shortname": "DUMMY_167",
+    "unit_id": 1
+  },
+  "500887": {
+    "description": "DUMMY_237",
+    "id": 500887,
+    "name": "DUMMY_237",
+    "shortname": "DUMMY_237",
+    "unit_id": 1
+  },
+  "500782": {
+    "description": "DUMMY_132",
+    "id": 500782,
+    "name": "DUMMY_132",
+    "shortname": "DUMMY_132",
+    "unit_id": 1
+  },
+  "503384": {
+    "description": "Cumulated 2m temperature sum threshold for the start of  alder (alnus) pollen season (climatological)",
+    "id": 503384,
+    "name": "Cumulated 2m temperature sum threshold for the start of  alder (alnus) pollen season (climatological)",
+    "shortname": "ALNUtthrs",
+    "unit_id": "deg C"
+  },
+  "500742": {
+    "description": "DUMMY_92",
+    "id": 500742,
+    "name": "DUMMY_92",
+    "shortname": "DUMMY_92",
+    "unit_id": 1
+  },
+  "503752": {
+    "description": "Downward direct short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "id": 503752,
+    "name": "Downward direct short wave radiation flux at surface on horizontal plane including orographic shading - time average",
+    "shortname": "ASWDIR_S_OS",
+    "unit_id": "W m-2"
+  },
+  "500756": {
+    "description": "DUMMY_106",
+    "id": 500756,
+    "name": "DUMMY_106",
+    "shortname": "DUMMY_106",
+    "unit_id": 1
+  },
+  "500563": {
+    "description": "Q-Vektor parallel zu den Isothermen",
+    "id": 500563,
+    "name": "Q-Vektor parallel zu den Isothermen",
+    "shortname": "QVS",
+    "unit_id": "m2 kg-1 s-1"
+  },
+  "500689": {
+    "description": "DUMMY_39",
+    "id": 500689,
+    "name": "DUMMY_39",
+    "shortname": "DUMMY_39",
+    "unit_id": 1
+  },
+  "500770": {
+    "description": "DUMMY_120",
+    "id": 500770,
+    "name": "DUMMY_120",
+    "shortname": "DUMMY_120",
+    "unit_id": 1
+  },
+  "503741": {
+    "description": "NowCastMIX-Aviation (Starkregen, Radolan-Gebiet)",
+    "id": 503741,
+    "name": "NowCastMIX-Aviation (Starkregen, Radolan-Gebiet)",
+    "shortname": "NCM_A_STARKREGEN",
+    "unit_id": "numeric"
+  },
+  "500767": {
+    "description": "DUMMY_117",
+    "id": 500767,
+    "name": "DUMMY_117",
+    "shortname": "DUMMY_117",
+    "unit_id": 1
+  },
+  "503302": {
+    "description": "Slope angle - topography",
+    "id": 503302,
+    "name": "Slope angle - topography",
+    "shortname": "SLO_ANG",
+    "unit_id": "Numeric"
+  },
+  "500643": {
+    "description": "Mass concentration of dust (medium mode)",
+    "id": 500643,
+    "name": "Mass concentration of dust (medium mode)",
+    "shortname": "VSOILB",
+    "unit_id": "kg m-3"
+  },
+  "500897": {
+    "description": "DUMMY_247",
+    "id": 500897,
+    "name": "DUMMY_247",
+    "shortname": "DUMMY_247",
+    "unit_id": 1
+  },
+  "500872": {
+    "description": "DUMMY_222",
+    "id": 500872,
+    "name": "DUMMY_222",
+    "shortname": "DUMMY_222",
+    "unit_id": 1
+  },
+  "503627": {
+    "description": "Mass median diameter of dust for mode 3",
+    "id": 503627,
+    "name": "Mass median diameter of dust for mode 3",
+    "shortname": "MMD_DUSTC",
+    "unit_id": "m"
+  },
+  "500512": {
+    "description": "Icing Top (hft) - Icing Scenario Composit",
+    "id": 500512,
+    "name": "Icing Top (hft) - Icing Scenario Composit",
+    "shortname": "PISC_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "503050": {
+    "description": "Radar precipitation rate",
+    "id": 503050,
+    "name": "Radar precipitation rate",
+    "shortname": "RAD_PRECIP",
+    "unit_id": "kg m-2 h-1"
+  },
+  "500836": {
+    "description": "DUMMY_186",
+    "id": 500836,
+    "name": "DUMMY_186",
+    "shortname": "DUMMY_186",
+    "unit_id": 1
+  },
+  "500819": {
+    "description": "DUMMY_169",
+    "id": 500819,
+    "name": "DUMMY_169",
+    "shortname": "DUMMY_169",
+    "unit_id": 1
+  },
+  "500440": {
+    "description": "Probability of 6h total precipitation >= 35mm",
+    "id": 500440,
+    "name": "Probability of 6h total precipitation >= 35mm",
+    "shortname": "U_SKRRH_06",
+    "unit_id": "kg m2"
+  },
+  "500809": {
+    "description": "DUMMY_159",
+    "id": 500809,
+    "name": "DUMMY_159",
+    "shortname": "DUMMY_159",
+    "unit_id": 1
+  },
+  "503393": {
+    "description": "Number of grasses (poaceae) pollen released into the reservoir (new)",
+    "id": 503393,
+    "name": "Number of grasses (poaceae) pollen released into the reservoir (new)",
+    "shortname": "POACresn",
+    "unit_id": "m-2"
+  },
+  "500464": {
+    "description": "Probability of temperature <= -10 deg C during 6h",
+    "id": 500464,
+    "name": "Probability of temperature <= -10 deg C during 6h",
+    "shortname": "W_FRSTR_06",
+    "unit_id": "K"
+  },
+  "503161": {
+    "description": "Cloud ice ratio qi/(qc+qi)",
+    "id": 503161,
+    "name": "Cloud ice ratio qi/(qc+qi)",
+    "shortname": "CLI_RATIO",
+    "unit_id": "%"
+  },
+  "500650": {
+    "description": "DUMMY_1",
+    "id": 500650,
+    "name": "DUMMY_1",
+    "shortname": "DUMMY_1",
+    "unit_id": 1
+  },
+  "500783": {
+    "description": "DUMMY_133",
+    "id": 500783,
+    "name": "DUMMY_133",
+    "shortname": "DUMMY_133",
+    "unit_id": 1
+  },
+  "503286": {
+    "description": "Impervious (paved or sealed) surface fraction",
+    "id": 503286,
+    "name": "Impervious (paved or sealed) surface fraction",
+    "shortname": "FR_PAVED",
+    "unit_id": "Proportion"
+  },
+  "500472": {
+    "description": "Type of convection (0..4)",
+    "id": 500472,
+    "name": "Type of convection (0..4)",
+    "shortname": "C_TYPE",
+    "unit_id": "Numeric"
+  },
+  "503610": {
+    "description": "Total column zonal water flux - time average",
+    "id": 503610,
+    "name": "Total column zonal water flux - time average",
+    "shortname": "ATWATFLXU",
+    "unit_id": "kg m-1 s-1"
+  },
+  "503385": {
+    "description": "Cumulated 2m temperature sum threshold for the end of  alder (alnus) pollen season (climatological)",
+    "id": 503385,
+    "name": "Cumulated 2m temperature sum threshold for the end of  alder (alnus) pollen season (climatological)",
+    "shortname": "ALNUtthre",
+    "unit_id": "deg C"
+  },
+  "503183": {
+    "description": "Zonal Lagrangian time scale (direct) (Hanna)",
+    "id": 503183,
+    "name": "Zonal Lagrangian time scale (direct) (Hanna)",
+    "shortname": "LAGTIMEX",
+    "unit_id": "s"
+  },
+  "503451": {
+    "description": "Accumulated wet deposition by grid scale precipitation of dust number concentration for mode 3",
+    "id": 503451,
+    "name": "Accumulated wet deposition by grid scale precipitation of dust number concentration for mode 3",
+    "shortname": "ACCWETDEPO_GSP_DUSTC0",
+    "unit_id": "m-2"
+  },
+  "500830": {
+    "description": "DUMMY_180",
+    "id": 500830,
+    "name": "DUMMY_180",
+    "shortname": "DUMMY_180",
+    "unit_id": 1
+  },
+  "500629": {
+    "description": "Prob oertlich Glatteis",
+    "id": 500629,
+    "name": "Prob oertlich Glatteis",
+    "shortname": "FZRA",
+    "unit_id": "Numeric"
+  },
+  "503184": {
+    "description": "Meridional Lagrangian time scale (direct) (Hanna)",
+    "id": 503184,
+    "name": "Meridional Lagrangian time scale (direct) (Hanna)",
+    "shortname": "LAGTIMEY",
+    "unit_id": "s"
+  },
+  "500456": {
+    "description": "Probability of 1h maximum wind gust speed >= 39m/s",
+    "id": 500456,
+    "name": "Probability of 1h maximum wind gust speed >= 39m/s",
+    "shortname": "E_ORK_01",
+    "unit_id": "m s-1"
+  },
+  "503411": {
+    "description": "Height correction for emission (decreasing emission with height) for ragweed  (ambrosia)",
+    "id": 503411,
+    "name": "Height correction for emission (decreasing emission with height) for ragweed  (ambrosia)",
+    "shortname": "AMBRhcem",
+    "unit_id": "0-1"
+  },
+  "500683": {
+    "description": "DUMMY_33",
+    "id": 500683,
+    "name": "DUMMY_33",
+    "shortname": "DUMMY_33",
+    "unit_id": 1
+  },
+  "500638": {
+    "description": "Atmospheric resistance",
+    "id": 500638,
+    "name": "Atmospheric resistance",
+    "shortname": "ATM_RSTC",
+    "unit_id": "s m-1"
+  },
+  "503710": {
+    "description": "U-component of mean wind (vertical mean over specified layer)",
+    "id": 503710,
+    "name": "U-component of mean wind (vertical mean over specified layer)",
+    "shortname": "U_MEAN",
+    "unit_id": "m s-1"
+  },
+  "500890": {
+    "description": "DUMMY_240",
+    "id": 500890,
+    "name": "DUMMY_240",
+    "shortname": "DUMMY_240",
+    "unit_id": 1
+  },
+  "500551": {
+    "description": "geostrophische Vorticity",
+    "id": 500551,
+    "name": "geostrophische Vorticity",
+    "shortname": "VORG",
+    "unit_id": "s-1"
+  },
+  "500701": {
+    "description": "DUMMY_51",
+    "id": 500701,
+    "name": "DUMMY_51",
+    "shortname": "DUMMY_51",
+    "unit_id": 1
+  },
+  "500633": {
+    "description": "Prob Starkes Tauwetter",
+    "id": 500633,
+    "name": "Prob Starkes Tauwetter",
+    "shortname": "TAUX",
+    "unit_id": "Numeric"
+  },
+  "500661": {
+    "description": "DUMMY_11",
+    "id": 500661,
+    "name": "DUMMY_11",
+    "shortname": "DUMMY_11",
+    "unit_id": 1
+  },
+  "500703": {
+    "description": "DUMMY_53",
+    "id": 500703,
+    "name": "DUMMY_53",
+    "shortname": "DUMMY_53",
+    "unit_id": 1
+  },
+  "500821": {
+    "description": "DUMMY_171",
+    "id": 500821,
+    "name": "DUMMY_171",
+    "shortname": "DUMMY_171",
+    "unit_id": 1
+  },
+  "503660": {
+    "description": "Volumetric water content of snow layer - multi level",
+    "id": 503660,
+    "name": "Volumetric water content of snow layer - multi level",
+    "shortname": "H2OinSNW_VC_M",
+    "unit_id": "m3 m-3"
+  },
+  "503711": {
+    "description": "V-component of mean wind (vertical mean over specified layer)",
+    "id": 503711,
+    "name": "V-component of mean wind (vertical mean over specified layer)",
+    "shortname": "V_MEAN",
+    "unit_id": "m s-1"
+  },
+  "503150": {
+    "description": "Gauss Boaga Coordinates West to East,East Sector",
+    "id": 503150,
+    "name": "Gauss Boaga Coordinates West to East,East Sector",
+    "shortname": "BOAGAE_WE",
+    "unit_id": "m"
+  },
+  "500660": {
+    "description": "DUMMY_10",
+    "id": 500660,
+    "name": "DUMMY_10",
+    "shortname": "DUMMY_10",
+    "unit_id": 1
+  },
+  "503463": {
+    "description": "Volcanic ash backscatter (not attenuated, for given wave length)",
+    "id": 503463,
+    "name": "Volcanic ash backscatter (not attenuated, for given wave length)",
+    "shortname": "BSC_ASH",
+    "unit_id": "m-1 sr-1"
+  },
+  "500901": {
+    "description": "DUMMY_251",
+    "id": 500901,
+    "name": "DUMMY_251",
+    "shortname": "DUMMY_251",
+    "unit_id": 1
+  },
+  "500672": {
+    "description": "DUMMY_22",
+    "id": 500672,
+    "name": "DUMMY_22",
+    "shortname": "DUMMY_22",
+    "unit_id": 1
+  },
+  "500738": {
+    "description": "DUMMY_88",
+    "id": 500738,
+    "name": "DUMMY_88",
+    "shortname": "DUMMY_88",
+    "unit_id": 1
+  },
+  "500844": {
+    "description": "DUMMY_194",
+    "id": 500844,
+    "name": "DUMMY_194",
+    "shortname": "DUMMY_194",
+    "unit_id": 1
+  },
+  "500842": {
+    "description": "DUMMY_192",
+    "id": 500842,
+    "name": "DUMMY_192",
+    "shortname": "DUMMY_192",
+    "unit_id": 1
+  },
+  "500557": {
+    "description": "Q-Vektor parallel zu d. Isothermen (geostrophisch)",
+    "id": 500557,
+    "name": "Q-Vektor parallel zu d. Isothermen (geostrophisch)",
+    "shortname": "QVSGEO",
+    "unit_id": "m2 kg-1 s-1"
+  },
+  "503625": {
+    "description": "Mass median diameter of dust for mode 1",
+    "id": 503625,
+    "name": "Mass median diameter of dust for mode 1",
+    "shortname": "MMD_DUSTA",
+    "unit_id": "m"
+  },
+  "503440": {
+    "description": "Accumulated wet deposition of dust if rain reaches the surface for mode 1",
+    "id": 503440,
+    "name": "Accumulated wet deposition of dust if rain reaches the surface for mode 1",
+    "shortname": "ACCWETDEPO_RAIN_DUSTA",
+    "unit_id": "kg m-2"
+  },
+  "503758": {
+    "description": "Photosynthetically active radiation at surface on tangent plane to terrain including orographic shading - time average",
+    "id": 503758,
+    "name": "Photosynthetically active radiation at surface on tangent plane to terrain including orographic shading - time average",
+    "shortname": "APAB_S_TAN_OS",
+    "unit_id": "W m-2"
+  },
+  "500443": {
+    "description": "Probability of 12h total precipitation >= 70mm",
+    "id": 500443,
+    "name": "Probability of 12h total precipitation >= 70mm",
+    "shortname": "E_DR_12",
+    "unit_id": "kg m2"
+  },
+  "500813": {
+    "description": "DUMMY_163",
+    "id": 500813,
+    "name": "DUMMY_163",
+    "shortname": "DUMMY_163",
+    "unit_id": 1
+  },
+  "503287": {
+    "description": "Antropogenic heat flux (e.g. urban heating, traffic)",
+    "id": 503287,
+    "name": "Antropogenic heat flux (e.g. urban heating, traffic)",
+    "shortname": "AHF",
+    "unit_id": "W m-2"
+  },
+  "503620": {
+    "description": "Single scan reflectivity - simulation",
+    "id": 503620,
+    "name": "Single scan reflectivity - simulation",
+    "shortname": "DBZSCAN_SIM",
+    "unit_id": "dB"
+  },
+  "500729": {
+    "description": "DUMMY_79",
+    "id": 500729,
+    "name": "DUMMY_79",
+    "shortname": "DUMMY_79",
+    "unit_id": 1
+  },
+  "500752": {
+    "description": "DUMMY_102",
+    "id": 500752,
+    "name": "DUMMY_102",
+    "shortname": "DUMMY_102",
+    "unit_id": 1
+  },
+  "500769": {
+    "description": "DUMMY_119",
+    "id": 500769,
+    "name": "DUMMY_119",
+    "shortname": "DUMMY_119",
+    "unit_id": 1
+  },
+  "500739": {
+    "description": "DUMMY_89",
+    "id": 500739,
+    "name": "DUMMY_89",
+    "shortname": "DUMMY_89",
+    "unit_id": 1
+  },
+  "503666": {
+    "description": "Street canyon aspect (height - width) ratio",
+    "id": 503666,
+    "name": "Street canyon aspect (height - width) ratio",
+    "shortname": "URB_H2W",
+    "unit_id": "m m-1"
+  },
+  "503732": {
+    "description": "NowCastMIX-AutoWARN (Warnpolygone: Gewitter, Starkregen, Schnee, gefrierender Regen)",
+    "id": 503732,
+    "name": "NowCastMIX-AutoWARN (Warnpolygone: Gewitter, Starkregen, Schnee, gefrierender Regen)",
+    "shortname": "NCM_AW_WP",
+    "unit_id": "numeric"
+  },
+  "500511": {
+    "description": "Icing Signifikant Top (hft) - Icing Scenario Composit",
+    "id": 500511,
+    "name": "Icing Signifikant Top (hft) - Icing Scenario Composit",
+    "shortname": "PISC_SIG_TOP_HFT",
+    "unit_id": "hft"
+  },
+  "500454": {
+    "description": "Probability of 1h maximum wind gust speed >= 29m/s",
+    "id": 500454,
+    "name": "Probability of 1h maximum wind gust speed >= 29m/s",
+    "shortname": "U_ORKAR_01",
+    "unit_id": "m s-1"
+  },
+  "500515": {
+    "description": "Icing Base (hft) - Icing Degree Composit",
+    "id": 500515,
+    "name": "Icing Base (hft) - Icing Degree Composit",
+    "shortname": "DIDC_BASE_HFT",
+    "unit_id": "hft"
+  },
+  "503608": {
+    "description": "Total column zonal water flux",
+    "id": 503608,
+    "name": "Total column zonal water flux",
+    "shortname": "TWATFLXU",
+    "unit_id": "kg m-1 s-1"
+  },
+  "500709": {
+    "description": "DUMMY_59",
+    "id": 500709,
+    "name": "DUMMY_59",
+    "shortname": "DUMMY_59",
+    "unit_id": 1
+  },
+  "500807": {
+    "description": "DUMMY_157",
+    "id": 500807,
+    "name": "DUMMY_157",
+    "shortname": "DUMMY_157",
+    "unit_id": 1
+  },
+  "503059": {
+    "description": "Total column integrated cloud water (diagnostic)",
+    "id": 503059,
+    "name": "Total column integrated cloud water (diagnostic)",
+    "shortname": "TQC_DIA",
+    "unit_id": "kg m-2"
+  },
+  "500687": {
+    "description": "DUMMY_37",
+    "id": 500687,
+    "name": "DUMMY_37",
+    "shortname": "DUMMY_37",
+    "unit_id": 1
+  },
+  "503175": {
+    "description": "Downward short wave radiation flux at surface on horizontal plane (time average)",
+    "id": 503175,
+    "name": "Downward short wave radiation flux at surface on horizontal plane (time average)",
+    "shortname": "ASOD_SH",
+    "unit_id": "W m-2"
+  },
+  "500678": {
+    "description": "DUMMY_28",
+    "id": 500678,
+    "name": "DUMMY_28",
+    "shortname": "DUMMY_28",
+    "unit_id": 1
+  },
+  "503283": {
+    "description": "Liquid water potential temperature variance",
+    "id": 503283,
+    "name": "Liquid water potential temperature variance",
+    "shortname": "THLTHLCOV",
+    "unit_id": "K2"
   }
 }
