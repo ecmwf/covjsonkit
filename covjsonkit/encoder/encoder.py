@@ -82,6 +82,8 @@ class Encoder(ABC):
             self.domaintype = "Trajectory"
         elif domaintype == "grid":
             self.domaintype = "Grid"
+        elif domaintype == "position":
+            self.domaintype = DomainType.point_series
 
         # Trajectory not yet implemented in covjson-pydantic
         if self.domaintype != "Trajectory" and self.domaintype != "Grid":

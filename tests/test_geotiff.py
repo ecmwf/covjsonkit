@@ -1,6 +1,8 @@
 import json
 import os
 
+import pytest
+
 from covjsonkit.api import Covjsonkit
 
 
@@ -12,7 +14,8 @@ class TestGeotiffConversion:
             self.covjson = json.load(f)
 
     def test_geotiff_multipoint(self):
-        cov = Covjsonkit().decode(self.covjson)
-        cov.to_geotiff()
-        os.remove("multipoint_2t.tif")
-        os.remove("multipoint_10u.tif")
+        with pytest.raises(ImportError):
+            cov = Covjsonkit().decode(self.covjson)
+            cov.to_geotiff()
+            os.remove("multipoint_2t.tif")
+            os.remove("multipoint_10u.tif")

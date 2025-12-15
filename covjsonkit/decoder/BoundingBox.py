@@ -1,7 +1,11 @@
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+    from rasterio.transform import from_origin
+except ImportError:
+    rasterio = None
 import xarray as xr
-from rasterio.transform import from_origin
 from scipy.spatial import cKDTree
 
 from .decoder import Decoder
@@ -43,6 +47,8 @@ class BoundingBox(Decoder):
         pass
 
     def to_geotiff(self, output_file="multipoint", resolution=0.01):
+        if rasterio is None:
+            raise ImportError("Please install 'rasterio' to use this feature: pip install covjsonkit[geo]")
         coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
         x = [c[1] for c in coords]  # longitude
         y = [c[0] for c in coords]  # latitude

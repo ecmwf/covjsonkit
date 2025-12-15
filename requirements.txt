@@ -3,7 +3,6 @@ orjson
 xarray
 covjson-pydantic
 conflator
-rasterio
 scipy
 pre-commit
 zstandard
