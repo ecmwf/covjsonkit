@@ -37,7 +37,6 @@ class TestGeojsonConversion:
         assert ts["type"] == "FeatureCollection"
         assert len(ts["features"]) == 16
 
-    
     def test_geojson_xyz_axes_timeseries(self):
         cov = Covjsonkit().decode(self.timeseries_xyz)
         ts = cov.to_geojson()
