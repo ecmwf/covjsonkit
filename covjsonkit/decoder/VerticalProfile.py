@@ -73,9 +73,9 @@ class VerticalProfile(Decoder):
     def to_geojson(self):
         features = []
         for coverage in self.covjson["coverages"]:
-            lat = coverage["domain"]["axes"]["latitude"]["values"][0]
-            lon = coverage["domain"]["axes"]["longitude"]["values"][0]
-            levels = coverage["domain"]["axes"]["levelist"]["values"]
+            lat = coverage["domain"]["axes"][self.x_name]["values"][0]
+            lon = coverage["domain"]["axes"][self.y_name]["values"][0]
+            levels = coverage["domain"]["axes"][self.z_name]["values"]
             datetimes = coverage["domain"]["axes"]["t"]["values"]
             if "mars:metadata" in coverage:
                 mars_metadata = coverage["mars:metadata"]

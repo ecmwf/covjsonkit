@@ -11,9 +11,17 @@ class TestGeojsonConversion:
         with open(timeseries, "r") as f:
             self.timeseries = json.load(f)
 
+        timeseries_xyz = os.path.join(current_dir, "data/test_timeseries_xyz_coverage.json")
+        with open(timeseries_xyz, "r") as f:
+            self.timeseries_xyz = json.load(f)
+
         verticalprofile = os.path.join(current_dir, "data/test_verticalprofile_coverage.json")
         with open(verticalprofile, "r") as f:
             self.verticalprofile = json.load(f)
+
+        verticalprofile_xyz = os.path.join(current_dir, "data/test_verticalprofile_xyz_coverage.json")
+        with open(verticalprofile_xyz, "r") as f:
+            self.verticalprofile_xyz = json.load(f)
 
         path = os.path.join(current_dir, "data/test_path_coverage.json")
         with open(path, "r") as f:
@@ -29,8 +37,21 @@ class TestGeojsonConversion:
         assert ts["type"] == "FeatureCollection"
         assert len(ts["features"]) == 16
 
+    
+    def test_geojson_xyz_axes_timeseries(self):
+        cov = Covjsonkit().decode(self.timeseries_xyz)
+        ts = cov.to_geojson()
+        assert ts["type"] == "FeatureCollection"
+        assert len(ts["features"]) == 16
+
     def test_geojson_verticalprofile(self):
         cov = Covjsonkit().decode(self.verticalprofile)
+        vp = cov.to_geojson()
+        assert vp["type"] == "FeatureCollection"
+        assert len(vp["features"]) == 56
+
+    def test_geojson_xyz_axes_verticalprofile(self):
+        cov = Covjsonkit().decode(self.verticalprofile_xyz)
         vp = cov.to_geojson()
         assert vp["type"] == "FeatureCollection"
         assert len(vp["features"]) == 56
