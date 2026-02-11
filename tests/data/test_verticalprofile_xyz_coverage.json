@@ -542,9 +542,9 @@
     "referencing": [
         {
             "coordinates": [
-                "latitude",
-                "longitude",
-                "levelist"
+                "x",
+                "y",
+                "z"
             ],
             "system": {
                 "type": "GeographicCRS",
