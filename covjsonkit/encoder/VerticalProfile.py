@@ -175,11 +175,14 @@ class VerticalProfile(Encoder):
                     new_date = pd.Timestamp(date).strftime(date_format)
                     start_time = datetime.strptime(new_date, date_format)
                     # add current date to list by converting it to iso format
-                    try:
-                        int(step)
-                    except ValueError:
-                        step = step[0]
-                    stamp = start_time + timedelta(hours=int(step))
+                    if isinstance(step, timedelta):
+                        stamp = start_time + step
+                    else:
+                        try:
+                            int(step)
+                        except ValueError:
+                            step = step[0]
+                        stamp = start_time + timedelta(hours=int(step))
                     coordinates[date][i].append(
                         {
                             "latitude": [coords[date]["composite"][i][0]],
