@@ -131,6 +131,8 @@ class Path(Encoder):
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
+        if "hdate" in mars_metadata:
+            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
         if len(fields["l"]) == 0:
             fields["l"] = [0]
 

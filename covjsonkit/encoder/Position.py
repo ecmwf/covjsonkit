@@ -150,6 +150,9 @@ class Position(Encoder):
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
         logging.debug("Tree walking takes: %s", delta)  # noqa: E501
 
+        if "hdate" in mars_metadata:
+            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
+
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 

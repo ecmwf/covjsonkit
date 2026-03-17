@@ -129,6 +129,8 @@ class Frame(Encoder):
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
 
+        if "hdate" in mars_metadata:
+            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
