@@ -145,6 +145,12 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
         self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        print("coords: ", coords)
+        print("fields: ", fields)
+        print("mars_metadata: ", mars_metadata)
+        print("range_dict: ", range_dict)
+        if "hdate" in mars_metadata:
+            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501

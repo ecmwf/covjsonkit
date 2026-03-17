@@ -173,6 +173,13 @@ class Encoder(ABC):
                     coords[date]["composite"] = []
                     coords[date]["t"] = [date]
                 return dates
+            if child.axis.name == "hdate":
+                hdates = [f"{hdate}Z" for hdate in child.values]
+                for hdate in hdates:
+                    coords[hdate] = {}
+                    coords[hdate]["composite"] = []
+                    coords[hdate]["t"] = [hdate]
+                return hdates
             if child.axis.name == "number":
                 return child.values
             if child.axis.name == "step":
@@ -202,6 +209,8 @@ class Encoder(ABC):
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
                         fields["param"] = result
+                    elif child.axis.name in "hdate":
+                        fields["dates"].extend(result)
                     elif child.axis.name in ["date", "time"]:
                         fields["dates"].extend(result)
                     elif child.axis.name == "number":
