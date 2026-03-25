@@ -270,10 +270,10 @@ class Path(Encoder):
                     end_idx = start_idx + cor_len
                     if len(fields["levels"]) != 1:
                         for lev in fields["levels"]:
-                            for cor in coord[int(start_idx):int(end_idx)]:
+                            for cor in coord[int(start_idx) : int(end_idx)]:
                                 coords[date]["composite"].append([date, cor[0], cor[1], lev])
                     else:
-                        for cor in coord[int(start_idx):int(end_idx)]:
+                        for cor in coord[int(start_idx) : int(end_idx)]:
                             coords[date]["composite"].append([date, cor[0], cor[1], level])
                     start_idx = end_idx
 

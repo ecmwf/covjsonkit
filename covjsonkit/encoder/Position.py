@@ -331,7 +331,9 @@ class Position(Encoder):
                         except (KeyError, IndexError) as exc:
                             logging.debug(
                                 "Key %s not found or index %s out of range in range_dict: %s",
-                                key, i, exc,
+                                key,
+                                i,
+                                exc,
                             )
                             raise
                 mm = mars_metadata.copy()

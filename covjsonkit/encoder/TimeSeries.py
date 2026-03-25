@@ -272,7 +272,7 @@ class TimeSeries(Encoder):
         fields["number"] = [0]
         fields["years"] = []
         fields["months"] = []
-        fields["dates"] = []   # populated as "YYYY-MM" keys once both year and month are seen
+        fields["dates"] = []  # populated as "YYYY-MM" keys once both year and month are seen
         fields["levels"] = [0]
 
         start = time.time()
@@ -347,7 +347,9 @@ class TimeSeries(Encoder):
                             except (KeyError, IndexError) as exc:
                                 logging.debug(
                                     "Key %s not found or index %s out of range in range_dict: %s",
-                                    key, i, exc,
+                                    key,
+                                    i,
+                                    exc,
                                 )
                                 raise
                     mm = mars_metadata.copy()
