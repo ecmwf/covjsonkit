@@ -238,3 +238,100 @@ class VerticalProfile(Encoder):
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
 
         return self.covjson
+
+    def from_polytope_month(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["years"] = []
+        fields["months"] = []
+        fields["dates"] = []
+        fields["levels"] = [0]
+
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
+        self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
+        logging.debug("Tree walking takes: %s", end - start)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)  # noqa: E501
+
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        if not fields["dates"]:
+            raise ValueError("No year/month data was found in the result tree.")
+
+        points = len(coords[fields["dates"][0]]["composite"])
+
+        # One coordinate entry per (point, date): named axes with all levels and single t.
+        coordinates = {}
+        for date in fields["dates"]:
+            coordinates[date] = []
+            for i in range(points):
+                coord_entry = {
+                    "latitude": [coords[date]["composite"][i][0]],
+                    "longitude": [coords[date]["composite"][i][1]],
+                    "levelist": list(levels),
+                    "t": [f"{date}-01T00:00:00Z"],
+                }
+                coordinates[date].append(coord_entry)
+
+        end = time.time()
+        logging.debug("Coords creation: %s", end)  # noqa: E501
+        logging.debug("Coords creation takes: %s", end - start)  # noqa: E501
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)  # noqa: E501
+
+        logging.debug("The points found were: %s", points)  # noqa: E501
+        logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
+        logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
+
+        for i in range(points):
+            for date in fields["dates"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for level in fields["levels"]:
+                            key = (date, level, num, para)
+                            try:
+                                val_dict[para].extend(range_dict[key][i])
+                            except (KeyError, IndexError) as exc:
+                                logging.debug(
+                                    "Key %s not found or index %s out of range in range_dict: %s",
+                                    key, i, exc,
+                                )
+                                raise
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["Forecast date"] = date
+                    self.add_coverage(mm, coordinates[date][i], val_dict)
+
+        end = time.time()
+        logging.debug("Coverage creation: %s", end)  # noqa: E501
+        logging.debug("Coverage creation takes: %s", end - start)  # noqa: E501
+
+        return self.covjson

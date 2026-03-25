@@ -203,7 +203,86 @@ class BoundingBox(Encoder):
 
         return self.covjson
 
-    def from_polytope_step(self, result):
+    def from_polytope_month(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["years"] = []
+        fields["months"] = []
+        fields["dates"] = []
+        fields["levels"] = [0]
+
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)
+        self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        logging.debug("Tree walking ends at: %s", end)
+        logging.debug("Tree walking takes: %s", end - start)
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)
+
+        # Build per-date composite coordinates, expanding each spatial point
+        # across all levels to produce [lat, lon, level] tuples.
+        coordinates = {}
+        for date in fields["dates"]:
+            t_val = f"{date}-01T00:00:00Z"
+            coordinates[date] = {}
+            coordinates[date]["composite"] = []
+            coordinates[date]["t"] = [t_val]
+            coord = coords.get(date, {}).get("composite", [])
+            for level in levels:
+                for cor in coord:
+                    coordinates[date]["composite"].append([cor[0], cor[1], level])
+
+        end = time.time()
+        logging.debug("Coords creation: %s", end)
+        logging.debug("Coords creation takes: %s", end - start)
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)
+
+        for num in fields["number"]:
+            val_dict = {}
+            for date in fields["dates"]:
+                for para in fields["param"]:
+                    if para not in val_dict:
+                        val_dict[para] = []
+                    for level in fields["levels"]:
+                        key = (date, level, num, para)
+                        vals = range_dict.get(key, [[]])
+                        val_dict[para].extend([item for sublist in vals for item in sublist])
+            mm = mars_metadata.copy()
+            mm["number"] = num
+            self.add_coverage(mm, coordinates[fields["dates"][0]] if fields["dates"] else {}, val_dict)
+
+        end = time.time()
+        logging.debug("Coverage creation: %s", end)
+        logging.debug("Coverage creation takes: %s", end - start)
+
+        return self.covjson
         coords = {}
         mars_metadata = {}
         range_dict = {}
