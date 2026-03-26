@@ -224,3 +224,85 @@ class Path(Encoder):
                 self.add_coverage(mm, coords[date], val_dict)
 
         return self.covjson
+
+    def from_polytope_month(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["years"] = []
+        fields["months"] = []
+        fields["dates"] = []
+        fields["levels"] = [0]
+        fields["l"] = []
+
+        self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
+
+        if len(fields["l"]) == 0:
+            fields["l"] = [0]
+
+        logging.debug("The values returned from walking tree: %s", range_dict)
+        logging.debug("The coordinates returned from walking tree: %s", coords)
+        logging.debug("The fields: %s", fields)
+
+        self.add_reference(
+            {
+                "coordinates": ["t", "x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        # Build trajectory composite coords: [month_key, lat, lon, level]
+        # Each (year, month) pair acts as the "t" element of the 4-tuple.
+        for date in coords.keys():
+            coord = coords[date]["composite"]
+            coords[date]["composite"] = []
+            start_idx = 0
+            for level in set(fields["l"]):
+                if (date, level, fields["number"][0], fields["param"][0]) in range_dict:
+                    cor_len = len(range_dict[(date, level, fields["number"][0], fields["param"][0])])
+                    end_idx = start_idx + cor_len
+                    if len(fields["levels"]) != 1:
+                        for lev in fields["levels"]:
+                            for cor in coord[int(start_idx) : int(end_idx)]:
+                                coords[date]["composite"].append([date, cor[0], cor[1], lev])
+                    else:
+                        for cor in coord[int(start_idx) : int(end_idx)]:
+                            coords[date]["composite"].append([date, cor[0], cor[1], level])
+                    start_idx = end_idx
+
+        logging.debug("The coordinates returned from walking tree: %s", coords)
+
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)
+        logging.debug("The fields retrieved were: %s", fields)
+        logging.debug("The range_dict created was: %s", range_dict)
+
+        for date in fields["dates"]:
+            for num in fields["number"]:
+                val_dict = {}
+                for para in fields["param"]:
+                    if para not in val_dict:
+                        val_dict[para] = []
+                    for level in fields["l"]:
+                        key = (date, level, num, para)
+                        if key in range_dict:
+                            vals = range_dict[key]
+                            val_dict[para].extend([item for sublist in vals for item in sublist])
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                if "levelist" in mm:
+                    del mm["levelist"]
+                self.add_coverage(mm, coords[date], val_dict)
+
+        return self.covjson

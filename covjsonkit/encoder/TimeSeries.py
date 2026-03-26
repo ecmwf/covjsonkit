@@ -256,6 +256,117 @@ class TimeSeries(Encoder):
 
         return self.covjson
 
+    def from_polytope_month(self, result):
+        """Convert a Polytope result for monthly-mean streams (e.g. clmn) into CovJSON.
+
+        These streams index time with ``year`` and ``month`` axes rather than
+        ``date``/``time``/``step``.  Each (year, month) pair becomes a single
+        timestep represented as the ISO-8601 string ``"YYYY-MM"``.
+        """
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["years"] = []
+        fields["months"] = []
+        fields["dates"] = []  # populated as "YYYY-MM" keys once both year and month are seen
+        fields["levels"] = [0]
+
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)
+        self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        logging.debug("Tree walking ends at: %s", end)
+        logging.debug("Tree walking takes: %s", end - start)
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)
+
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)
+
+        # Use the first date key to discover how many spatial points were found.
+        if not fields["dates"]:
+            raise ValueError("No year/month data was found in the result tree.")
+        first_date = fields["dates"][0]
+        points = len(coords[first_date]["composite"])
+
+        # Build coordinate structures: one entry per spatial point per date.
+        coordinates = {}
+        for date in fields["dates"]:
+            coordinates[date] = []
+            for i in range(points):
+                coord_entry = {
+                    "latitude": [coords[date]["composite"][i][0]],
+                    "longitude": [coords[date]["composite"][i][1]],
+                    "levelist": [fields["levels"][0]],
+                    # "YYYY-MM" is the timestep; append a day so it is a valid
+                    # ISO-8601 datetime string (first day of the month).
+                    "t": [f"{date}-01T00:00:00Z"],
+                }
+                coordinates[date].append(coord_entry)
+
+        end = time.time()
+        logging.debug("Coords creation ends: %s", end)
+        logging.debug("Coords creation takes: %s", end - start)
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)
+
+        logging.debug("The points found were: %s", points)
+        logging.debug("The fields retrieved were: %s", fields)
+        logging.debug("The range_dict created was: %s", range_dict)
+
+        for i in range(points):
+            for j, level in enumerate(fields["levels"]):
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for date in fields["dates"]:
+                            key = (date, level, num, para)
+                            try:
+                                val_dict[para].extend(range_dict[key][i])
+                            except (KeyError, IndexError) as exc:
+                                logging.debug(
+                                    "Key %s not found or index %s out of range in range_dict: %s",
+                                    key,
+                                    i,
+                                    exc,
+                                )
+                                raise
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["levelist"] = level
+                    # Use all date keys as the time series for this coverage.
+                    coord_entry = coordinates[first_date][i].copy()
+                    coord_entry["levelist"] = [level]
+                    coord_entry["t"] = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
+                    self.add_coverage(mm, coord_entry, val_dict)
+
+        end = time.time()
+        logging.debug("Coverage creation ends: %s", end)
+        logging.debug("Coverage creation takes: %s", end - start)
+
+        return self.covjson
+
     def from_polytope_step(self, result):
         coords = {}
         mars_metadata = {}
