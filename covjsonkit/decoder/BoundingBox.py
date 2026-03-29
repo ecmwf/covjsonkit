@@ -1,4 +1,19 @@
+import json
+from datetime import datetime
+from importlib import resources as importlib_resources
+
 import numpy as np
+
+try:
+    from eccodes import (
+        codes_get_message,
+        codes_grib_new_from_samples,
+        codes_release,
+        codes_set,
+        codes_set_values,
+    )
+except ImportError:
+    codes_grib_new_from_samples = None
 
 try:
     import rasterio
@@ -45,6 +60,141 @@ class BoundingBox(Decoder):
 
     def to_geopandas(self):
         pass
+
+    def _require_eccodes(self):
+        if codes_grib_new_from_samples is None:
+            raise ImportError("Please install 'eccodes' to use to_grib(): pip install eccodes")
+
+    def _load_paramid_map(self):
+        # Adjust this if paramid.json has a different structure
+        with importlib_resources.open_text("covjsonkit.data.ecmwf", "param_id.json") as f:
+            return json.load(f)
+
+    def _paramid_for_parameter(self, parameter, mars_metadata):
+        if mars_metadata and "param" in mars_metadata:
+            return int(mars_metadata["param"])
+        mapping = self._load_paramid_map()
+        if parameter in mapping:
+            return int(mapping[parameter])
+        raise KeyError(f"Unable to resolve paramId for parameter '{parameter}'")
+
+    def _parse_forecast_datetime(self, value):
+        # Expected ISO format, e.g. "2026-02-25T00:00:00Z"
+        if isinstance(value, str):
+            value = value.replace("Z", "+00:00")
+            return datetime.fromisoformat(value)
+        return None
+
+    def _set_mars_metadata(self, handle, mars_metadata, level_value=None):
+        if not mars_metadata:
+            return
+
+        # Date/time
+        dt = self._parse_forecast_datetime(mars_metadata.get("Forecast date"))
+        if dt is not None:
+            codes_set(handle, "dataDate", int(dt.strftime("%Y%m%d")))
+            codes_set(handle, "dataTime", int(dt.strftime("%H%M")))
+
+        # Step
+        step = mars_metadata.get("step", 0)
+        codes_set(handle, "forecastTime", int(step))
+
+        # Ensemble number
+        # if "number" in mars_metadata:
+        #    codes_set(handle, "perturbationNumber", int(mars_metadata["number"]))
+
+        # Level type mapping (minimal)
+        levtype_map = {
+            "sfc": "surface",
+            "pl": "isobaricInhPa",
+            "ml": "hybrid",
+        }
+        if "levtype" in mars_metadata:
+            codes_set(handle, "typeOfLevel", levtype_map.get(mars_metadata["levtype"], "surface"))
+
+        if level_value is not None:
+            codes_set(handle, "level", int(level_value))
+
+    def to_grib(self, path=None, resolution=0.1, sample="regular_ll_sfc_grib2"):
+        """
+        Convert BoundingBox CoverageJSON to GRIB2 (regular lat/lon grid via interpolation).
+
+        Args:
+            path (str|None): output path; if None, return bytes.
+            resolution (float): grid resolution in degrees.
+            sample (str): ecCodes GRIB2 sample name (default: regular_ll_sfc_grib2).
+
+        Returns:
+            bytes or str: GRIB bytes or output path.
+        """
+        self._require_eccodes()
+
+        messages = []
+        for coverage in self.coverages:
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            src_lats = [float(c[0]) for c in coords]
+            src_lons = [float(c[1]) for c in coords]
+            levels = [c[2] for c in coords] if len(coords[0]) > 2 else None
+            level_value = levels[0] if levels else None
+
+            # Define regular grid bounds from points
+            lat_min, lat_max = min(src_lats), max(src_lats)
+            lon_min, lon_max = min(src_lons), max(src_lons)
+
+            # Build grid (north -> south)
+            ny = int(np.ceil((lat_max - lat_min) / resolution)) + 1
+            nx = int(np.ceil((lon_max - lon_min) / resolution)) + 1
+            grid_lats = np.linspace(lat_max, lat_min, ny)
+            grid_lons = np.linspace(lon_min, lon_max, nx)
+
+            grid_lat2d, grid_lon2d = np.meshgrid(grid_lats, grid_lons, indexing="ij")
+
+            # Nearest neighbour interpolation
+            points = np.column_stack([src_lons, src_lats])
+            tree = cKDTree(points)
+
+            mars_metadata = coverage.get("mars:metadata", {})
+
+            for param_name, param_range in coverage["ranges"].items():
+                values = np.array(param_range["values"], dtype=float)
+
+                # Interpolate to grid
+                _, idx = tree.query(np.column_stack([grid_lon2d.ravel(), grid_lat2d.ravel()]))
+                grid_values = values[idx].reshape((ny, nx))
+
+                handle = codes_grib_new_from_samples(sample)
+
+                # Regular lat/lon grid definition
+                codes_set(handle, "Ni", nx)
+                codes_set(handle, "Nj", ny)
+                codes_set(handle, "latitudeOfFirstGridPointInDegrees", float(lat_max))
+                codes_set(handle, "longitudeOfFirstGridPointInDegrees", float(lon_min))
+                codes_set(handle, "latitudeOfLastGridPointInDegrees", float(lat_min))
+                codes_set(handle, "longitudeOfLastGridPointInDegrees", float(lon_max))
+                codes_set(handle, "iDirectionIncrementInDegrees", float(resolution))
+                codes_set(handle, "jDirectionIncrementInDegrees", float(resolution))
+                codes_set(handle, "jScansPositively", 0)  # north->south
+                codes_set(handle, "iScansNegatively", 0)
+
+                param_id = self._paramid_for_parameter(param_name, mars_metadata)
+                codes_set(handle, "paramId", int(param_id))
+
+                self._set_mars_metadata(handle, mars_metadata, level_value=level_value)
+
+                # Values in scanning order (C order matches ij meshgrid above)
+                codes_set_values(handle, grid_values.ravel(order="C"))
+
+                messages.append(codes_get_message(handle))
+                codes_release(handle)
+
+        grib_bytes = b"".join(messages)
+
+        if path is not None:
+            with open(path, "wb") as f:
+                f.write(grib_bytes)
+            return path
+
+        return grib_bytes
 
     def to_geotiff(self, output_file="multipoint", resolution=0.01):
         if rasterio is None:
@@ -142,8 +292,8 @@ class BoundingBox(Decoder):
             x.append(float(coord[0]))
             y.append(float(coord[1]))
             z.append(float(coord[2]))
-        for datetime in self.get_coordinates()["t"]["values"]:
-            datetimes.append(datetime)
+        for dt in self.get_coordinates()["t"]["values"]:
+            datetimes.append(dt)
 
         values = {}
         for parameter in self.parameters:
@@ -182,12 +332,12 @@ class BoundingBox(Decoder):
         new_values = {}
         for parameter in values.keys():
             new_values[parameter] = []
-            for i, datetime in enumerate(datetimes):
+            for i, dt in enumerate(datetimes):
                 new_values[parameter].append([])
                 for j, number in enumerate(numbers):
                     new_values[parameter][i].append([])
                     for k, step in enumerate(steps):
-                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
+                        new_values[parameter][i][j].append(values[parameter][dt][number][step])
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)

@@ -4,4 +4,5 @@ xarray
 covjson-pydantic
 conflator
 scipy
+eccodes
 pre-commit
