@@ -110,10 +110,7 @@ class TimeSeries(Decoder):
         # time steps into a single coverage's t-axis and do NOT write "Forecast date"
         # into mars:metadata.  Detect this case and use a simpler (time, point) layout
         # that mirrors the Wkt/Frame/Shapefile decoders.
-        has_forecast_date = any(
-            "Forecast date" in cov.get("mars:metadata", {})
-            for cov in self.covjson["coverages"]
-        )
+        has_forecast_date = any("Forecast date" in cov.get("mars:metadata", {}) for cov in self.covjson["coverages"])
         if not has_forecast_date:
             return self._to_xarray_no_forecast_date()
 
@@ -184,24 +181,12 @@ class TimeSeries(Decoder):
                             for coverage in self.covjson["coverages"]:
                                 if (
                                     coverage["mars:metadata"]["number"] == num
-                                    and coverage["mars:metadata"]["Forecast date"]
-                                    == date
-                                    and coverage["domain"]["axes"][self.x_name][
-                                        "values"
-                                    ]
-                                    == x
-                                    and coverage["domain"]["axes"][self.y_name][
-                                        "values"
-                                    ]
-                                    == y
-                                    and coverage["domain"]["axes"][self.z_name][
-                                        "values"
-                                    ]
-                                    == z
+                                    and coverage["mars:metadata"]["Forecast date"] == date
+                                    and coverage["domain"]["axes"][self.x_name]["values"] == x
+                                    and coverage["domain"]["axes"][self.y_name]["values"] == y
+                                    and coverage["domain"]["axes"][self.z_name]["values"] == z
                                 ):
-                                    param_values[parameter][domain_idx][i][j] = (
-                                        coverage["ranges"][parameter]["values"]
-                                    )
+                                    param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
 
             for parameter in self.parameters:
                 param_coords = {
@@ -220,12 +205,8 @@ class TimeSeries(Decoder):
                 )
 
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "observedProperty"
-                ]["id"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
             ds.append(xr.Dataset(dataarraydict))
@@ -271,12 +252,8 @@ class TimeSeries(Decoder):
                     coords={"t": steps},
                 )
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "observedProperty"
-                ]["id"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
             coord_dict = dict(

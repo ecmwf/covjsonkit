@@ -102,17 +102,11 @@ class Shapefile(Decoder):
         dataarraydict = {}
         for parameter in self.parameters:
             # Shape: (time, points)
-            data = all_values[
-                parameter
-            ]  # list of n_times lists, each of length n_points
+            data = all_values[parameter]  # list of n_times lists, each of length n_points
             dataarray = xr.DataArray(data, dims=["time", "points"])
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"][
-                "symbol"
-            ]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                "observedProperty"
-            ]["id"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
             dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(

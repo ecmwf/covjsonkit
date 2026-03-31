@@ -94,7 +94,6 @@ class Wkt(Decoder):
                     x.append(float(coord[0]))
                     y.append(float(coord[1]))
 
-        n_times = len(times)
         n_points = len(x)
 
         dataarraydict = {}
