@@ -63,7 +63,10 @@ class Shapefile(Decoder):
                 features.append(
                     {
                         "type": "Feature",
-                        "geometry": {"type": "Point", "coordinates": [lonlat[1], lonlat[0], lonlat[2]]},
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [lonlat[1], lonlat[0], lonlat[2]],
+                        },
                         "properties": param_vals,
                     }
                 )
@@ -72,32 +75,58 @@ class Shapefile(Decoder):
         return geojson
 
     def to_xarray(self):
-        dims = ["points"]
-        dataarraydict = {}
+        """Convert a MultiPoint CoverageCollection to an xarray Dataset.
 
-        # Get coordinates
+        Each coverage corresponds to one time step. The resulting Dataset has
+        dimensions (time, points) so that all coverages are represented, not
+        only the first one.
+        """
+        all_values = self.get_values()
+
+        # Collect per-coverage timestamps and spatial coordinates.
+        # Spatial points are shared across all coverages; only the timestamp
+        # differs per coverage.
+        times = []
         x = []
         y = []
-        for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[0]))
-            y.append(float(coord[1]))
 
-        # Get values
+        for i, domain in enumerate(self.domains):
+            times.append(domain["axes"]["t"]["values"][0])
+            if i == 0:
+                for coord in domain["axes"]["composite"]["values"]:
+                    x.append(float(coord[0]))
+                    y.append(float(coord[1]))
+
+        n_points = len(x)
+
+        dataarraydict = {}
         for parameter in self.parameters:
-            dataarray = xr.DataArray(self.get_values()[parameter][0], dims=dims)
+            # Shape: (time, points)
+            data = all_values[
+                parameter
+            ]  # list of n_times lists, each of length n_points
+            dataarray = xr.DataArray(data, dims=["time", "points"])
             dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+            dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"][
+                "symbol"
+            ]
+            dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
+                "observedProperty"
+            ]["id"]
             dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
         ds = xr.Dataset(
             dataarraydict,
-            coords=dict(points=(["points"], list(range(0, len(x)))), x=(["points"], x), y=(["points"], y)),
+            coords=dict(
+                time=(["time"], times),
+                points=(["points"], list(range(n_points))),
+                x=(["points"], x),
+                y=(["points"], y),
+            ),
         )
-        for mars_metadata in self.mars_metadata[0]:
-            ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
-        # Add date attribute
-        ds.attrs["date"] = self.get_coordinates()["t"]["values"]
+        # Attach MARS metadata from the first coverage as dataset attributes
+        for key, val in self.mars_metadata[0].items():
+            ds.attrs[key] = val
 
         return ds

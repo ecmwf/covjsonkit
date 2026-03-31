@@ -362,18 +362,18 @@ class Wkt(Encoder):
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
         for num in fields["number"]:
-            val_dict = {}
             for date in fields["dates"]:
+                val_dict = {}
                 for para in fields["param"]:
-                    if para not in val_dict:
-                        val_dict[para] = []
+                    val_dict[para] = []
                     for level in fields["levels"]:
                         key = (date, level, num, para)
                         vals = range_dict.get(key, [[]])
                         val_dict[para].extend([item for sublist in vals for item in sublist])
-            mm = mars_metadata.copy()
-            mm["number"] = num
-            self.add_coverage(mm, coordinates[fields["dates"][0]] if fields["dates"] else {}, val_dict)
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                mm["Forecast date"] = f"{date}-01T00:00:00Z"
+                self.add_coverage(mm, coordinates[date], val_dict)
 
         end = time.time()
         logging.debug("Coverage creation: %s", end)  # noqa: E501
