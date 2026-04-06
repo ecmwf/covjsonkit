@@ -191,8 +191,7 @@ class TestEncoder:
         }
         coords = {}
         coords["t"] = ["2017-01-01T00:00:00Z"]
-        coords["latitude"] = [20, 21, 17]
-        coords["longitude"] = [1, 2, 3]
+        coords["indicies"] = [20, 21, 17]
         coords["levelist"] = [1]
         value = {"2t": [111, 222, 333, 444, 555, 666, 777, 888, 999]}
         encoder.shp = [1, 1, 3, 3]
