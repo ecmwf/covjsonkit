@@ -131,15 +131,13 @@ class TestTimeseriesFromPolytope:
         }
 
     def test_hdate_reanalysis_single_point(self):
-        # EFAS reanalysis: 1 hdate, 1 time, 1 point → 1 coverage, 1 t-value
-        # TODO: clarify if time gets absorbed into date by polytope-mars before it
-        # reaches covjsonkit, or if it always arrives as a separate axis in the tree
+        # EFAS reanalysis: 1 hdate (with time pre-merged by polytope-mars), 1 point
+        # polytope-mars merges time into hdate: pd.Timestamp("20250714T0600") → np.datetime64
         tree = chain(
             TensorIndexTree(),
             node("class", ("ce",)),
             node("date", (np.datetime64("2024-03-01"),)),
-            node("time", ("0600",)),
-            efas_branch(np.datetime64("2025-07-14"), 51.5, 6.5, [42.17]),
+            efas_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]),
         )
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
@@ -147,6 +145,7 @@ class TestTimeseriesFromPolytope:
         assert len(covjson["coverages"]) == 1
         cov = covjson["coverages"][0]
 
+        # t = hdate(2025-07-14T06:00) + step(6h) = 2025-07-14T12:00:00Z
         assert cov["domain"]["axes"] == {
             "latitude": {"values": [51.5]},
             "longitude": {"values": [6.5]},
@@ -170,11 +169,11 @@ class TestTimeseriesFromPolytope:
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_multiple_times(self):
-        # 1 hdate, 2 times, 1 point → 1 coverage, 2 t-values
+        # 1 hdate × 2 times (pre-merged into 2 hdate values), 1 point → 1 coverage, 2 t-values
         tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
         date = tip(tree)
-        date.add_child(chain(node("time", ("0600",)), efas_branch(np.datetime64("2025-07-14"), 51.5, 6.5, [42.17])))
-        date.add_child(chain(node("time", ("1200",)), efas_branch(np.datetime64("2025-07-14"), 51.5, 6.5, [55.30])))
+        date.add_child(efas_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]))
+        date.add_child(efas_branch(np.datetime64("2025-07-14T12:00:00"), 51.5, 6.5, [55.30]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
 
@@ -202,16 +201,11 @@ class TestTimeseriesFromPolytope:
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_multiple_hdates(self):
-        # 2 hdates, 1 time, 1 point → 1 coverage, 2 t-values
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("time", ("0600",)),
-        )
-        time = tip(tree)
-        time.add_child(efas_branch(np.datetime64("2025-07-14"), 51.5, 6.5, [42.17]))
-        time.add_child(efas_branch(np.datetime64("2025-07-15"), 51.5, 6.5, [55.30]))
+        # 2 hdates × 1 time (pre-merged), 1 point → 1 coverage, 2 t-values
+        tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
+        date = tip(tree)
+        date.add_child(efas_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]))
+        date.add_child(efas_branch(np.datetime64("2025-07-15T06:00:00"), 51.5, 6.5, [55.30]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
 
@@ -239,20 +233,13 @@ class TestTimeseriesFromPolytope:
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_multiple_times_and_hdates(self):
-        # 2 times × 2 hdates, 1 point → 1 coverage, 4 t-values
+        # 2 hdates × 2 times (pre-merged into 4 hdate values), 1 point → 1 coverage, 4 t-values
         tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
         date = tip(tree)
-
-        t0600 = node("time", ("0600",))
-        t0600.add_child(efas_branch(np.datetime64("2025-07-14"), 51.5, 6.5, [42.17]))
-        t0600.add_child(efas_branch(np.datetime64("2025-07-15"), 51.5, 6.5, [55.30]))
-
-        t1200 = node("time", ("1200",))
-        t1200.add_child(efas_branch(np.datetime64("2025-07-14"), 51.5, 6.5, [61.44]))
-        t1200.add_child(efas_branch(np.datetime64("2025-07-15"), 51.5, 6.5, [73.82]))
-
-        date.add_child(t0600)
-        date.add_child(t1200)
+        date.add_child(efas_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]))
+        date.add_child(efas_branch(np.datetime64("2025-07-14T12:00:00"), 51.5, 6.5, [55.30]))
+        date.add_child(efas_branch(np.datetime64("2025-07-15T06:00:00"), 51.5, 6.5, [61.44]))
+        date.add_child(efas_branch(np.datetime64("2025-07-15T12:00:00"), 51.5, 6.5, [73.82]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
 
@@ -287,13 +274,12 @@ class TestTimeseriesFromPolytope:
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_two_points(self):
-        # 1 time, 1 hdate, 2 points → 2 coverages (one per point)
+        # 1 hdate (pre-merged with time), 2 points → 2 coverages (one per point)
         tree = chain(
             TensorIndexTree(),
             node("class", ("ce",)),
             node("date", (np.datetime64("2024-03-01"),)),
-            node("time", ("0600",)),
-            node("hdate", (np.datetime64("2025-07-14"),)),
+            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
             *[node(n, v) for n, v in EFAS_SUFFIX],
         )
         sfo = tip(tree)
@@ -320,23 +306,24 @@ class TestTimeseriesFromPolytope:
         assert "Forecast date" not in cov1["mars:metadata"]
 
     def test_hdate_two_points_two_times(self):
-        # 2 times, 1 hdate, 2 points → 2 coverages, each with 2 t-values
+        # 2 hdate values (= 1 hdate × 2 times pre-merged), 2 points → 2 coverages, each with 2 t-values
         # TODO: in the future we might want MultiPointSeries support to emit a single
         # coverage with a composite spatial axis instead of one coverage per point
         tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
         date = tip(tree)
 
-        for time_val in ("0600", "1200"):
-            t = node("time", (time_val,))
+        for hdate_val, vals in [
+            (np.datetime64("2025-07-14T06:00:00"), [42.17, 38.91]),
+            (np.datetime64("2025-07-14T12:00:00"), [55.30, 49.62]),
+        ]:
             branch = chain(
-                node("hdate", (np.datetime64("2025-07-14"),)),
+                node("hdate", (hdate_val,)),
                 *[node(n, v) for n, v in EFAS_SUFFIX],
             )
             sfo = tip(branch)
-            sfo.add_child(make_point(51.5, 6.5, [42.17 if time_val == "0600" else 55.30]))
-            sfo.add_child(make_point(52.0, 7.0, [38.91 if time_val == "0600" else 49.62]))
-            t.add_child(branch)
-            date.add_child(t)
+            sfo.add_child(make_point(51.5, 6.5, [vals[0]]))
+            sfo.add_child(make_point(52.0, 7.0, [vals[1]]))
+            date.add_child(branch)
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
 
