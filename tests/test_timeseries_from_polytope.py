@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from polytope_feature.datacube.datacube_axis import IntDatacubeAxis
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
@@ -71,6 +72,74 @@ class TestTimeseriesFromPolytope:
             "levtype": "sfc",
             "stream": "oper",
             "type": "fc",
+            "number": 0,
+            "levelist": 0,
+        }
+
+    @pytest.mark.xfail(reason="hdate support not yet implemented correctly")
+    def test_hdate_reanalysis_single_point(self):
+        # EFAS reanalysis: class=ce, stream=efcl, type=sfo, model=lisflood
+        # param 240023 (dis06), single hdate, step always 6
+        # TODO: clarify if time gets absorbed into date by polytope-mars before it
+        # reaches covjsonkit, or if it always arrives as a separate axis in the tree
+        leaf = node("longitude", (6.5,))
+        leaf.result = [np.float64(42.17)]
+
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (np.datetime64("2024-03-01"),)),
+            node("time", ("0600",)),
+            node("hdate", (np.datetime64("2025-07-14"),)),
+            node("domain", ("g",)),
+            node("expver", ("4321",)),
+            node("levtype", ("sfc",)),
+            node("model", ("lisflood",)),
+            node("origin", ("ecmf",)),
+            node("param", ("240023",)),
+            node("step", (6,)),
+            node("stream", ("efcl",)),
+            node("type", ("sfo",)),
+            node("latitude", (51.5,)),
+            leaf,
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
+
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+
+        # t-axis: hdate + time + step = 2025-07-14 + 06:00 + 6h = 2025-07-14T12:00:00Z
+        assert cov["domain"]["axes"] == {
+            "latitude": {"values": [51.5]},
+            "longitude": {"values": [6.5]},
+            "levelist": {"values": [0]},
+            "t": {"values": ["2025-07-14T12:00:00Z"]},
+        }
+
+        assert cov["ranges"] == {
+            "dis06": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [1],
+                "axisNames": ["dis06"],
+                "values": [42.17],
+            }
+        }
+
+        # TODO: does "Forecast date" make sense here? this is reanalysis, not a forecast.
+        # hdate is a hindcast reference date. might drop it or rename. discuss w/ Adam
+        assert "Forecast date" not in cov["mars:metadata"]
+        assert cov["mars:metadata"] == {
+            "class": "ce",
+            "date": "2024-03-01",
+            "domain": "g",
+            "expver": "4321",
+            "levtype": "sfc",
+            "model": "lisflood",
+            "origin": "ecmf",
+            "stream": "efcl",
+            "type": "sfo",
             "number": 0,
             "levelist": 0,
         }
