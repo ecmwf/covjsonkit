@@ -160,19 +160,6 @@ class TestTimeseriesFromPolytope:
 
         assert len(covjson["coverages"]) == 4
 
-        expected_metadata = {
-            "class": "ce",
-            "domain": "g",
-            "expver": "0001",
-            "levtype": "sfc",
-            "model": "lisflood",
-            "origin": "ecmf",
-            "stream": "efas",
-            "type": "fc",
-            "number": 0,
-            "levelist": 0,
-        }
-
         # point 1, date=2026-01-01T00:00
         cov0 = covjson["coverages"][0]
         assert cov0["domain"]["axes"]["latitude"]["values"] == [51.5]
