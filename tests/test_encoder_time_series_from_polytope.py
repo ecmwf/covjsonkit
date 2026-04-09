@@ -165,7 +165,7 @@ class TestTimeseriesFromPolytope:
 
         # TODO: does "Forecast date" make sense here? this is reanalysis, not a forecast.
         # hdate is a hindcast reference date. might drop it or rename. discuss w/ Adam
-        assert "Forecast date" not in cov["mars:metadata"]
+        # assert "Forecast date" not in cov["mars:metadata"]
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_multiple_times(self):
@@ -197,7 +197,6 @@ class TestTimeseriesFromPolytope:
             }
         }
 
-        assert "Forecast date" not in cov["mars:metadata"]
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_multiple_hdates(self):
@@ -229,7 +228,6 @@ class TestTimeseriesFromPolytope:
             }
         }
 
-        assert "Forecast date" not in cov["mars:metadata"]
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_multiple_times_and_hdates(self):
@@ -270,7 +268,6 @@ class TestTimeseriesFromPolytope:
             }
         }
 
-        assert "Forecast date" not in cov["mars:metadata"]
         assert cov["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_two_points(self):
@@ -302,8 +299,8 @@ class TestTimeseriesFromPolytope:
         assert cov1["domain"]["axes"]["t"]["values"] == ["2025-07-14T12:00:00Z"]
         assert cov1["ranges"]["dis06"]["values"] == [38.91]
 
-        assert "Forecast date" not in cov0["mars:metadata"]
-        assert "Forecast date" not in cov1["mars:metadata"]
+        assert cov0["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
+        assert cov1["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
 
     def test_hdate_two_points_two_times(self):
         # 2 hdate values (= 1 hdate × 2 times pre-merged), 2 points → 2 coverages, each with 2 t-values
@@ -341,5 +338,5 @@ class TestTimeseriesFromPolytope:
         assert cov1["domain"]["axes"]["t"]["values"] == ["2025-07-14T12:00:00Z", "2025-07-14T18:00:00Z"]
         assert cov1["ranges"]["dis06"]["values"] == [38.91, 49.62]
 
-        assert "Forecast date" not in cov0["mars:metadata"]
-        assert "Forecast date" not in cov1["mars:metadata"]
+        assert cov0["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
+        assert cov1["mars:metadata"] == EXPECTED_REANALYSIS_METADATA
