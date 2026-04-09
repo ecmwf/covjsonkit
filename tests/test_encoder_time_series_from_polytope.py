@@ -1,5 +1,4 @@
 import numpy as np
-
 from polytope_feature.datacube.datacube_axis import IntDatacubeAxis
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
@@ -75,7 +74,6 @@ EXPECTED_REANALYSIS_METADATA = {
 
 
 class TestTimeseriesFromPolytope:
-
     def test_standard_forecast_single_point(self):
         # od/oper/fc/sfc, 1 point, param 167 (2t), steps 0 and 6
         # axis ordering from a real polytope pprint
