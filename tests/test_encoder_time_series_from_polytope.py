@@ -128,6 +128,85 @@ class TestTimeseriesFromPolytope:
             "levelist": 0,
         }
 
+    def test_standard_forecast_multiple_coverages(self):
+        # ce/efas/fc/sfc flood forecast: class=ce, stream=efas, type=fc, param=240023 (dis06)
+        # 2 dates (time 00:00 and 12:00 pre-merged), 2 steps (6, 30), 2 points
+        # → 4 coverages (2 dates × 2 points), each with 2 t-values from steps
+        tree = chain(TensorIndexTree(), node("class", ("ce",)))
+        cls = tip(tree)
+
+        for date_val, point_vals in [
+            (np.datetime64("2026-01-01T00:00:00"), [[12.5, 19.3], [8.7, 14.1]]),
+            (np.datetime64("2026-01-01T12:00:00"), [[15.8, 22.6], [10.2, 16.9]]),
+        ]:
+            branch = chain(
+                node("date", (date_val,)),
+                node("domain", ("g",)),
+                node("expver", ("0001",)),
+                node("levtype", ("sfc",)),
+                node("model", ("lisflood",)),
+                node("origin", ("ecmf",)),
+                node("param", ("240023",)),
+                node("step", (6, 30)),
+                node("stream", ("efas",)),
+                node("type", ("fc",)),
+            )
+            fc = tip(branch)
+            fc.add_child(make_point(51.5, 6.5, point_vals[0]))
+            fc.add_child(make_point(52.0, 7.0, point_vals[1]))
+            cls.add_child(branch)
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
+
+        assert len(covjson["coverages"]) == 4
+
+        expected_metadata = {
+            "class": "ce",
+            "domain": "g",
+            "expver": "0001",
+            "levtype": "sfc",
+            "model": "lisflood",
+            "origin": "ecmf",
+            "stream": "efas",
+            "type": "fc",
+            "number": 0,
+            "levelist": 0,
+        }
+
+        # point 1, date=2026-01-01T00:00
+        cov0 = covjson["coverages"][0]
+        assert cov0["domain"]["axes"]["latitude"]["values"] == [51.5]
+        assert cov0["domain"]["axes"]["longitude"]["values"] == [6.5]
+        assert cov0["domain"]["axes"]["t"]["values"] == ["2026-01-01T06:00:00Z", "2026-01-02T06:00:00Z"]
+        assert cov0["ranges"]["dis06"]["values"] == [12.5, 19.3]
+
+        # point 1, date=2026-01-01T12:00
+        cov1 = covjson["coverages"][1]
+        assert cov1["domain"]["axes"]["latitude"]["values"] == [51.5]
+        assert cov1["domain"]["axes"]["longitude"]["values"] == [6.5]
+        assert cov1["domain"]["axes"]["t"]["values"] == ["2026-01-01T18:00:00Z", "2026-01-02T18:00:00Z"]
+        assert cov1["ranges"]["dis06"]["values"] == [15.8, 22.6]
+
+        # point 2, date=2026-01-01T00:00
+        cov2 = covjson["coverages"][2]
+        assert cov2["domain"]["axes"]["latitude"]["values"] == [52.0]
+        assert cov2["domain"]["axes"]["longitude"]["values"] == [7.0]
+        assert cov2["domain"]["axes"]["t"]["values"] == ["2026-01-01T06:00:00Z", "2026-01-02T06:00:00Z"]
+        assert cov2["ranges"]["dis06"]["values"] == [8.7, 14.1]
+
+        # point 2, date=2026-01-01T12:00
+        cov3 = covjson["coverages"][3]
+        assert cov3["domain"]["axes"]["latitude"]["values"] == [52.0]
+        assert cov3["domain"]["axes"]["longitude"]["values"] == [7.0]
+        assert cov3["domain"]["axes"]["t"]["values"] == ["2026-01-01T18:00:00Z", "2026-01-02T18:00:00Z"]
+        assert cov3["ranges"]["dis06"]["values"] == [10.2, 16.9]
+
+        for cov in covjson["coverages"]:
+            assert cov["mars:metadata"]["class"] == "ce"
+            assert cov["mars:metadata"]["stream"] == "efas"
+            assert cov["mars:metadata"]["type"] == "fc"
+            assert cov["mars:metadata"]["model"] == "lisflood"
+
     def test_hdate_reanalysis_single_point(self):
         # EFAS reanalysis: 1 hdate (with time pre-merged by polytope-mars), 1 point
         # polytope-mars merges time into hdate: pd.Timestamp("20250714T0600") → np.datetime64
