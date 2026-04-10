@@ -220,7 +220,96 @@ class Grid(Encoder):
 
         return self.covjson
 
-    def from_polytope_step(self, result):
+    def from_polytope_month(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["years"] = []
+        fields["months"] = []
+        fields["dates"] = []
+        fields["levels"] = [0]
+
+        start = time.time()
+        logging.debug("Tree walking starts at: %s", start)
+        self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
+        end = time.time()
+        logging.debug("Tree walking ends at: %s", end)
+        logging.debug("Tree walking takes: %s", end - start)
+
+        start = time.time()
+        logging.debug("Coords creation: %s", start)
+
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)
+        logging.debug("The fields retrieved were: %s", fields)
+        logging.debug("The range_dict created was: %s", range_dict)
+
+        # Build named grid axes, one entry per date key ("YYYY-MM").
+        # The t axis holds the "first of month" ISO timestamps for all dates.
+        coordinates = {}
+        for date in fields["dates"]:
+            coordinates[date] = {}
+            coordinates[date]["t"] = [f"{date}-01T00:00:00Z"]
+            coordinates[date]["levelist"] = list(fields["levels"])
+            coordinates[date]["latitude"] = []
+            coordinates[date]["longitude"] = []
+            for cor in coords.get(date, {}).get("composite", []):
+                self.add_if_not_close(coordinates[date]["latitude"], cor[0])
+                self.add_if_not_close(coordinates[date]["longitude"], cor[1])
+
+        if fields["dates"]:
+            first_date = fields["dates"][0]
+            self.shp = [
+                len(coordinates[first_date]["t"]),
+                len(coordinates[first_date]["levelist"]),
+                len(coordinates[first_date]["latitude"]),
+                len(coordinates[first_date]["longitude"]),
+            ]
+
+        end = time.time()
+        logging.debug("Coords creation: %s", end)
+        logging.debug("Coords creation takes: %s", end - start)
+
+        start = time.time()
+        logging.debug("Coverage creation: %s", start)
+
+        for num in fields["number"]:
+            val_dict = {}
+            for para in fields["param"]:
+                val_dict[para] = []
+                for date in fields["dates"]:
+                    for level in fields["levels"]:
+                        key = (date, level, num, para)
+                        vals = range_dict.get(key, [[]])
+                        val_dict[para].extend([item for sublist in vals for item in sublist])
+            mm = mars_metadata.copy()
+            mm["number"] = num
+            if fields["dates"]:
+                self.add_coverage(mm, coordinates[fields["dates"][0]], val_dict)
+
+        end = time.time()
+        logging.debug("Coverage creation: %s", end)
+        logging.debug("Coverage creation takes: %s", end - start)
+
+        return self.covjson
         coords = {}
         mars_metadata = {}
         range_dict = {}

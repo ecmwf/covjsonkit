@@ -267,3 +267,46 @@ class TestDecoder:
     #    decoder = BoundingBox.BoundingBox(self.covjson)
     #    dataset = decoder.to_xarray()
     #    print(dataset)
+
+    def test_to_xarray_multi_coverage(self):
+        """to_xarray() must include all coverages, not just the first one."""
+        decoder = Wkt.Wkt(self.covjson)
+        ds = decoder.to_xarray()
+
+        # Dataset should have a time dimension with one entry per coverage
+        assert "time" in ds.dims
+        assert ds.dims["time"] == 2
+
+        # Spatial points dimension matches the number of composite coordinates
+        assert "points" in ds.dims
+        assert ds.dims["points"] == 3
+
+        # Both timestamps are present
+        assert list(ds.coords["time"].values) == [
+            "2017-01-01T00:00:00",
+            "2017-01-01T01:00:00",
+        ]
+
+        # Spatial coords from the first coverage are present
+        assert list(ds.coords["x"].values) == [1.0, 2.0, 3.0]
+        assert list(ds.coords["y"].values) == [20.0, 21.0, 17.0]
+
+        # Parameter 't' values for both time steps
+        import numpy as np
+
+        expected_t = [
+            [264.93115234375, 263.83115234375, 265.12313132266],
+            [266.93115234375, 293.83115234375, 165.12313132266],
+        ]
+        np.testing.assert_allclose(ds["t"].values, expected_t)
+
+        # Parameter 'p' values for both time steps
+        expected_p = [
+            [9.93115234375, 7.83115234375, 14.12313132266],
+            [1.93115234375, 22.83115234375, 12.12313132266],
+        ]
+        np.testing.assert_allclose(ds["p"].values, expected_p)
+
+        # MARS metadata from the first coverage is attached as dataset attrs
+        assert ds.attrs["step"] == "0"
+        assert ds.attrs["class"] == "od"

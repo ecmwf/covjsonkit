@@ -197,3 +197,71 @@ class Shapefile(Encoder):
                     self.add_coverage(mm, coords[date], val_dict[step])
 
         return self.covjson
+
+    def from_polytope_month(self, result):
+        coords = {}
+        mars_metadata = {}
+        range_dict = {}
+        fields = {}
+        fields["lat"] = 0
+        fields["param"] = 0
+        fields["number"] = [0]
+        fields["years"] = []
+        fields["months"] = []
+        fields["dates"] = []
+        fields["levels"] = [0]
+
+        self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
+
+        logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
+        logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
+
+        self.add_reference(
+            {
+                "coordinates": ["x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        levels = fields["levels"]
+        if fields["param"] == 0:
+            raise ValueError("No data was returned.")
+        for para in fields["param"]:
+            self.add_parameter(para)
+
+        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        if not fields["dates"]:
+            raise ValueError("No year/month data was found in the result tree.")
+
+        # Build composite coordinates: expand spatial points across all levels per date.
+        # All dates are merged into a single coverage via the t axis.
+        coordinates = {}
+        for date in fields["dates"]:
+            t_val = f"{date}-01T00:00:00Z"
+            coordinates[date] = {}
+            coordinates[date]["composite"] = []
+            coordinates[date]["t"] = [t_val]
+            coord = coords.get(date, {}).get("composite", [])
+            for level in levels:
+                for cor in coord:
+                    coordinates[date]["composite"].append([cor[0], cor[1], level])
+
+        for num in fields["number"]:
+            val_dict = {}
+            for date in fields["dates"]:
+                for para in fields["param"]:
+                    if para not in val_dict:
+                        val_dict[para] = []
+                    for level in fields["levels"]:
+                        key = (date, level, num, para)
+                        vals = range_dict.get(key, [[]])
+                        val_dict[para].extend([item for sublist in vals for item in sublist])
+            mm = mars_metadata.copy()
+            mm["number"] = num
+            self.add_coverage(mm, coordinates[fields["dates"][0]] if fields["dates"] else {}, val_dict)
+
+        return self.covjson

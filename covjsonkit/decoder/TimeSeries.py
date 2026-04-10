@@ -106,6 +106,14 @@ class TimeSeries(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
+        # Monthly-means fast path: coverages produced by from_polytope_month() pack all
+        # time steps into a single coverage's t-axis and do NOT write "Forecast date"
+        # into mars:metadata.  Detect this case and use a simpler (time, point) layout
+        # that mirrors the Wkt/Frame/Shapefile decoders.
+        has_forecast_date = any("Forecast date" in cov.get("mars:metadata", {}) for cov in self.covjson["coverages"])
+        if not has_forecast_date:
+            return self._to_xarray_no_forecast_date()
+
         dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
         ds = []
 
@@ -213,3 +221,55 @@ class TimeSeries(Decoder):
             return ds[0]
 
         return ds
+
+    def _to_xarray_no_forecast_date(self):
+        """Convert monthly-means CovJSON (no 'Forecast date' in metadata) to xarray.
+
+        In this layout every coverage contains all of its time steps packed into
+        the domain's ``t`` axis (produced by ``from_polytope_month``).  Each
+        coverage corresponds to one spatial point / ensemble member combination.
+        The resulting Dataset has a ``t`` dimension whose values come directly
+        from the domain axis.
+        """
+        ds_list = []
+
+        for cov_idx, coverage in enumerate(self.covjson["coverages"]):
+            domain = coverage["domain"]["axes"]
+            x = domain[self.x_name]["values"]
+            y = domain[self.y_name]["values"]
+            z = domain[self.z_name]["values"]
+
+            steps = domain["t"]["values"]
+            steps = [s.replace("Z", "") for s in steps]
+            steps = pd.to_datetime(steps)
+
+            dataarraydict = {}
+            for parameter in self.parameters:
+                values = coverage["ranges"][parameter]["values"]
+                dataarray = xr.DataArray(
+                    values,
+                    dims=["t"],
+                    coords={"t": steps},
+                )
+                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+                dataarraydict[dataarray.attrs["long_name"]] = dataarray
+
+            coord_dict = dict(
+                latitude=(["latitude"], x),
+                longitude=(["longitude"], y),
+                levelist=(["levelist"], z),
+            )
+            dss = xr.Dataset(dataarraydict, coords=coord_dict)
+
+            # Attach MARS metadata (skip keys that vary per time step)
+            mm = coverage.get("mars:metadata", {})
+            for key, val in mm.items():
+                dss.attrs[key] = val
+
+            ds_list.append(dss)
+
+        if len(ds_list) == 1:
+            return ds_list[0]
+        return ds_list

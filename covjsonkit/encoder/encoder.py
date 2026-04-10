@@ -396,6 +396,127 @@ class Encoder(ABC):
                                     ]
                                 )
 
+    def walk_tree_month(self, tree, fields, coords, mars_metadata, range_dict):
+        """Walk the result tree for monthly-mean streams (e.g. clmn).
+
+        These streams use ``year`` and ``month`` axes instead of ``date``/``time``/``step``.
+        Each unique (year, month) pair is represented as an ISO-8601 date string
+        ``"YYYY-MM"`` that plays the same role as ``date`` does in the standard
+        step-based tree walker.
+
+        Because the tree ordering can place ``month`` before ``year`` (or vice
+        versa), both axes are collected independently into ``fields["months"]``
+        and ``fields["years"]``.  The combined "YYYY-MM" keys are only built
+        once both are available — either when the second axis is encountered, or
+        at the leaf node.
+        """
+
+        def _year_month_key(year, month):
+            return f"{int(year):04d}-{int(month):02d}"
+
+        def _ensure_date_keys():
+            """Populate ``fields["dates"]`` and ``coords`` once both year and
+            month values are known."""
+            if not fields.get("years") or not fields.get("months"):
+                return
+            for year in fields["years"]:
+                for month in fields["months"]:
+                    key = _year_month_key(year, month)
+                    if key not in fields["dates"]:
+                        fields["dates"].append(key)
+                    if key not in coords:
+                        coords[key] = {"composite": [], "t": [key]}
+
+        def handle_non_leaf_node_month(child):
+            non_leaf_axes = ["latitude", "longitude", "param", "year", "month"]
+            if child.axis.name not in non_leaf_axes:
+                mars_metadata[child.axis.name] = child.values[0]
+
+        def handle_specific_axes_month(child):
+            if child.axis.name == "latitude":
+                return child.values[0]
+            if child.axis.name == "levelist":
+                return child.values
+            if child.axis.name == "param":
+                return child.values
+            if child.axis.name == "year":
+                return child.values
+            if child.axis.name == "month":
+                return child.values
+            if child.axis.name == "number":
+                return child.values
+            return None
+
+        def append_composite_coords_month(date_key, tree_values, lat):
+            for value in tree_values:
+                coords[date_key]["composite"].append([lat, value])
+
+        if len(tree.children) != 0:
+            for child in tree.children:
+                handle_non_leaf_node_month(child)
+                result = handle_specific_axes_month(child)
+                if result is not None:
+                    if child.axis.name == "latitude":
+                        fields["lat"] = result
+                    elif child.axis.name == "levelist":
+                        fields["levels"] = result
+                        if "l" in fields:
+                            fields["l"].extend(result)
+                    elif child.axis.name == "param":
+                        fields["param"] = result
+                    elif child.axis.name == "year":
+                        fields["years"] = result
+                        _ensure_date_keys()
+                    elif child.axis.name == "month":
+                        fields["months"] = result
+                        _ensure_date_keys()
+                    elif child.axis.name == "number":
+                        fields["number"] = result
+
+                self.walk_tree_month(child, fields, coords, mars_metadata, range_dict)
+        else:
+            # Leaf node — make sure date keys are built before processing.
+            _ensure_date_keys()
+
+            tree.values = [float(val) for val in tree.values]
+            if all(val is None for val in tree.result):
+                # Remove the last date entry that produced no data.
+                if fields["dates"]:
+                    last_date = fields["dates"][-1]
+                    fields["dates"] = fields["dates"][:-1]
+                    for level in fields["levels"]:
+                        for num in fields["number"]:
+                            for para in fields["param"]:
+                                key = (last_date, level, num, para)
+                                if key in range_dict:
+                                    del range_dict[key]
+            else:
+                tree.result = [float(val) if val is not None else val for val in tree.result]
+
+                n_dates = len(fields["dates"])
+                n_levels = len(fields["levels"])
+                n_params = len(fields["param"])
+
+                date_len = len(tree.result) / n_dates if n_dates else len(tree.result)
+                level_len = date_len / n_levels if n_levels else date_len
+                para_len = level_len / n_params if n_params else level_len
+
+                # Append this leaf's longitude values to composite coords for
+                # every date key so spatial points are recorded.
+                for date in fields["dates"]:
+                    append_composite_coords_month(date, tree.values, fields["lat"])
+
+                for d, date in enumerate(fields["dates"]):
+                    for l, level in enumerate(fields["levels"]):  # noqa: E741
+                        for i, num in enumerate(fields["number"]):
+                            for j, para in enumerate(fields["param"]):
+                                key = (date, level, num, para)
+                                if key not in range_dict:
+                                    range_dict[key] = []
+                                start = int(d * date_len + l * level_len + j * para_len)
+                                end = int(start + len(tree.values))
+                                range_dict[key].append(tree.result[start:end])
+
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
         pass
