@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import typing
 from abc import ABC, abstractmethod
+from typing import Any
 
 import orjson
 import pandas as pd
@@ -6,6 +10,9 @@ from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
 from covjsonkit.param_db import get_param_ids, get_params, get_units
+
+if typing.TYPE_CHECKING:
+    from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 
 class Encoder(ABC):
@@ -149,13 +156,31 @@ class Encoder(ABC):
         # self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         return orjson.dumps(self.covjson)
 
-    def walk_tree(self, tree, fields, coords, mars_metadata, range_dict):
+    def walk_tree(
+        self,
+        tree: TensorIndexTree,
+        fields: dict[str, Any],
+        coords: dict[str, dict[str, list]],
+        mars_metadata: dict[str, Any],
+        range_dict: dict[tuple, list],
+        date_key: str = "date",
+    ) -> None:
+        """Walk the polytope result tree, extracting data into fields, coords, and range_dict.
+
+        ``date_key`` controls which tree axis is treated as the time dimension
+        (e.g. ``"date"`` for forecasts, ``"hdate"`` for reanalysis/hindcast data).
+        Any other axis with the default name falls through to ``mars_metadata``
+        instead.  Regardless of ``date_key``, values are always stored under
+        ``fields["dates"]``.
+        """
+
         def create_composite_key(date, level, num, para, s):
             return (date, level, num, para, s)
 
         def handle_non_leaf_node(child):
-            non_leaf_axes = ["latitude", "longitude", "param", "date"]
+            non_leaf_axes = ["latitude", "longitude", "param", date_key]
             if child.axis.name not in non_leaf_axes:
+                # TODO: Add assert len(child.values) == 1 here
                 mars_metadata[child.axis.name] = child.values[0]
 
         def handle_specific_axes(child):
@@ -165,21 +190,17 @@ class Encoder(ABC):
                 return child.values
             if child.axis.name == "param":
                 return child.values
-            if child.axis.name in ["date", "time"]:
+            if child.axis.name in [date_key, "time"]:
                 dates = [f"{date}Z" for date in child.values]
+                # TODO: Discuss before merging — for reforecasts the hdate is
+                # the forecast initialisation time so using it as "Forecast date"
+                # makes sense, but this may need revisiting for reanalysis.
                 mars_metadata["Forecast date"] = str(child.values[0])
                 for date in dates:
                     coords[date] = {}
                     coords[date]["composite"] = []
                     coords[date]["t"] = [date]
                 return dates
-            if child.axis.name == "hdate":
-                hdates = [f"{hdate}Z" for hdate in child.values]
-                for hdate in hdates:
-                    coords[hdate] = {}
-                    coords[hdate]["composite"] = []
-                    coords[hdate]["t"] = [hdate]
-                return hdates
             if child.axis.name == "number":
                 return child.values
             if child.axis.name == "step":
@@ -209,9 +230,7 @@ class Encoder(ABC):
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
                         fields["param"] = result
-                    elif child.axis.name in "hdate":
-                        fields["dates"].extend(result)
-                    elif child.axis.name in ["date", "time"]:
+                    elif child.axis.name in [date_key, "time"]:
                         fields["dates"].extend(result)
                     elif child.axis.name == "number":
                         fields["number"] = result
@@ -220,7 +239,7 @@ class Encoder(ABC):
                         if "s" in fields:
                             fields["s"].extend(result)
 
-                self.walk_tree(child, fields, coords, mars_metadata, range_dict)
+                self.walk_tree(child, fields, coords, mars_metadata, range_dict, date_key=date_key)
         else:
             tree.values = [float(val) for val in tree.values]
             if all(val is None for val in tree.result):
