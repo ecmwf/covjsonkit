@@ -4,6 +4,24 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
+COMPOSITE_TWO_POINTS = {
+    "dataType": "tuple",
+    "coordinates": ["x", "y", "z"],
+    "values": [[48.0, 11.0, 0], [50.0, 12.0, 0]],
+}
+
+REFORECAST_SHARED_METADATA = {
+    "class": "ce",
+    "date": np.datetime64("2024-03-01"),
+    "domain": "g",
+    "expver": "4321",
+    "levtype": "sfc",
+    "step": 0,
+    "stream": "efcl",
+    "type": "sfo",
+    "number": 0,
+}
+
 
 class TestFrameFromPolytope:
     def test_single_date_single_step_two_points(self):
@@ -25,36 +43,35 @@ class TestFrameFromPolytope:
 
         covjson = Covjsonkit().encode("CoverageCollection", "Frame").from_polytope(tree)
 
-        assert covjson["type"] == "CoverageCollection"
-        assert covjson["domainType"] == "MultiPoint"
         assert len(covjson["coverages"]) == 1
-
         cov = covjson["coverages"][0]
-        assert cov["type"] == "Coverage"
 
-        # Domain — Frame uses ["x", "y", "z"] coordinates
-        composite = cov["domain"]["axes"]["composite"]
-        assert composite["dataType"] == "tuple"
-        assert composite["coordinates"] == ["x", "y", "z"]
-        assert composite["values"] == [[48.0, 11.0, 0], [50.0, 12.0, 0]]
-        assert cov["domain"]["axes"]["t"]["values"] == ["2025-01-01T00:00:00Z"]
+        assert cov["domain"]["axes"] == {
+            "t": {"values": ["2025-01-01T00:00:00Z"]},
+            "composite": COMPOSITE_TWO_POINTS,
+        }
 
-        # Ranges
-        r = cov["ranges"]["2t"]
-        assert r["type"] == "NdArray"
-        assert r["dataType"] == "float"
-        assert r["shape"] == [2]
-        assert r["axisNames"] == ["2t"]
-        assert r["values"] == [264.9, 265.1]
+        assert cov["ranges"] == {
+            "2t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [2],
+                "axisNames": ["2t"],
+                "values": [264.9, 265.1],
+            }
+        }
 
-        # Metadata
-        mm = cov["mars:metadata"]
-        assert mm["class"] == "od"
-        assert mm["Forecast date"] == "2025-01-01T00:00:00Z"
-        assert mm["stream"] == "oper"
-        assert mm["type"] == "fc"
-        assert mm["number"] == 0
-        assert mm["step"] == 0
+        assert cov["mars:metadata"] == {
+            "class": "od",
+            "Forecast date": "2025-01-01T00:00:00Z",
+            "domain": "g",
+            "expver": "0001",
+            "levtype": "sfc",
+            "step": 0,
+            "stream": "oper",
+            "type": "fc",
+            "number": 0,
+        }
 
 
 class TestFrameFromPolytopeReforecast:
@@ -78,23 +95,28 @@ class TestFrameFromPolytopeReforecast:
 
         covjson = Covjsonkit().encode("CoverageCollection", "Frame").from_polytope_reforecast(tree)
 
-        assert covjson["type"] == "CoverageCollection"
-        assert covjson["domainType"] == "MultiPoint"
         assert len(covjson["coverages"]) == 1
-
         cov = covjson["coverages"][0]
-        assert cov["type"] == "Coverage"
 
-        composite = cov["domain"]["axes"]["composite"]
-        assert composite["dataType"] == "tuple"
-        assert composite["coordinates"] == ["x", "y", "z"]
-        assert composite["values"] == [[48.0, 11.0, 0], [50.0, 12.0, 0]]
-        assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T06:00:00Z"]
+        assert cov["domain"]["axes"] == {
+            "t": {"values": ["2025-07-14T06:00:00Z"]},
+            "composite": COMPOSITE_TWO_POINTS,
+        }
 
-        assert cov["ranges"]["2t"]["values"] == [264.9, 265.1]
+        assert cov["ranges"] == {
+            "2t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [2],
+                "axisNames": ["2t"],
+                "values": [264.9, 265.1],
+            }
+        }
 
-        mm = cov["mars:metadata"]
-        assert mm["Forecast date"] == "2025-07-14T06:00:00Z"
+        assert cov["mars:metadata"] == {
+            **REFORECAST_SHARED_METADATA,
+            "Forecast date": "2025-07-14T06:00:00Z",
+        }
 
     def test_reforecast_two_hdates_two_points(self):
         tree = chain(
@@ -125,14 +147,18 @@ class TestFrameFromPolytopeReforecast:
 
         covjson = Covjsonkit().encode("CoverageCollection", "Frame").from_polytope_reforecast(tree)
 
-        assert len(covjson["coverages"]) == 2
-
-        cov0 = covjson["coverages"][0]
-        assert cov0["domain"]["axes"]["t"]["values"] == ["2025-07-14T06:00:00Z"]
-        assert cov0["domain"]["axes"]["composite"]["values"] == [[48.0, 11.0, 0], [50.0, 12.0, 0]]
-        assert cov0["ranges"]["2t"]["values"] == [264.9, 265.1]
-
-        cov1 = covjson["coverages"][1]
-        assert cov1["domain"]["axes"]["t"]["values"] == ["2025-07-15T06:00:00Z"]
-        assert cov1["domain"]["axes"]["composite"]["values"] == [[48.0, 11.0, 0], [50.0, 12.0, 0]]
-        assert cov1["ranges"]["2t"]["values"] == [266.0, 267.0]
+        expected = [
+            ("2025-07-14T06:00:00Z", [264.9, 265.1]),
+            ("2025-07-15T06:00:00Z", [266.0, 267.0]),
+        ]
+        assert len(covjson["coverages"]) == len(expected)
+        for cov, (fc_date, vals) in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"] == {
+                "t": {"values": [fc_date]},
+                "composite": COMPOSITE_TWO_POINTS,
+            }
+            assert cov["ranges"]["2t"]["values"] == vals
+            assert cov["mars:metadata"] == {
+                **REFORECAST_SHARED_METADATA,
+                "Forecast date": fc_date,
+            }

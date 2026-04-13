@@ -4,37 +4,38 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
+GRID_2X2_AXES = {
+    "t": {"values": [0]},
+    "latitude": {"values": [48.0, 50.0]},
+    "longitude": {"values": [11.0, 12.0]},
+    "levelist": {"values": [0]},
+}
+
+GRID_2X2_RANGES = {
+    "2t": {
+        "type": "NdArray",
+        "dataType": "float",
+        "shape": [1, 1, 2, 2],
+        "axisNames": ["t", "levelist", "latitude", "longitude"],
+        "values": [264.9, 265.1, 266.3, 267.5],
+    }
+}
+
+EXPECTED_REFORECAST_METADATA = {
+    "class": "ce",
+    "date": np.datetime64("2024-03-01"),
+    "domain": "g",
+    "expver": "4321",
+    "levtype": "sfc",
+    "step": 0,
+    "stream": "efcl",
+    "type": "sfo",
+    "number": 0,
+}
+
 
 class TestGridFromPolytope:
     """Tests for Grid encoder's from_polytope method."""
-
-    def _build_grid_tree(self, grid_points, param="167", step=0):
-        """Build a grid tree.
-
-        grid_points: list of (lat, lon, result_value) triples.
-        Each is a separate lat→lon subtree under the common metadata chain.
-        """
-        step_tuple = step if isinstance(step, tuple) else (step,)
-
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("od",)),
-            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("0001",)),
-            node("levtype", ("sfc",)),
-            node("param", (param,)),
-            node("step", step_tuple),
-            node("stream", ("oper",)),
-            node("type", ("an",)),
-        )
-        parent = tip(tree)
-        for lat, lon, vals in grid_points:
-            if not isinstance(vals, list):
-                vals = [vals]
-            parent.add_child(make_point(lat, lon, vals))
-
-        return tree
 
     def test_2x2_grid(self):
         """2×2 grid: 2 latitudes, 2 longitudes, param 167 (2t), step 0."""
@@ -44,92 +45,108 @@ class TestGridFromPolytope:
             (50.0, 11.0, [266.3]),
             (50.0, 12.0, [267.5]),
         ]
-        tree = self._build_grid_tree(grid_points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Grid")
-        covjson = encoder.from_polytope(tree)
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("od",)),
+            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("param", ("167",)),
+            node("step", (0,)),
+            node("stream", ("oper",)),
+            node("type", ("an",)),
+        )
+        parent = tip(tree)
+        for lat, lon, vals in grid_points:
+            parent.add_child(make_point(lat, lon, vals))
+
+        covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(tree)
 
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "Grid"
+
+        # Collection-level referencing
+        assert covjson["referencing"] == [
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        ]
+
+        # Collection-level parameters
+        assert "2t" in covjson["parameters"]
+        assert covjson["parameters"]["2t"]["type"] == "Parameter"
+        assert covjson["parameters"]["2t"]["observedProperty"] == {
+            "id": "2t",
+            "label": {"en": "2 metre temperature"},
+        }
+
         assert len(covjson["coverages"]) == 1
-
         cov = covjson["coverages"][0]
-        assert cov["type"] == "Coverage"
 
-        # Domain axes
-        axes = cov["domain"]["axes"]
-        assert axes["t"]["values"] == [0]
-        assert axes["levelist"]["values"] == [0]
-        assert axes["latitude"]["values"] == [48.0, 50.0]
-        assert axes["longitude"]["values"] == [11.0, 12.0]
-
-        # Range
-        assert "2t" in cov["ranges"]
-        rng = cov["ranges"]["2t"]
-        assert rng["type"] == "NdArray"
-        assert rng["dataType"] == "float"
-        assert rng["axisNames"] == ["t", "levelist", "latitude", "longitude"]
-        assert rng["shape"] == [1, 1, 2, 2]
-        assert rng["values"] == [264.9, 265.1, 266.3, 267.5]
+        assert cov["domain"]["axes"] == GRID_2X2_AXES
+        assert cov["ranges"] == GRID_2X2_RANGES
+        assert cov["mars:metadata"] == {
+            "class": "od",
+            "Forecast date": "2025-01-01T00:00:00Z",
+            "domain": "g",
+            "expver": "0001",
+            "levtype": "sfc",
+            "step": 0,
+            "stream": "oper",
+            "type": "an",
+            "number": 0,
+        }
 
     def test_1x1_grid(self):
-        """1×1 grid: single point."""
-        grid_points = [(48.0, 11.0, [264.9])]
-        tree = self._build_grid_tree(grid_points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Grid")
-        covjson = encoder.from_polytope(tree)
+        """Edge case: single-point grid → shape [1,1,1,1]."""
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("od",)),
+            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("param", ("167",)),
+            node("step", (0,)),
+            node("stream", ("oper",)),
+            node("type", ("an",)),
+            make_point(48.0, 11.0, [264.9]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(tree)
 
         assert len(covjson["coverages"]) == 1
         cov = covjson["coverages"][0]
-        assert cov["domain"]["axes"]["latitude"]["values"] == [48.0]
-        assert cov["domain"]["axes"]["longitude"]["values"] == [11.0]
-        assert cov["ranges"]["2t"]["shape"] == [1, 1, 1, 1]
-        assert cov["ranges"]["2t"]["values"] == [264.9]
 
-    def test_metadata(self):
-        """mars:metadata should be populated correctly."""
-        grid_points = [(48.0, 11.0, [264.9])]
-        tree = self._build_grid_tree(grid_points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Grid")
-        covjson = encoder.from_polytope(tree)
-
-        mm = covjson["coverages"][0]["mars:metadata"]
-        assert mm["class"] == "od"
-        assert mm["Forecast date"] == "2025-01-01T00:00:00Z"
-        assert mm["number"] == 0
-
-    def test_referencing(self):
-        """Check the CRS referencing block."""
-        grid_points = [(48.0, 11.0, [264.9])]
-        tree = self._build_grid_tree(grid_points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Grid")
-        covjson = encoder.from_polytope(tree)
-
-        ref = covjson["referencing"][0]
-        assert ref["coordinates"] == ["latitude", "longitude", "levelist"]
-        assert ref["system"]["type"] == "GeographicCRS"
-
-    def test_parameters_block(self):
-        """Top-level parameters dict should have param 167 = '2t'."""
-        grid_points = [(48.0, 11.0, [264.9])]
-        tree = self._build_grid_tree(grid_points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Grid")
-        covjson = encoder.from_polytope(tree)
-
-        assert "2t" in covjson["parameters"]
-        p = covjson["parameters"]["2t"]
-        assert p["type"] == "Parameter"
+        assert cov["domain"]["axes"] == {
+            "t": {"values": [0]},
+            "latitude": {"values": [48.0]},
+            "longitude": {"values": [11.0]},
+            "levelist": {"values": [0]},
+        }
+        assert cov["ranges"] == {
+            "2t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [1, 1, 1, 1],
+                "axisNames": ["t", "levelist", "latitude", "longitude"],
+                "values": [264.9],
+            }
+        }
 
 
 class TestGridFromPolytopeReforecast:
     """Tests for Grid encoder's from_polytope_reforecast method."""
 
-    def test_reforecast_single_hdate_2x2_grid(self):
-        """Single hdate with 2×2 grid → 1 Grid coverage."""
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
+    def _build_reforecast_branch(self, hdate_val, grid_points):
+        """Build a single hdate branch with grid points."""
+        branch = chain(
+            node("hdate", (hdate_val,)),
             node("domain", ("g",)),
             node("expver", ("4321",)),
             node("levtype", ("sfc",)),
@@ -138,11 +155,26 @@ class TestGridFromPolytopeReforecast:
             node("stream", ("efcl",)),
             node("type", ("sfo",)),
         )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9]))
-        fc.add_child(make_point(48.0, 12.0, [265.1]))
-        fc.add_child(make_point(50.0, 11.0, [266.3]))
-        fc.add_child(make_point(50.0, 12.0, [267.5]))
+        fc = tip(branch)
+        for lat, lon, vals in grid_points:
+            fc.add_child(make_point(lat, lon, vals))
+        return branch
+
+    def test_reforecast_single_hdate_2x2_grid(self):
+        """Single hdate with 2×2 grid → 1 Grid coverage."""
+        grid_points = [
+            (48.0, 11.0, [264.9]),
+            (48.0, 12.0, [265.1]),
+            (50.0, 11.0, [266.3]),
+            (50.0, 12.0, [267.5]),
+        ]
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (np.datetime64("2024-03-01"),)),
+            self._build_reforecast_branch(np.datetime64("2025-07-14T06:00:00"), grid_points),
+        )
+
         covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope_reforecast(tree)
 
         assert covjson["type"] == "CoverageCollection"
@@ -150,42 +182,42 @@ class TestGridFromPolytopeReforecast:
         assert len(covjson["coverages"]) == 1
 
         cov = covjson["coverages"][0]
-        axes = cov["domain"]["axes"]
-        assert len(axes["latitude"]["values"]) == 2
-        assert len(axes["longitude"]["values"]) == 2
-        assert axes["t"]["values"] == [0]
 
-        rng = cov["ranges"]["2t"]
-        assert rng["shape"] == [1, 1, 2, 2]
-        assert rng["values"] == [264.9, 265.1, 266.3, 267.5]
+        assert cov["domain"]["axes"] == GRID_2X2_AXES
+        assert cov["ranges"] == GRID_2X2_RANGES
+        assert cov["mars:metadata"] == {
+            **EXPECTED_REFORECAST_METADATA,
+            "Forecast date": "2025-07-14T06:00:00Z",
+        }
 
     def test_reforecast_two_hdates_2x2_grid(self):
         """Two hdates each with 2×2 grid → 2 Grid coverages."""
+        grid_points = [
+            (48.0, 11.0, [264.9]),
+            (48.0, 12.0, [265.1]),
+            (50.0, 11.0, [266.3]),
+            (50.0, 12.0, [267.5]),
+        ]
         tree = chain(
             TensorIndexTree(),
             node("class", ("ce",)),
             node("date", (np.datetime64("2024-03-01"),)),
         )
         date_node = tip(tree)
-
         for hdate_val in [np.datetime64("2025-07-14T06:00:00"), np.datetime64("2025-07-15T06:00:00")]:
-            branch = chain(
-                node("hdate", (hdate_val,)),
-                node("domain", ("g",)),
-                node("expver", ("4321",)),
-                node("levtype", ("sfc",)),
-                node("param", ("167",)),
-                node("step", (0,)),
-                node("stream", ("efcl",)),
-                node("type", ("sfo",)),
-            )
-            fc = tip(branch)
-            fc.add_child(make_point(48.0, 11.0, [264.9]))
-            fc.add_child(make_point(48.0, 12.0, [265.1]))
-            fc.add_child(make_point(50.0, 11.0, [266.3]))
-            fc.add_child(make_point(50.0, 12.0, [267.5]))
-            date_node.add_child(branch)
+            date_node.add_child(self._build_reforecast_branch(hdate_val, grid_points))
 
         covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope_reforecast(tree)
 
-        assert len(covjson["coverages"]) == 2
+        expected = [
+            "2025-07-14T06:00:00Z",
+            "2025-07-15T06:00:00Z",
+        ]
+        assert len(covjson["coverages"]) == len(expected)
+        for cov, fc_date in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"] == GRID_2X2_AXES
+            assert cov["ranges"] == GRID_2X2_RANGES
+            assert cov["mars:metadata"] == {
+                **EXPECTED_REFORECAST_METADATA,
+                "Forecast date": fc_date,
+            }

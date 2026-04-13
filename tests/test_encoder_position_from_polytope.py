@@ -35,39 +35,50 @@ class TestPositionFromPolytope:
         """1 point, 2 steps → 1 coverage with t=[step0, step6]."""
         points = [(48.0, 11.0, [264.9, 263.8])]
         tree = self._build_position_tree(points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Position")
-        covjson = encoder.from_polytope(tree)
+        covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree)
 
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "PointSeries"
+
+        # Referencing (folded from former test_referencing)
+        ref = covjson["referencing"][0]
+        assert ref["coordinates"] == ["latitude", "longitude", "levelist"]
+        assert ref["system"]["type"] == "GeographicCRS"
+
+        # Parameters (folded from former test_parameters_block)
+        assert "2t" in covjson["parameters"]
+        assert covjson["parameters"]["2t"]["type"] == "Parameter"
+
         assert len(covjson["coverages"]) == 1
-
         cov = covjson["coverages"][0]
-        assert cov["type"] == "Coverage"
 
-        # Domain axes
-        axes = cov["domain"]["axes"]
-        assert axes["latitude"]["values"] == [48.0]
-        assert axes["longitude"]["values"] == [11.0]
-        assert axes["levelist"]["values"] == [0]
-        assert axes["t"]["values"] == [
-            "2025-01-01T00:00:00Z",
-            "2025-01-01T06:00:00Z",
-        ]
+        assert cov["domain"]["axes"] == {
+            "latitude": {"values": [48.0]},
+            "longitude": {"values": [11.0]},
+            "levelist": {"values": [0]},
+            "t": {"values": ["2025-01-01T00:00:00Z", "2025-01-01T06:00:00Z"]},
+        }
 
-        # Range
-        assert "2t" in cov["ranges"]
-        rng = cov["ranges"]["2t"]
-        assert rng["type"] == "NdArray"
-        assert rng["dataType"] == "float"
-        assert rng["shape"] == [2]
-        assert rng["values"] == [264.9, 263.8]
+        assert cov["ranges"] == {
+            "2t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [2],
+                "axisNames": ["2t"],
+                "values": [264.9, 263.8],
+            }
+        }
 
-        # Metadata: "step" key should be deleted by from_polytope
-        mm = cov["mars:metadata"]
-        assert "step" not in mm
-        assert mm["number"] == 0
-        assert mm["Forecast date"] == "2025-01-01T00:00:00Z"
+        assert cov["mars:metadata"] == {
+            "class": "od",
+            "Forecast date": "2025-01-01T00:00:00Z",
+            "domain": "g",
+            "expver": "0001",
+            "levtype": "sfc",
+            "stream": "oper",
+            "type": "fc",
+            "number": 0,
+        }
 
     def test_two_points_two_steps(self):
         """2 points, 2 steps → 2 coverages (one per point)."""
@@ -76,54 +87,58 @@ class TestPositionFromPolytope:
             (50.0, 13.0, [265.1, 264.2]),
         ]
         tree = self._build_position_tree(points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Position")
-        covjson = encoder.from_polytope(tree)
+        covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree)
 
-        assert len(covjson["coverages"]) == 2
+        shared_metadata = {
+            "class": "od",
+            "Forecast date": "2025-01-01T00:00:00Z",
+            "domain": "g",
+            "expver": "0001",
+            "levtype": "sfc",
+            "stream": "oper",
+            "type": "fc",
+            "number": 0,
+        }
 
-        cov0 = covjson["coverages"][0]
-        assert cov0["domain"]["axes"]["latitude"]["values"] == [48.0]
-        assert cov0["domain"]["axes"]["longitude"]["values"] == [11.0]
-        assert cov0["ranges"]["2t"]["values"] == [264.9, 263.8]
-
-        cov1 = covjson["coverages"][1]
-        assert cov1["domain"]["axes"]["latitude"]["values"] == [50.0]
-        assert cov1["domain"]["axes"]["longitude"]["values"] == [13.0]
-        assert cov1["ranges"]["2t"]["values"] == [265.1, 264.2]
+        expected = [
+            (48.0, 11.0, [264.9, 263.8]),
+            (50.0, 13.0, [265.1, 264.2]),
+        ]
+        assert len(covjson["coverages"]) == len(expected)
+        for cov, (lat, lon, vals) in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"] == {
+                "latitude": {"values": [lat]},
+                "longitude": {"values": [lon]},
+                "levelist": {"values": [0]},
+                "t": {"values": ["2025-01-01T00:00:00Z", "2025-01-01T06:00:00Z"]},
+            }
+            assert cov["ranges"]["2t"]["values"] == vals
+            assert cov["mars:metadata"] == shared_metadata
 
     def test_single_step(self):
-        """Single step → t has just 1 value."""
+        """Edge case: 1 step → shape [1], single t-value."""
         points = [(48.0, 11.0, [264.9])]
         tree = self._build_position_tree(points, steps=(0,))
-        encoder = Covjsonkit().encode("CoverageCollection", "Position")
-        covjson = encoder.from_polytope(tree)
+        covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree)
 
+        assert len(covjson["coverages"]) == 1
         cov = covjson["coverages"][0]
-        assert cov["domain"]["axes"]["t"]["values"] == ["2025-01-01T00:00:00Z"]
-        assert cov["ranges"]["2t"]["values"] == [264.9]
-        assert cov["ranges"]["2t"]["shape"] == [1]
 
-    def test_referencing(self):
-        """Check the CRS referencing block."""
-        points = [(48.0, 11.0, [264.9])]
-        tree = self._build_position_tree(points, steps=(0,))
-        encoder = Covjsonkit().encode("CoverageCollection", "Position")
-        covjson = encoder.from_polytope(tree)
-
-        ref = covjson["referencing"][0]
-        assert ref["coordinates"] == ["latitude", "longitude", "levelist"]
-        assert ref["system"]["type"] == "GeographicCRS"
-
-    def test_parameters_block(self):
-        """Top-level parameters dict should have param 167 = '2t'."""
-        points = [(48.0, 11.0, [264.9])]
-        tree = self._build_position_tree(points, steps=(0,))
-        encoder = Covjsonkit().encode("CoverageCollection", "Position")
-        covjson = encoder.from_polytope(tree)
-
-        assert "2t" in covjson["parameters"]
-        p = covjson["parameters"]["2t"]
-        assert p["type"] == "Parameter"
+        assert cov["domain"]["axes"] == {
+            "latitude": {"values": [48.0]},
+            "longitude": {"values": [11.0]},
+            "levelist": {"values": [0]},
+            "t": {"values": ["2025-01-01T00:00:00Z"]},
+        }
+        assert cov["ranges"] == {
+            "2t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [1],
+                "axisNames": ["2t"],
+                "values": [264.9],
+            }
+        }
 
 
 class TestPositionFromPolytopeReforecast:
@@ -150,22 +165,32 @@ class TestPositionFromPolytopeReforecast:
 
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope_reforecast(tree)
 
-        assert covjson["type"] == "CoverageCollection"
-        assert covjson["domainType"] == "PointSeries"
-        assert len(covjson["coverages"]) == 2
+        shared_metadata = {
+            "class": "ce",
+            "date": np.datetime64("2024-03-01"),
+            "Forecast date": "2025-07-14T06:00:00Z",
+            "domain": "g",
+            "expver": "4321",
+            "levtype": "sfc",
+            "stream": "efcl",
+            "type": "sfo",
+            "number": 0,
+        }
 
-        cov0 = covjson["coverages"][0]
-        axes0 = cov0["domain"]["axes"]
-        assert axes0["latitude"]["values"] == [48.0]
-        assert axes0["longitude"]["values"] == [11.0]
-        # t = hdate(06:00) + step(0) = 06:00
-        assert axes0["t"]["values"] == ["2025-07-14T06:00:00Z"]
-
-        cov1 = covjson["coverages"][1]
-        axes1 = cov1["domain"]["axes"]
-        assert axes1["latitude"]["values"] == [50.0]
-        assert axes1["longitude"]["values"] == [12.0]
-        assert axes1["t"]["values"] == ["2025-07-14T06:00:00Z"]
+        expected = [
+            (48.0, 11.0, [264.9]),
+            (50.0, 12.0, [265.1]),
+        ]
+        assert len(covjson["coverages"]) == len(expected)
+        for cov, (lat, lon, vals) in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"] == {
+                "latitude": {"values": [lat]},
+                "longitude": {"values": [lon]},
+                "levelist": {"values": [0]},
+                "t": {"values": ["2025-07-14T06:00:00Z"]},
+            }
+            assert cov["ranges"]["2t"]["values"] == vals
+            assert cov["mars:metadata"] == shared_metadata
 
     def test_reforecast_two_hdates_two_points(self):
         """2 hdates × 2 points → 4 coverages."""
@@ -176,39 +201,51 @@ class TestPositionFromPolytopeReforecast:
         )
         date_node = tip(tree)
 
-        # hdate 1
-        hdate1 = chain(
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
-        )
-        fc1 = tip(hdate1)
-        fc1.add_child(make_point(48.0, 11.0, [264.9]))
-        fc1.add_child(make_point(50.0, 12.0, [265.1]))
-
-        # hdate 2
-        hdate2 = chain(
-            node("hdate", (np.datetime64("2025-07-15T06:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
-        )
-        fc2 = tip(hdate2)
-        fc2.add_child(make_point(48.0, 11.0, [266.0]))
-        fc2.add_child(make_point(50.0, 12.0, [267.0]))
-
-        date_node.add_child(hdate1)
-        date_node.add_child(hdate2)
+        for hdate_val, point_vals in [
+            (np.datetime64("2025-07-14T06:00:00"), [[264.9], [265.1]]),
+            (np.datetime64("2025-07-15T06:00:00"), [[266.0], [267.0]]),
+        ]:
+            branch = chain(
+                node("hdate", (hdate_val,)),
+                node("domain", ("g",)),
+                node("expver", ("4321",)),
+                node("levtype", ("sfc",)),
+                node("param", ("167",)),
+                node("step", (0,)),
+                node("stream", ("efcl",)),
+                node("type", ("sfo",)),
+            )
+            fc = tip(branch)
+            fc.add_child(make_point(48.0, 11.0, point_vals[0]))
+            fc.add_child(make_point(50.0, 12.0, point_vals[1]))
+            date_node.add_child(branch)
 
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope_reforecast(tree)
 
-        assert len(covjson["coverages"]) == 4
+        shared_metadata = {
+            "class": "ce",
+            "date": np.datetime64("2024-03-01"),
+            "domain": "g",
+            "expver": "4321",
+            "levtype": "sfc",
+            "stream": "efcl",
+            "type": "sfo",
+            "number": 0,
+        }
+
+        expected = [
+            (48.0, 11.0, ["2025-07-14T06:00:00Z"], [264.9], "2025-07-14T06:00:00Z"),
+            (48.0, 11.0, ["2025-07-15T06:00:00Z"], [266.0], "2025-07-15T06:00:00Z"),
+            (50.0, 12.0, ["2025-07-14T06:00:00Z"], [265.1], "2025-07-14T06:00:00Z"),
+            (50.0, 12.0, ["2025-07-15T06:00:00Z"], [267.0], "2025-07-15T06:00:00Z"),
+        ]
+        assert len(covjson["coverages"]) == len(expected)
+        for cov, (lat, lon, t, vals, fc_date) in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"] == {
+                "latitude": {"values": [lat]},
+                "longitude": {"values": [lon]},
+                "levelist": {"values": [0]},
+                "t": {"values": t},
+            }
+            assert cov["ranges"]["2t"]["values"] == vals
+            assert cov["mars:metadata"] == {**shared_metadata, "Forecast date": fc_date}

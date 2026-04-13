@@ -44,79 +44,93 @@ class TestPathFromPolytope:
             (49.0, 12.0, [265.1]),
         ]
         tree = self._build_path_tree(points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Path")
-        covjson = encoder.from_polytope(tree)
+        covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope(tree)
 
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "Trajectory"
         assert len(covjson["coverages"]) == 1
 
         cov = covjson["coverages"][0]
-        assert cov["type"] == "Coverage"
 
-        # Domain: composite tuples [step, lat, lon, level]
-        comp = cov["domain"]["axes"]["composite"]
-        assert comp["dataType"] == "tuple"
-        assert comp["coordinates"] == ["t", "x", "y", "z"]
-        assert len(comp["values"]) == 2
-        assert comp["values"][0] == [0, 48.0, 11.0, 0]
-        assert comp["values"][1] == [0, 49.0, 12.0, 0]
+        assert cov["domain"]["axes"] == {
+            "composite": {
+                "dataType": "tuple",
+                "coordinates": ["t", "x", "y", "z"],
+                "values": [[0, 48.0, 11.0, 0], [0, 49.0, 12.0, 0]],
+            }
+        }
 
-        # Range
-        assert "2t" in cov["ranges"]
-        rng = cov["ranges"]["2t"]
-        assert rng["type"] == "NdArray"
-        assert rng["dataType"] == "float"
-        assert rng["shape"] == [2]
-        assert rng["values"] == [264.9, 265.1]
+        assert cov["ranges"] == {
+            "2t": {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [2],
+                "axisNames": ["2t"],
+                "values": [264.9, 265.1],
+            }
+        }
 
-        # Metadata: levelist should be removed
-        mm = cov["mars:metadata"]
-        assert "levelist" not in mm
-        assert mm["number"] == 0
-        assert mm["Forecast date"] == "2025-01-01T00:00:00Z"
+        assert cov["mars:metadata"] == {
+            "class": "od",
+            "Forecast date": "2025-01-01T00:00:00Z",
+            "domain": "g",
+            "expver": "0001",
+            "levtype": "sfc",
+            "step": 0,
+            "stream": "oper",
+            "type": "fc",
+            "number": 0,
+        }
 
-    def test_three_points_along_path(self):
-        """3 points along a path → composite has 3 tuples."""
-        points = [
-            (48.0, 11.0, [264.9]),
-            (49.0, 12.0, [265.1]),
-            (50.0, 13.0, [266.3]),
+        # Collection-level referencing
+        assert covjson["referencing"] == [
+            {
+                "coordinates": ["t", "x", "y", "z"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
         ]
-        tree = self._build_path_tree(points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Path")
-        covjson = encoder.from_polytope(tree)
 
-        cov = covjson["coverages"][0]
-        assert len(cov["domain"]["axes"]["composite"]["values"]) == 3
-        assert cov["ranges"]["2t"]["shape"] == [3]
-        assert cov["ranges"]["2t"]["values"] == [264.9, 265.1, 266.3]
-
-    def test_referencing(self):
-        """Check the CRS referencing block uses [t, x, y, z]."""
-        points = [(48.0, 11.0, [264.9])]
-        tree = self._build_path_tree(points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Path")
-        covjson = encoder.from_polytope(tree)
-
-        ref = covjson["referencing"][0]
-        assert ref["coordinates"] == ["t", "x", "y", "z"]
-        assert ref["system"]["type"] == "GeographicCRS"
-
-    def test_parameters_block(self):
-        """Top-level parameters dict should have param 167 = '2t'."""
-        points = [(48.0, 11.0, [264.9])]
-        tree = self._build_path_tree(points)
-        encoder = Covjsonkit().encode("CoverageCollection", "Path")
-        covjson = encoder.from_polytope(tree)
-
+        # Collection-level parameters
         assert "2t" in covjson["parameters"]
-        p = covjson["parameters"]["2t"]
-        assert p["type"] == "Parameter"
+        assert covjson["parameters"]["2t"]["type"] == "Parameter"
+        assert covjson["parameters"]["2t"]["observedProperty"]["id"] == "2t"
 
 
 class TestPathFromPolytopeReforecast:
     """Tests for Path (Trajectory) encoder's from_polytope_reforecast method."""
+
+    SHARED_METADATA = {
+        "class": "ce",
+        "date": np.datetime64("2024-03-01"),
+        "domain": "g",
+        "expver": "4321",
+        "levtype": "sfc",
+        "step": 0,
+        "stream": "efcl",
+        "type": "sfo",
+        "number": 0,
+    }
+
+    EXPECTED_AXES = {
+        "composite": {
+            "dataType": "tuple",
+            "coordinates": ["t", "x", "y", "z"],
+            "values": [[0, 48.0, 11.0, 0], [0, 50.0, 12.0, 0]],
+        }
+    }
+
+    EXPECTED_RANGES = {
+        "2t": {
+            "type": "NdArray",
+            "dataType": "float",
+            "shape": [2],
+            "axisNames": ["2t"],
+            "values": [264.9, 265.1],
+        }
+    }
 
     def test_reforecast_single_hdate_two_points(self):
         """Single hdate with 2 path points → 1 Trajectory coverage."""
@@ -143,16 +157,13 @@ class TestPathFromPolytopeReforecast:
         assert len(covjson["coverages"]) == 1
 
         cov = covjson["coverages"][0]
-        comp = cov["domain"]["axes"]["composite"]
-        assert comp["dataType"] == "tuple"
-        assert comp["coordinates"] == ["t", "x", "y", "z"]
-        assert comp["values"] == [[0, 48.0, 11.0, 0], [0, 50.0, 12.0, 0]]
 
-        assert cov["ranges"]["2t"]["values"] == [264.9, 265.1]
-
-        mm = cov["mars:metadata"]
-        assert "Forecast date" in mm
-        assert "2025-07-14" in mm["Forecast date"]
+        assert cov["domain"]["axes"] == self.EXPECTED_AXES
+        assert cov["ranges"] == self.EXPECTED_RANGES
+        assert cov["mars:metadata"] == {
+            **self.SHARED_METADATA,
+            "Forecast date": "2025-07-14T06:00:00Z",
+        }
 
     def test_reforecast_two_hdates_two_points(self):
         """Two hdates each with 2 path points → 2 Trajectory coverages."""
@@ -181,4 +192,12 @@ class TestPathFromPolytopeReforecast:
 
         covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope_reforecast(tree)
 
-        assert len(covjson["coverages"]) == 2
+        expected = [
+            "2025-07-14T06:00:00Z",
+            "2025-07-15T06:00:00Z",
+        ]
+        assert len(covjson["coverages"]) == len(expected)
+        for cov, fc_date in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"] == self.EXPECTED_AXES
+            assert cov["ranges"] == self.EXPECTED_RANGES
+            assert cov["mars:metadata"] == {**self.SHARED_METADATA, "Forecast date": fc_date}
