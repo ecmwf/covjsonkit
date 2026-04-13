@@ -1,14 +1,10 @@
 import logging
 import time
-import typing
 from datetime import datetime, timedelta
 
 import pandas as pd
 
 from .encoder import Encoder
-
-if typing.TYPE_CHECKING:
-    from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 
 class TimeSeries(Encoder):
@@ -127,7 +123,7 @@ class TimeSeries(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result):
+    def from_polytope(self, result, date_key="date"):
         """
         Converts a Polytope result into an OGC CoverageJSON coverageCollection of type PointSeries
         Args:
@@ -148,7 +144,7 @@ class TimeSeries(Encoder):
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
@@ -476,133 +472,10 @@ class TimeSeries(Encoder):
 
         return self.covjson
 
-    def from_polytope_reforecast(self, result: "TensorIndexTree") -> dict:
+    def from_polytope_reforecast(self, result):
         """Encode reforecast data that uses "hdate" as the time axis.
 
         Each hdate produces a separate coverage (one per point × hdate).
         Steps within a single hdate become that coverage's t-axis values.
         """
-        coords = {}
-        mars_metadata = {}
-        range_dict = {}
-        fields = {}
-        fields["lat"] = 0
-        fields["param"] = 0
-        fields["number"] = [0]
-        fields["step"] = 0
-        fields["dates"] = []
-        fields["levels"] = [0]
-
-        start = time.time()
-        logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key="hdate")
-        end = time.time()
-        delta = end - start
-        logging.debug("Tree walking ends at: %s", end)  # noqa: E501
-        logging.debug("Tree walking takes: %s", delta)  # noqa: E501
-
-        start = time.time()
-        logging.debug("Coords creation: %s", start)  # noqa: E501
-
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
-
-        coordinates = {}
-
-        levels = fields["levels"]
-        if fields["param"] == 0:
-            raise ValueError("No data was returned.")
-        for para in fields["param"]:
-            self.add_parameter(para)
-
-        logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
-
-        points = len(coords[fields["dates"][0]]["composite"])
-
-        for date in fields["dates"]:
-            coordinates[date] = []
-            for i, point in enumerate(range(points)):
-                coordinates[date].append(
-                    {
-                        "latitude": [coords[date]["composite"][i][0]],
-                        "longitude": [coords[date]["composite"][i][1]],
-                        "levelist": [levels[0]],
-                    }
-                )
-                coordinates[date][i]["t"] = []
-                for level in fields["levels"]:
-                    for num in fields["number"]:
-                        for para in fields["param"]:
-                            for step in fields["step"]:
-                                date_format = "%Y%m%dT%H%M%S"
-                                new_date = pd.Timestamp(date).strftime(date_format)
-                                start_time = datetime.strptime(new_date, date_format)
-                                # add current date to list by converting it to iso format
-                                if isinstance(step, timedelta):
-                                    stamp = start_time + step
-                                else:
-                                    try:
-                                        int(step)
-                                    except ValueError:
-                                        step = step[0]
-                                    stamp = start_time + timedelta(hours=int(step))
-                                coordinates[date][i]["t"].append(stamp.isoformat() + "Z")
-                            break
-                        break
-                    break
-
-        logging.debug("Coordinates created: %s", coordinates)  # noqa: E501
-
-        end = time.time()
-        delta = end - start
-        logging.debug("Coords creation: %s", end)  # noqa: E501
-        logging.debug("Coords creation: %s", delta)  # noqa: E501
-
-        start = time.time()
-        logging.debug("Coverage creation: %s", start)  # noqa: E501
-
-        logging.debug("The points found were: %s", points)  # noqa: E501
-        logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
-        logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
-
-        for i, point in enumerate(range(points)):
-            for date in fields["dates"]:
-                for level in fields["levels"]:
-                    for num in fields["number"]:
-                        val_dict = {}
-                        for para in fields["param"]:
-                            val_dict[para] = []
-                            for step in fields["step"]:
-                                key = (date, level, num, para, step)
-                                try:
-                                    val_dict[para].append(range_dict[key][i])
-                                except IndexError:
-                                    logging.debug(
-                                        f"Index {i} out of range for key {key} in range_dict. "
-                                        f"Available keys: {list(range_dict.keys())}"
-                                    )
-                                    raise IndexError(
-                                        f"Key {key} not found in range_dict. "
-                                        f"Please ensure all axes are compressed in config"
-                                    )
-                        mm = mars_metadata.copy()
-                        mm["number"] = num
-                        mm["Forecast date"] = date
-                        mm["levelist"] = level
-                        coordinates[date][i]["levelist"] = [level]
-                        del mm["step"]
-                        self.add_coverage(mm, coordinates[date][i], val_dict)
-
-        end = time.time()
-        delta = end - start
-        logging.debug("Coverage creation: %s", end)  # noqa: E501
-        logging.debug("Coverage creation: %s", delta)  # noqa: E501
-
-        return self.covjson
+        return self.from_polytope(result, date_key="hdate")
