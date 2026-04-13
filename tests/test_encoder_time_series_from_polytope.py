@@ -1,39 +1,8 @@
 import numpy as np
-from polytope_feature.datacube.datacube_axis import IntDatacubeAxis
+from conftest import chain, make_leaf, make_point, node, tip
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
-
-
-def node(name, values):
-    ax = IntDatacubeAxis()
-    ax.name = name
-    return TensorIndexTree(axis=ax, values=tuple(values))
-
-
-def chain(*nodes):
-    for a, b in zip(nodes, nodes[1:]):
-        a.add_child(b)
-    return nodes[0]
-
-
-def tip(tree):
-    while tree.children:
-        tree = tree.children[0]
-    return tree
-
-
-def make_leaf(lon, result):
-    leaf = node("longitude", (lon,))
-    leaf.result = [np.float64(r) for r in result]
-    return leaf
-
-
-def make_point(lat, lon, result):
-    lat_n = node("latitude", (lat,))
-    lat_n.add_child(make_leaf(lon, result))
-    return lat_n
-
 
 # Axis ordering for hdate reforecast (between hdate and latitude in the tree)
 HDATE_SUFFIX = [

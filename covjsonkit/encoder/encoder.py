@@ -557,5 +557,8 @@ class Encoder(ABC):
         pass
 
     @abstractmethod
-    def from_polytope(self, result):
+    def from_polytope(self, result, date_key="date"):
         pass
+
+    def from_polytope_reforecast(self, result):
+        raise NotImplementedError(f"{type(self).__name__} does not implement from_polytope_reforecast")

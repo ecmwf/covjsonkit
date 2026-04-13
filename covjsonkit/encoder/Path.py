@@ -114,7 +114,7 @@ class Path(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result):
+    def from_polytope(self, result, date_key="date"):
 
         coords = {}
         mars_metadata = {}
@@ -129,10 +129,8 @@ class Path(Encoder):
         fields["s"] = []
         fields["l"] = []
 
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
 
-        if "hdate" in mars_metadata:
-            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
         if len(fields["l"]) == 0:
             fields["l"] = [0]
 
@@ -226,6 +224,9 @@ class Path(Encoder):
                 self.add_coverage(mm, coords[date], val_dict)
 
         return self.covjson
+
+    def from_polytope_reforecast(self, result):
+        return self.from_polytope(result, date_key="hdate")
 
     def from_polytope_month(self, result):
         coords = {}

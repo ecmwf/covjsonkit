@@ -117,7 +117,7 @@ class BoundingBox(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result):
+    def from_polytope(self, result, date_key="date"):
 
         coords = {}
         mars_metadata = {}
@@ -130,9 +130,7 @@ class BoundingBox(Encoder):
         fields["dates"] = []
         fields["levels"] = [0]
 
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
-        if "hdate" in mars_metadata:
-            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
@@ -203,6 +201,9 @@ class BoundingBox(Encoder):
                     self.add_coverage(mm, coords[date], val_dict[step])
 
         return self.covjson
+
+    def from_polytope_reforecast(self, result):
+        return self.from_polytope(result, date_key="hdate")
 
     def from_polytope_month(self, result):
         coords = {}

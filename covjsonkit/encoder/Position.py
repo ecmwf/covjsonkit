@@ -123,7 +123,7 @@ class Position(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result):
+    def from_polytope(self, result, date_key="date"):
         """
         Converts a Polytope result into an OGC CoverageJSON coverageCollection of type PointSeries
         Args:
@@ -144,14 +144,11 @@ class Position(Encoder):
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
         logging.debug("Tree walking takes: %s", delta)  # noqa: E501
-
-        if "hdate" in mars_metadata:
-            fields["dates"].remove(mars_metadata["Forecast date"] + "Z")
 
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
@@ -253,6 +250,9 @@ class Position(Encoder):
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
 
         return self.covjson
+
+    def from_polytope_reforecast(self, result):
+        return self.from_polytope(result, date_key="hdate")
 
     def from_polytope_month(self, result):
         coords = {}
