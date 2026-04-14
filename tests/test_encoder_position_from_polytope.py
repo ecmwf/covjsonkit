@@ -1,6 +1,5 @@
 import numpy as np
-from conftest import chain, make_point, node, tip
-from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
+from conftest import forecast_tree, reforecast_branch, reforecast_tree
 
 from covjsonkit.api import Covjsonkit
 
@@ -8,44 +7,20 @@ from covjsonkit.api import Covjsonkit
 class TestPositionFromPolytope:
     """Tests for Position (PointSeries) encoder's from_polytope method."""
 
-    def _build_position_tree(self, points, param="167", steps=(0, 6)):
-        """Build a Position tree.
-
-        points: list of (lat, lon, result_list) tuples.
-        result_list has one value per step.
-        """
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("od",)),
-            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("0001",)),
-            node("levtype", ("sfc",)),
-            node("param", (param,)),
-            node("step", steps),
-            node("stream", ("oper",)),
-            node("type", ("fc",)),
-        )
-        parent = tip(tree)
-        for lat, lon, result in points:
-            parent.add_child(make_point(lat, lon, result))
-        return tree
-
     def test_single_point_two_steps(self):
-        """1 point, 2 steps → 1 coverage with t=[step0, step6]."""
-        points = [(48.0, 11.0, [264.9, 263.8])]
-        tree = self._build_position_tree(points)
+        """1 point, 2 steps -> 1 coverage with t=[step0, step6]."""
+        tree = forecast_tree([(48.0, 11.0, [264.9, 263.8])], step=(0, 6))
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree)
 
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "PointSeries"
 
-        # Referencing (folded from former test_referencing)
+        # Referencing
         ref = covjson["referencing"][0]
         assert ref["coordinates"] == ["latitude", "longitude", "levelist"]
         assert ref["system"]["type"] == "GeographicCRS"
 
-        # Parameters (folded from former test_parameters_block)
+        # Parameters
         assert "2t" in covjson["parameters"]
         assert covjson["parameters"]["2t"]["type"] == "Parameter"
 
@@ -81,12 +56,11 @@ class TestPositionFromPolytope:
         }
 
     def test_two_points_two_steps(self):
-        """2 points, 2 steps → 2 coverages (one per point)."""
-        points = [
-            (48.0, 11.0, [264.9, 263.8]),
-            (50.0, 13.0, [265.1, 264.2]),
-        ]
-        tree = self._build_position_tree(points)
+        """2 points, 2 steps -> 2 coverages (one per point)."""
+        tree = forecast_tree(
+            [(48.0, 11.0, [264.9, 263.8]), (50.0, 13.0, [265.1, 264.2])],
+            step=(0, 6),
+        )
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree)
 
         shared_metadata = {
@@ -116,9 +90,8 @@ class TestPositionFromPolytope:
             assert cov["mars:metadata"] == shared_metadata
 
     def test_single_step(self):
-        """Edge case: 1 step → shape [1], single t-value."""
-        points = [(48.0, 11.0, [264.9])]
-        tree = self._build_position_tree(points, steps=(0,))
+        """Edge case: 1 step -> shape [1], single t-value."""
+        tree = forecast_tree([(48.0, 11.0, [264.9])], step=(0,))
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree)
 
         assert len(covjson["coverages"]) == 1
@@ -145,23 +118,13 @@ class TestPositionFromPolytopeReforecast:
     """Tests for Position encoder's from_polytope_reforecast method."""
 
     def test_reforecast_single_hdate_two_points(self):
-        """1 hdate, 2 points → 2 coverages (1 per point)."""
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
+        """1 hdate, 2 points -> 2 coverages (1 per point)."""
+        points = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), points),
+            ]
         )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9]))
-        fc.add_child(make_point(50.0, 12.0, [265.1]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope_reforecast(tree)
 
@@ -193,32 +156,13 @@ class TestPositionFromPolytopeReforecast:
             assert cov["mars:metadata"] == shared_metadata
 
     def test_reforecast_two_hdates_two_points(self):
-        """2 hdates × 2 points → 4 coverages."""
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
+        """2 hdates x 2 points -> 4 coverages."""
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]),
+                reforecast_branch(np.datetime64("2025-07-15T06:00:00"), [(48.0, 11.0, [266.0]), (50.0, 12.0, [267.0])]),
+            ]
         )
-        date_node = tip(tree)
-
-        for hdate_val, point_vals in [
-            (np.datetime64("2025-07-14T06:00:00"), [[264.9], [265.1]]),
-            (np.datetime64("2025-07-15T06:00:00"), [[266.0], [267.0]]),
-        ]:
-            branch = chain(
-                node("hdate", (hdate_val,)),
-                node("domain", ("g",)),
-                node("expver", ("4321",)),
-                node("levtype", ("sfc",)),
-                node("param", ("167",)),
-                node("step", (0,)),
-                node("stream", ("efcl",)),
-                node("type", ("sfo",)),
-            )
-            fc = tip(branch)
-            fc.add_child(make_point(48.0, 11.0, point_vals[0]))
-            fc.add_child(make_point(50.0, 12.0, point_vals[1]))
-            date_node.add_child(branch)
 
         covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope_reforecast(tree)
 

@@ -1,9 +1,19 @@
 import numpy as np
-from conftest import chain, make_point, node, tip
+from conftest import (
+    chain,
+    forecast_tree,
+    make_point,
+    node,
+    reforecast_branch,
+    reforecast_tree,
+    tip,
+)
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
+# BoundingBox uses lat/lon/levelist coordinates (not x/y/z) and its
+# reforecast metadata intentionally omits "step" (step varies per coverage).
 COMPOSITE_TWO_POINTS = {
     "dataType": "tuple",
     "coordinates": ["latitude", "longitude", "levelist"],
@@ -21,25 +31,12 @@ EXPECTED_REFORECAST_METADATA = {
     "number": 0,
 }
 
+TWO_POINTS = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
+
 
 class TestBoundingBoxFromPolytope:
     def test_single_date_single_step_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("od",)),
-            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("0001",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("oper",)),
-            node("type", ("fc",)),
-        )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9]))
-        fc.add_child(make_point(50.0, 12.0, [265.1]))
-
+        tree = forecast_tree(TWO_POINTS)
         covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope(tree)
 
         assert len(covjson["coverages"]) == 1
@@ -126,22 +123,11 @@ class TestBoundingBoxFromPolytope:
 
 class TestBoundingBoxFromPolytopeReforecast:
     def test_reforecast_single_hdate_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), TWO_POINTS),
+            ]
         )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9]))
-        fc.add_child(make_point(50.0, 12.0, [265.1]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope_reforecast(tree)
 
@@ -170,31 +156,12 @@ class TestBoundingBoxFromPolytopeReforecast:
         }
 
     def test_reforecast_two_hdates_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), TWO_POINTS),
+                reforecast_branch(np.datetime64("2025-07-15T06:00:00"), [(48.0, 11.0, [266.0]), (50.0, 12.0, [267.0])]),
+            ]
         )
-        date_node = tip(tree)
-
-        for hdate_val, vals in [
-            (np.datetime64("2025-07-14T06:00:00"), [[264.9], [265.1]]),
-            (np.datetime64("2025-07-15T06:00:00"), [[266.0], [267.0]]),
-        ]:
-            branch = chain(
-                node("hdate", (hdate_val,)),
-                node("domain", ("g",)),
-                node("expver", ("4321",)),
-                node("levtype", ("sfc",)),
-                node("param", ("167",)),
-                node("step", (0,)),
-                node("stream", ("efcl",)),
-                node("type", ("sfo",)),
-            )
-            t = tip(branch)
-            t.add_child(make_point(48.0, 11.0, vals[0]))
-            t.add_child(make_point(50.0, 12.0, vals[1]))
-            date_node.add_child(branch)
 
         covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope_reforecast(tree)
 
@@ -216,22 +183,15 @@ class TestBoundingBoxFromPolytopeReforecast:
             }
 
     def test_reforecast_single_hdate_two_steps_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0, 6)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
+        tree = reforecast_tree(
+            [
+                reforecast_branch(
+                    np.datetime64("2025-07-14T06:00:00"),
+                    [(48.0, 11.0, [264.9, 270.1]), (50.0, 12.0, [265.1, 271.3])],
+                    step=(0, 6),
+                ),
+            ]
         )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9, 270.1]))
-        fc.add_child(make_point(50.0, 12.0, [265.1, 271.3]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope_reforecast(tree)
 

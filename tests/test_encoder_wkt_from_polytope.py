@@ -1,46 +1,18 @@
 import numpy as np
-from conftest import chain, make_point, node, tip
-from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
+from conftest import (
+    COMPOSITE_TWO_POINTS_XYZ,
+    REFORECAST_METADATA_BASE,
+    forecast_tree,
+    reforecast_branch,
+    reforecast_tree,
+)
 
 from covjsonkit.api import Covjsonkit
-
-COMPOSITE_TWO_POINTS = {
-    "dataType": "tuple",
-    "coordinates": ["x", "y", "z"],
-    "values": [[48.0, 11.0, 0], [50.0, 12.0, 0]],
-}
-
-EXPECTED_REFORECAST_METADATA = {
-    "class": "ce",
-    "date": np.datetime64("2024-03-01"),
-    "domain": "g",
-    "expver": "4321",
-    "levtype": "sfc",
-    "step": 0,
-    "stream": "efcl",
-    "type": "sfo",
-    "number": 0,
-}
 
 
 class TestWktFromPolytope:
     def test_single_date_single_step_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("od",)),
-            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("0001",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("oper",)),
-            node("type", ("fc",)),
-        )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9]))
-        fc.add_child(make_point(50.0, 12.0, [265.1]))
-
+        tree = forecast_tree([(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])])
         covjson = Covjsonkit().encode("CoverageCollection", "Polygon").from_polytope(tree)
 
         assert len(covjson["coverages"]) == 1
@@ -48,7 +20,7 @@ class TestWktFromPolytope:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": ["2025-01-01T00:00:00Z"]},
-            "composite": COMPOSITE_TWO_POINTS,
+            "composite": COMPOSITE_TWO_POINTS_XYZ,
         }
 
         assert cov["ranges"] == {
@@ -76,22 +48,12 @@ class TestWktFromPolytope:
 
 class TestWktFromPolytopeReforecast:
     def test_reforecast_single_hdate_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
+        points = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), points),
+            ]
         )
-        fc = tip(tree)
-        fc.add_child(make_point(48.0, 11.0, [264.9]))
-        fc.add_child(make_point(50.0, 12.0, [265.1]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "Polygon").from_polytope_reforecast(tree)
 
@@ -100,7 +62,7 @@ class TestWktFromPolytopeReforecast:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": ["2025-07-14T06:00:00Z"]},
-            "composite": COMPOSITE_TWO_POINTS,
+            "composite": COMPOSITE_TWO_POINTS_XYZ,
         }
 
         assert cov["ranges"] == {
@@ -115,35 +77,17 @@ class TestWktFromPolytopeReforecast:
 
         assert cov["mars:metadata"] == {
             "Forecast date": "2025-07-14T06:00:00Z",
-            **EXPECTED_REFORECAST_METADATA,
+            **REFORECAST_METADATA_BASE,
         }
 
     def test_reforecast_two_hdates_two_points(self):
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
+        points = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), points),
+                reforecast_branch(np.datetime64("2025-07-15T06:00:00"), [(48.0, 11.0, [266.0]), (50.0, 12.0, [267.0])]),
+            ]
         )
-        date_node = tip(tree)
-
-        for hdate_val, vals in [
-            (np.datetime64("2025-07-14T06:00:00"), [[264.9], [265.1]]),
-            (np.datetime64("2025-07-15T06:00:00"), [[266.0], [267.0]]),
-        ]:
-            branch = chain(
-                node("hdate", (hdate_val,)),
-                node("domain", ("g",)),
-                node("expver", ("4321",)),
-                node("levtype", ("sfc",)),
-                node("param", ("167",)),
-                node("step", (0,)),
-                node("stream", ("efcl",)),
-                node("type", ("sfo",)),
-            )
-            t = tip(branch)
-            t.add_child(make_point(48.0, 11.0, vals[0]))
-            t.add_child(make_point(50.0, 12.0, vals[1]))
-            date_node.add_child(branch)
 
         covjson = Covjsonkit().encode("CoverageCollection", "Polygon").from_polytope_reforecast(tree)
 
@@ -155,7 +99,7 @@ class TestWktFromPolytopeReforecast:
         for cov, (t_vals, range_vals, fc_date) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
                 "t": {"values": t_vals},
-                "composite": COMPOSITE_TWO_POINTS,
+                "composite": COMPOSITE_TWO_POINTS_XYZ,
             }
             assert cov["ranges"]["2t"]["values"] == range_vals
-            assert cov["mars:metadata"] == {"Forecast date": fc_date, **EXPECTED_REFORECAST_METADATA}
+            assert cov["mars:metadata"] == {"Forecast date": fc_date, **REFORECAST_METADATA_BASE}

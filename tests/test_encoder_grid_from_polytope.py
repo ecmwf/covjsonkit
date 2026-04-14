@@ -1,5 +1,13 @@
 import numpy as np
-from conftest import chain, make_point, node, tip
+from conftest import (
+    REFORECAST_METADATA_BASE,
+    chain,
+    make_point,
+    node,
+    reforecast_branch,
+    reforecast_tree,
+    tip,
+)
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
@@ -21,30 +29,21 @@ GRID_2X2_RANGES = {
     }
 }
 
-EXPECTED_REFORECAST_METADATA = {
-    "class": "ce",
-    "date": np.datetime64("2024-03-01"),
-    "domain": "g",
-    "expver": "4321",
-    "levtype": "sfc",
-    "step": 0,
-    "stream": "efcl",
-    "type": "sfo",
-    "number": 0,
-}
+GRID_2X2_POINTS = [
+    (48.0, 11.0, [264.9]),
+    (48.0, 12.0, [265.1]),
+    (50.0, 11.0, [266.3]),
+    (50.0, 12.0, [267.5]),
+]
 
 
 class TestGridFromPolytope:
     """Tests for Grid encoder's from_polytope method."""
 
     def test_2x2_grid(self):
-        """2×2 grid: 2 latitudes, 2 longitudes, param 167 (2t), step 0."""
-        grid_points = [
-            (48.0, 11.0, [264.9]),
-            (48.0, 12.0, [265.1]),
-            (50.0, 11.0, [266.3]),
-            (50.0, 12.0, [267.5]),
-        ]
+        """2x2 grid: 2 latitudes, 2 longitudes, param 167 (2t), step 0."""
+        # Grid uses type="an" (analysis), not type="fc" (forecast),
+        # so we build the tree inline instead of using forecast_tree().
         tree = chain(
             TensorIndexTree(),
             node("class", ("od",)),
@@ -58,7 +57,7 @@ class TestGridFromPolytope:
             node("type", ("an",)),
         )
         parent = tip(tree)
-        for lat, lon, vals in grid_points:
+        for lat, lon, vals in GRID_2X2_POINTS:
             parent.add_child(make_point(lat, lon, vals))
 
         covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(tree)
@@ -103,7 +102,7 @@ class TestGridFromPolytope:
         }
 
     def test_1x1_grid(self):
-        """Edge case: single-point grid → shape [1,1,1,1]."""
+        """Edge case: single-point grid -> shape [1,1,1,1]."""
         tree = chain(
             TensorIndexTree(),
             node("class", ("od",)),
@@ -143,36 +142,12 @@ class TestGridFromPolytope:
 class TestGridFromPolytopeReforecast:
     """Tests for Grid encoder's from_polytope_reforecast method."""
 
-    def _build_reforecast_branch(self, hdate_val, grid_points):
-        """Build a single hdate branch with grid points."""
-        branch = chain(
-            node("hdate", (hdate_val,)),
-            node("domain", ("g",)),
-            node("expver", ("4321",)),
-            node("levtype", ("sfc",)),
-            node("param", ("167",)),
-            node("step", (0,)),
-            node("stream", ("efcl",)),
-            node("type", ("sfo",)),
-        )
-        fc = tip(branch)
-        for lat, lon, vals in grid_points:
-            fc.add_child(make_point(lat, lon, vals))
-        return branch
-
     def test_reforecast_single_hdate_2x2_grid(self):
-        """Single hdate with 2×2 grid → 1 Grid coverage."""
-        grid_points = [
-            (48.0, 11.0, [264.9]),
-            (48.0, 12.0, [265.1]),
-            (50.0, 11.0, [266.3]),
-            (50.0, 12.0, [267.5]),
-        ]
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            self._build_reforecast_branch(np.datetime64("2025-07-14T06:00:00"), grid_points),
+        """Single hdate with 2x2 grid -> 1 Grid coverage."""
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), GRID_2X2_POINTS),
+            ]
         )
 
         covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope_reforecast(tree)
@@ -186,26 +161,18 @@ class TestGridFromPolytopeReforecast:
         assert cov["domain"]["axes"] == GRID_2X2_AXES
         assert cov["ranges"] == GRID_2X2_RANGES
         assert cov["mars:metadata"] == {
-            **EXPECTED_REFORECAST_METADATA,
+            **REFORECAST_METADATA_BASE,
             "Forecast date": "2025-07-14T06:00:00Z",
         }
 
     def test_reforecast_two_hdates_2x2_grid(self):
-        """Two hdates each with 2×2 grid → 2 Grid coverages."""
-        grid_points = [
-            (48.0, 11.0, [264.9]),
-            (48.0, 12.0, [265.1]),
-            (50.0, 11.0, [266.3]),
-            (50.0, 12.0, [267.5]),
-        ]
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
+        """Two hdates each with 2x2 grid -> 2 Grid coverages."""
+        tree = reforecast_tree(
+            [
+                reforecast_branch(np.datetime64("2025-07-14T06:00:00"), GRID_2X2_POINTS),
+                reforecast_branch(np.datetime64("2025-07-15T06:00:00"), GRID_2X2_POINTS),
+            ]
         )
-        date_node = tip(tree)
-        for hdate_val in [np.datetime64("2025-07-14T06:00:00"), np.datetime64("2025-07-15T06:00:00")]:
-            date_node.add_child(self._build_reforecast_branch(hdate_val, grid_points))
 
         covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope_reforecast(tree)
 
@@ -218,6 +185,6 @@ class TestGridFromPolytopeReforecast:
             assert cov["domain"]["axes"] == GRID_2X2_AXES
             assert cov["ranges"] == GRID_2X2_RANGES
             assert cov["mars:metadata"] == {
-                **EXPECTED_REFORECAST_METADATA,
+                **REFORECAST_METADATA_BASE,
                 "Forecast date": fc_date,
             }
