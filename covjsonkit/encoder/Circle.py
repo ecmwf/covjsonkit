@@ -112,7 +112,7 @@ class Circle(Encoder):
                     self.add_coverage(mars_metadata, coords, dv_dict)
 
         # Return the generated CoverageJSON
-        return self.covjsonå
+        return self.covjson
 
     def from_polytope(self, result, date_key: str = "date") -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a MultiPoint (Circle) CoverageJSON collection."""
