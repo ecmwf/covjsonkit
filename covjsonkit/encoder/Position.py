@@ -62,7 +62,7 @@ class Position(Encoder):
             datasets (Union[xarray.Dataset, List[xarray.Dataset]]): An xarray dataset or a list of xarray datasets.
 
         Returns:
-            dict: The CoverageJSON representation of the coverageCollection.
+            dict: The CoverageJSON representation of the coverage collection.
         """
         if not isinstance(datasets, list):
             datasets = [datasets]
@@ -123,13 +123,15 @@ class Position(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result, date_key="date"):
-        """
-        Converts a Polytope result into an OGC CoverageJSON coverageCollection of type PointSeries
+    def from_polytope(self, result, date_key: str = "date") -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a PointSeries (Position) CoverageJSON collection.
+
         Args:
-            result (dict): The Polytope result containing the data to be converted.
+            result: The polytope ``TensorIndexTree`` containing the data to be converted.
+            date_key: Tree axis name to treat as the time dimension
+                (``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast).
         Returns:
-            dict: The CoverageJSON representation of the coverageCollection.
+            dict: The CoverageJSON representation of the coverage collection.
         """
         coords = {}
         mars_metadata = {}
@@ -250,9 +252,6 @@ class Position(Encoder):
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
 
         return self.covjson
-
-    def from_polytope_reforecast(self, result):
-        return self.from_polytope(result, date_key="hdate")
 
     def from_polytope_month(self, result):
         coords = {}

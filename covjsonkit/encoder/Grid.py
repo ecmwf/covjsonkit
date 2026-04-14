@@ -120,8 +120,8 @@ class Grid(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result, date_key="date"):
-
+    def from_polytope(self, result, date_key: str = "date") -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a Grid CoverageJSON collection."""
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -216,9 +216,6 @@ class Grid(Encoder):
                 self.add_coverage(mm, coordinates[date], val_dict)
 
         return self.covjson
-
-    def from_polytope_reforecast(self, result):
-        return self.from_polytope(result, date_key="hdate")
 
     def from_polytope_month(self, result):
         coords = {}

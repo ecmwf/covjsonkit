@@ -114,8 +114,8 @@ class Shapefile(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result, date_key="date"):
-
+    def from_polytope(self, result, date_key: str = "date") -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a MultiPoint (Shapefile) CoverageJSON collection."""
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -194,9 +194,6 @@ class Shapefile(Encoder):
                     self.add_coverage(mm, coords[date], val_dict[step])
 
         return self.covjson
-
-    def from_polytope_reforecast(self, result):
-        return self.from_polytope(result, date_key="hdate")
 
     def from_polytope_month(self, result):
         coords = {}

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import typing
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -10,9 +9,6 @@ from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
 from covjsonkit.param_db import get_param_ids, get_params, get_units
-
-if typing.TYPE_CHECKING:
-    from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 
 class Encoder(ABC):
@@ -158,7 +154,7 @@ class Encoder(ABC):
 
     def walk_tree(
         self,
-        tree: TensorIndexTree,
+        tree,
         fields: dict[str, Any],
         coords: dict[str, dict[str, list]],
         mars_metadata: dict[str, Any],
@@ -168,7 +164,7 @@ class Encoder(ABC):
         """Walk the polytope result tree, extracting data into fields, coords, and range_dict.
 
         ``date_key`` controls which tree axis is treated as the time dimension
-        (e.g. ``"date"`` for forecasts, ``"hdate"`` for reanalysis/hindcast data).
+        (e.g. ``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast data).
         Any other axis with the default name falls through to ``mars_metadata``
         instead.  Regardless of ``date_key``, values are always stored under
         ``fields["dates"]``.
@@ -180,7 +176,6 @@ class Encoder(ABC):
         def handle_non_leaf_node(child):
             non_leaf_axes = ["latitude", "longitude", "param", date_key]
             if child.axis.name not in non_leaf_axes:
-                # TODO: Add assert len(child.values) == 1 here
                 mars_metadata[child.axis.name] = child.values[0]
 
         def handle_specific_axes(child):
@@ -192,9 +187,6 @@ class Encoder(ABC):
                 return child.values
             if child.axis.name in [date_key, "time"]:
                 dates = [f"{date}Z" for date in child.values]
-                # TODO: Discuss before merging — for reforecasts the hdate is
-                # the forecast initialisation time so using it as "Forecast date"
-                # makes sense, but this may need revisiting for reanalysis.
                 mars_metadata["Forecast date"] = str(child.values[0])
                 for date in dates:
                     coords[date] = {}
@@ -557,8 +549,14 @@ class Encoder(ABC):
         pass
 
     @abstractmethod
-    def from_polytope(self, result, date_key="date"):
+    def from_polytope(self, result, date_key: str = "date") -> dict:
         pass
 
-    def from_polytope_reforecast(self, result):
-        raise NotImplementedError(f"{type(self).__name__} does not implement from_polytope_reforecast")
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data that uses ``"hdate"`` as the time axis.
+
+        Delegates to :meth:`from_polytope` with ``date_key="hdate"``.
+        Each hdate produces a separate coverage; steps within a single
+        hdate become that coverage's t-axis values.
+        """
+        return self.from_polytope(result, date_key="hdate")
