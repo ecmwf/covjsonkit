@@ -112,10 +112,10 @@ class Circle(Encoder):
                     self.add_coverage(mars_metadata, coords, dv_dict)
 
         # Return the generated CoverageJSON
-        return self.covjsonå
+        return self.covjson
 
-    def from_polytope(self, result):
-
+    def from_polytope(self, result, date_key: str = "date") -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a MultiPoint (Circle) CoverageJSON collection."""
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -127,7 +127,7 @@ class Circle(Encoder):
         fields["dates"] = []
         fields["levels"] = [0]
 
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
 
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501

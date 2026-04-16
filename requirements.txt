@@ -5,3 +5,4 @@ covjson-pydantic
 conflator
 scipy
 pre-commit
+polytope-python

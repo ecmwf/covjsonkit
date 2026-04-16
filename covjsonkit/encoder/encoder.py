@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import Any
 
 import orjson
 import pandas as pd
@@ -149,12 +152,29 @@ class Encoder(ABC):
         # self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         return orjson.dumps(self.covjson)
 
-    def walk_tree(self, tree, fields, coords, mars_metadata, range_dict):
+    def walk_tree(
+        self,
+        tree,
+        fields: dict[str, Any],
+        coords: dict[str, dict[str, list]],
+        mars_metadata: dict[str, Any],
+        range_dict: dict[tuple, list],
+        date_key: str = "date",
+    ) -> None:
+        """Walk the polytope result tree, extracting data into fields, coords, and range_dict.
+
+        ``date_key`` controls which tree axis is treated as the time dimension
+        (e.g. ``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast data).
+        Any other axis with the default name falls through to ``mars_metadata``
+        instead.  Regardless of ``date_key``, values are always stored under
+        ``fields["dates"]``.
+        """
+
         def create_composite_key(date, level, num, para, s):
             return (date, level, num, para, s)
 
         def handle_non_leaf_node(child):
-            non_leaf_axes = ["latitude", "longitude", "param", "date"]
+            non_leaf_axes = ["latitude", "longitude", "param", date_key]
             if child.axis.name not in non_leaf_axes:
                 mars_metadata[child.axis.name] = child.values[0]
 
@@ -165,7 +185,7 @@ class Encoder(ABC):
                 return child.values
             if child.axis.name == "param":
                 return child.values
-            if child.axis.name in ["date", "time"]:
+            if child.axis.name in [date_key, "time"]:
                 dates = [f"{date}Z" for date in child.values]
                 mars_metadata["Forecast date"] = str(child.values[0])
                 for date in dates:
@@ -202,7 +222,7 @@ class Encoder(ABC):
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
                         fields["param"] = result
-                    elif child.axis.name in ["date", "time"]:
+                    elif child.axis.name in [date_key, "time"]:
                         fields["dates"].extend(result)
                     elif child.axis.name == "number":
                         fields["number"] = result
@@ -211,7 +231,7 @@ class Encoder(ABC):
                         if "s" in fields:
                             fields["s"].extend(result)
 
-                self.walk_tree(child, fields, coords, mars_metadata, range_dict)
+                self.walk_tree(child, fields, coords, mars_metadata, range_dict, date_key=date_key)
         else:
             tree.values = [float(val) for val in tree.values]
             if all(val is None for val in tree.result):
@@ -529,5 +549,14 @@ class Encoder(ABC):
         pass
 
     @abstractmethod
-    def from_polytope(self, result):
+    def from_polytope(self, result, date_key: str = "date") -> dict:
         pass
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data that uses ``"hdate"`` as the time axis.
+
+        Delegates to :meth:`from_polytope` with ``date_key="hdate"``.
+        Each hdate produces a separate coverage; steps within a single
+        hdate become that coverage's t-axis values.
+        """
+        return self.from_polytope(result, date_key="hdate")

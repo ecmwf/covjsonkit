@@ -62,7 +62,7 @@ class TimeSeries(Encoder):
             datasets (Union[xarray.Dataset, List[xarray.Dataset]]): An xarray dataset or a list of xarray datasets.
 
         Returns:
-            dict: The CoverageJSON representation of the coverageCollection.
+            dict: The CoverageJSON representation of the coverage collection.
         """
         if not isinstance(datasets, list):
             datasets = [datasets]
@@ -123,13 +123,15 @@ class TimeSeries(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result):
-        """
-        Converts a Polytope result into an OGC CoverageJSON coverageCollection of type PointSeries
+    def from_polytope(self, result, date_key: str = "date") -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a PointSeries CoverageJSON collection.
+
         Args:
-            result (dict): The Polytope result containing the data to be converted.
+            result: The polytope ``TensorIndexTree`` containing the data to be converted.
+            date_key: Tree axis name to treat as the time dimension
+                (``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast).
         Returns:
-            dict: The CoverageJSON representation of the coverageCollection.
+            dict: The CoverageJSON representation of the coverage collection.
         """
         coords = {}
         mars_metadata = {}
@@ -144,7 +146,7 @@ class TimeSeries(Encoder):
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501

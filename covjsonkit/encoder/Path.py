@@ -114,8 +114,8 @@ class Path(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result):
-
+    def from_polytope(self, result, date_key: str = "date") -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a Trajectory (Path) CoverageJSON collection."""
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -129,7 +129,7 @@ class Path(Encoder):
         fields["s"] = []
         fields["l"] = []
 
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict)
+        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
 
         if len(fields["l"]) == 0:
             fields["l"] = [0]
