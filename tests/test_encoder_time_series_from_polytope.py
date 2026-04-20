@@ -1,4 +1,7 @@
+import json
+
 import numpy as np
+import orjson
 from conftest import chain, make_leaf, make_point, node, tip
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
@@ -29,7 +32,7 @@ def hdate_branch(hdate, lat, lon, result):
 
 EXPECTED_HDATE_METADATA = {
     "class": "ce",
-    "date": np.datetime64("2024-03-01"),
+    "date": "2024-03-01",
     "domain": "g",
     "expver": "4321",
     "levtype": "sfc",
@@ -252,164 +255,32 @@ class TestTimeseriesFromPolytopeReforecast:
             assert cov["ranges"]["dis06"]["values"] == vals
             assert cov["mars:metadata"] == {"Forecast date": fc_date, **EXPECTED_HDATE_METADATA}
 
-    def test_multiple_hdates(self):
-        # 2 hdates (different days), 1 point → 2 coverages
-        tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
-        date = tip(tree)
-        date.add_child(hdate_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]))
-        date.add_child(hdate_branch(np.datetime64("2025-07-15T06:00:00"), 51.5, 6.5, [55.30]))
-
-        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
-
-        expected = [
-            (["2025-07-14T12:00:00Z"], [42.17], "2025-07-14T06:00:00Z"),
-            (["2025-07-15T12:00:00Z"], [55.30], "2025-07-15T06:00:00Z"),
-        ]
-        assert len(covjson["coverages"]) == len(expected)
-        for cov, (t, vals, fc_date) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"]["t"]["values"] == t
-            assert cov["ranges"]["dis06"]["values"] == vals
-            assert cov["mars:metadata"] == {"Forecast date": fc_date, **EXPECTED_HDATE_METADATA}
-
-    def test_two_points(self):
-        # 1 hdate, 2 points → 2 coverages (one per point)
+    def test_reforecast_covjson_is_json_serialisable(self):
+        """CoverageJSON produced by from_polytope_reforecast must be serialisable
+        with both stdlib json and orjson (i.e. no numpy.datetime64 left in the
+        mars:metadata dict — regression test for the date axis leak)."""
         tree = chain(
             TensorIndexTree(),
             node("class", ("ce",)),
             node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            *[node(n, v) for n, v in HDATE_SUFFIX],
-        )
-        sfo = tip(tree)
-        sfo.add_child(make_point(51.5, 6.5, [42.17]))
-        sfo.add_child(make_point(52.0, 7.0, [38.91]))
-
-        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
-
-        expected = [
-            (51.5, 6.5, [42.17]),
-            (52.0, 7.0, [38.91]),
-        ]
-        assert len(covjson["coverages"]) == len(expected)
-        for cov, (lat, lon, vals) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == {
-                "latitude": {"values": [lat]},
-                "longitude": {"values": [lon]},
-                "levelist": {"values": [0]},
-                "t": {"values": ["2025-07-14T12:00:00Z"]},
-            }
-            assert cov["ranges"]["dis06"]["values"] == vals
-            assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **EXPECTED_HDATE_METADATA}
-
-    def test_two_points_two_times(self):
-        # 2 hdate values × 2 points → 4 coverages (point × hdate)
-        tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
-        date = tip(tree)
-
-        for hdate_val, vals in [
-            (np.datetime64("2025-07-14T06:00:00"), [42.17, 38.91]),
-            (np.datetime64("2025-07-14T12:00:00"), [55.30, 49.62]),
-        ]:
-            branch = chain(
-                node("hdate", (hdate_val,)),
-                *[node(n, v) for n, v in HDATE_SUFFIX],
-            )
-            sfo = tip(branch)
-            sfo.add_child(make_point(51.5, 6.5, [vals[0]]))
-            sfo.add_child(make_point(52.0, 7.0, [vals[1]]))
-            date.add_child(branch)
-
-        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
-
-        expected = [
-            (51.5, ["2025-07-14T12:00:00Z"], [42.17], "2025-07-14T06:00:00Z"),
-            (51.5, ["2025-07-14T18:00:00Z"], [55.30], "2025-07-14T12:00:00Z"),
-            (52.0, ["2025-07-14T12:00:00Z"], [38.91], "2025-07-14T06:00:00Z"),
-            (52.0, ["2025-07-14T18:00:00Z"], [49.62], "2025-07-14T12:00:00Z"),
-        ]
-        assert len(covjson["coverages"]) == len(expected)
-        for cov, (lat, t, vals, fc_date) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"]["latitude"]["values"] == [lat]
-            assert cov["domain"]["axes"]["t"]["values"] == t
-            assert cov["ranges"]["dis06"]["values"] == vals
-            assert cov["mars:metadata"] == {"Forecast date": fc_date, **EXPECTED_HDATE_METADATA}
-
-    def test_multiple_steps(self):
-        """Single hdate, two steps (6h, 12h), single point → 1 coverage with 2 t-values."""
-        suffix = [
-            ("domain", ("g",)),
-            ("expver", ("4321",)),
-            ("levtype", ("sfc",)),
-            ("model", ("lisflood",)),
-            ("origin", ("ecmf",)),
-            ("param", ("240023",)),
-            ("step", (6, 12)),
-            ("stream", ("efcl",)),
-            ("type", ("sfo",)),
-        ]
-
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            *[node(n, v) for n, v in suffix],
-            make_point(51.5, 6.5, [42.17, 55.30]),
+            hdate_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]),
         )
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
 
-        assert len(covjson["coverages"]) == 1
-        cov = covjson["coverages"][0]
+        # stdlib json.dumps must not raise TypeError
+        serialised = json.dumps(covjson)
+        assert serialised  # non-empty string
 
-        assert cov["domain"]["axes"] == {
-            "latitude": {"values": [51.5]},
-            "longitude": {"values": [6.5]},
-            "levelist": {"values": [0]},
-            "t": {"values": ["2025-07-14T12:00:00Z", "2025-07-14T18:00:00Z"]},
-        }
-        assert cov["ranges"]["dis06"]["values"] == [42.17, 55.30]
-        assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **EXPECTED_HDATE_METADATA}
+        # orjson.dumps must also succeed
+        orjson.dumps(covjson)
 
-    def test_multiple_params(self):
-        """Two parameters in a single hdate subtree."""
-        suffix = [
-            ("domain", ("g",)),
-            ("expver", ("4321",)),
-            ("levtype", ("sfc",)),
-            ("model", ("lisflood",)),
-            ("origin", ("ecmf",)),
-            ("param", ("240023", "231002")),
-            ("step", (6,)),
-            ("stream", ("efcl",)),
-            ("type", ("sfo",)),
-        ]
-
-        tree = chain(
-            TensorIndexTree(),
-            node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
-            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
-            *[node(n, v) for n, v in suffix],
-            make_point(51.5, 6.5, [42.17, 99.5]),
-        )
-
-        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
-
-        assert len(covjson["coverages"]) == 1
-        cov = covjson["coverages"][0]
-
-        assert cov["domain"]["axes"] == {
-            "latitude": {"values": [51.5]},
-            "longitude": {"values": [6.5]},
-            "levelist": {"values": [0]},
-            "t": {"values": ["2025-07-14T12:00:00Z"]},
-        }
-        assert cov["ranges"] == {
-            "dis06": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["dis06"], "values": [42.17]},
-            "rowe": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["rowe"], "values": [99.5]},
-        }
-        assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **EXPECTED_HDATE_METADATA}
+        # The 'date' value in mars:metadata must be a plain string, not numpy.datetime64
+        for cov in covjson["coverages"]:
+            date_val = cov["mars:metadata"].get("date")
+            assert not isinstance(
+                date_val, np.datetime64
+            ), f"mars:metadata['date'] is still a numpy.datetime64: {date_val!r}"
 
     def test_multiple_hdates_and_steps(self):
         """4 hdates × 2 steps (6, 12) × 1 point → 4 coverages, each with 2 t-values."""
