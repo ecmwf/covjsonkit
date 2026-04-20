@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
+import numpy as np
 import orjson
 import pandas as pd
 from covjson_pydantic.coverage import CoverageCollection
@@ -176,7 +177,10 @@ class Encoder(ABC):
         def handle_non_leaf_node(child):
             non_leaf_axes = ["latitude", "longitude", "param", date_key]
             if child.axis.name not in non_leaf_axes:
-                mars_metadata[child.axis.name] = child.values[0]
+                val = child.values[0]
+                if isinstance(val, np.datetime64):
+                    val = str(val)
+                mars_metadata[child.axis.name] = val
 
         def handle_specific_axes(child):
             if child.axis.name == "latitude":
@@ -272,7 +276,10 @@ class Encoder(ABC):
         def handle_non_leaf_node_step(child):
             non_leaf_axes = ["latitude", "longitude", "param", "date", "time"]
             if child.axis.name not in non_leaf_axes:
-                mars_metadata[child.axis.name] = child.values[0]
+                val = child.values[0]
+                if isinstance(val, np.datetime64):
+                    val = str(val)
+                mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_step(child):
             if child.axis.name == "latitude":
@@ -441,7 +448,10 @@ class Encoder(ABC):
         def handle_non_leaf_node_month(child):
             non_leaf_axes = ["latitude", "longitude", "param", "year", "month"]
             if child.axis.name not in non_leaf_axes:
-                mars_metadata[child.axis.name] = child.values[0]
+                val = child.values[0]
+                if isinstance(val, np.datetime64):
+                    val = str(val)
+                mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_month(child):
             if child.axis.name == "latitude":
