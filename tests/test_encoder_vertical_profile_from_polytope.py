@@ -200,7 +200,7 @@ class TestVerticalProfileFromPolytopeReforecast:
 
     EXPECTED_REFORECAST_METADATA = {
         "class": "ce",
-        "date": np.datetime64("2024-03-01"),
+        "date": "2024-03-01",
         "domain": "g",
         "expver": "4321",
         "levtype": "pl",

@@ -6,7 +6,7 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 REFORECAST_METADATA_BASE = {
     "class": "ce",
-    "date": np.datetime64("2024-03-01"),
+    "date": "2024-03-01",
     "domain": "g",
     "expver": "4321",
     "levtype": "sfc",

@@ -130,7 +130,7 @@ class TestPositionFromPolytopeReforecast:
 
         shared_metadata = {
             "class": "ce",
-            "date": np.datetime64("2024-03-01"),
+            "date": "2024-03-01",
             "Forecast date": "2025-07-14T06:00:00Z",
             "domain": "g",
             "expver": "4321",
@@ -168,7 +168,7 @@ class TestPositionFromPolytopeReforecast:
 
         shared_metadata = {
             "class": "ce",
-            "date": np.datetime64("2024-03-01"),
+            "date": "2024-03-01",
             "domain": "g",
             "expver": "4321",
             "levtype": "sfc",
