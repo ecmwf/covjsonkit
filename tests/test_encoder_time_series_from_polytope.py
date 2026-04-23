@@ -1,4 +1,8 @@
+import json
+
 import numpy as np
+import orjson
+import pytest
 from conftest import chain, make_leaf, make_point, node, tip
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
@@ -29,7 +33,7 @@ def hdate_branch(hdate, lat, lon, result):
 
 EXPECTED_HDATE_METADATA = {
     "class": "ce",
-    "date": np.datetime64("2024-03-01"),
+    "date": "2024-03-01",
     "domain": "g",
     "expver": "4321",
     "levtype": "sfc",
@@ -199,12 +203,13 @@ class TestTimeseriesFromPolytope:
 
 
 class TestTimeseriesFromPolytopeReforecast:
-    def test_single_point(self):
+    @pytest.mark.parametrize("date", [np.datetime64("2024-03-01"), np.datetime64("2024-03-01T00:00:00")])
+    def test_single_point(self, date):
         # 1 hdate (with time pre-merged by polytope-mars), 1 point
         tree = chain(
             TensorIndexTree(),
             node("class", ("ce",)),
-            node("date", (np.datetime64("2024-03-01"),)),
+            node("date", (date,)),
             hdate_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]),
         )
 
@@ -231,7 +236,11 @@ class TestTimeseriesFromPolytopeReforecast:
             }
         }
 
-        assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **EXPECTED_HDATE_METADATA}
+        assert cov["mars:metadata"] == {
+            "Forecast date": "2025-07-14T06:00:00Z",
+            **EXPECTED_HDATE_METADATA,
+            "date": date.astype(str),
+        }
 
     def test_multiple_times(self):
         # 2 hdate values (pre-merged times from same day), 1 point → 2 coverages
@@ -453,3 +462,33 @@ class TestTimeseriesFromPolytopeReforecast:
             assert cov["domain"]["axes"]["t"]["values"] == t
             assert cov["ranges"]["dis06"]["values"] == vals
             assert cov["mars:metadata"] == {"Forecast date": fc_date, **EXPECTED_HDATE_METADATA}
+
+    @pytest.mark.parametrize(
+        "json_module,date", [(json, np.datetime64("2024-03-01")), (orjson, np.datetime64("2024-03-01T00:00:00"))]
+    )
+    def test_reforecast_covjson_is_json_serialisable(self, json_module, date):
+        """CoverageJSON produced by from_polytope_reforecast must be serialisable
+        with both stdlib json and orjson (i.e. no numpy.datetime64 left in the
+        mars:metadata dict — regression test for the date axis leak)."""
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (date,)),
+            hdate_branch(np.datetime64("2025-07-14T06:00:00"), 51.5, 6.5, [42.17]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
+
+        # stdlib json.dumps must not raise TypeError
+        serialised = json_module.dumps(covjson)
+
+        # The 'date' value in mars:metadata must be a plain string, not numpy.datetime64
+        for cov in covjson["coverages"]:
+            date_val = cov["mars:metadata"].get("date")
+            assert not isinstance(
+                date_val, np.datetime64
+            ), f"mars:metadata['date'] is still a numpy.datetime64: {date_val!r}"
+
+        # Round-trip through the JSON module to ensure it can be deserialised back to a dict
+        deserialised = json_module.loads(serialised)
+        assert deserialised == covjson
