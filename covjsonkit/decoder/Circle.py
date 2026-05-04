@@ -1,5 +1,6 @@
 import xarray as xr
 
+from ..encoder.encoder import sort_step_values
 from .decoder import Decoder
 
 
@@ -119,7 +120,7 @@ class Circle(Decoder):
 
         datetimes = sorted(list(set(datetimes)))
         numbers = sorted(list(set(numbers)))
-        steps = sorted(list(set(steps)))
+        steps = sort_step_values(list(set(steps)))
 
         new_values = {}
         for parameter in values.keys():

@@ -1,5 +1,6 @@
 import xarray as xr
 
+from ..encoder.encoder import sort_step_values
 from .decoder import Decoder
 
 
@@ -117,7 +118,7 @@ class Path(Decoder):
 
         datetimes = list(set(datetimes))
         numbers = list(set(numbers))
-        steps = list(set(steps))
+        steps = sort_step_values(list(set(steps)))
 
         new_values = {}
         for parameter in values.keys():

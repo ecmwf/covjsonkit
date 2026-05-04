@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder
+from .encoder import Encoder, normalize_step_value
 
 
 class VerticalProfile(Encoder):
@@ -106,7 +106,7 @@ class VerticalProfile(Encoder):
                     for metadata in dataset.attrs:
                         mars_metadata[metadata] = dataset.attrs[metadata]
                     mars_metadata["number"] = int(num)
-                    mars_metadata["step"] = int(step)
+                    mars_metadata["step"] = normalize_step_value(step)
 
                     self.add_coverage(
                         mars_metadata,
