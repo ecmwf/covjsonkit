@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from .encoder import Encoder
 
@@ -189,7 +190,7 @@ class Frame(Encoder):
                 for step in val_dict.keys():
                     mm = mars_metadata.copy()
                     mm["number"] = num
-                    mm["step"] = step
+                    mm["step"] = int(step.total_seconds() // 3600) if isinstance(step, timedelta) else step
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 

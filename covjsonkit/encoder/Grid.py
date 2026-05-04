@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import timedelta
 
 import pandas as pd
 
@@ -181,11 +182,13 @@ class Grid(Encoder):
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
         coordinates = {}
-        coordinates["t"] = list(fields["step"])
+        coordinates["t"] = [int(s.total_seconds() // 3600) if isinstance(s, timedelta) else s for s in fields["step"]]
 
         for date in coords.keys():
             coordinates[date] = {}
-            coordinates[date]["t"] = list(fields["step"])
+            coordinates[date]["t"] = [
+                int(s.total_seconds() // 3600) if isinstance(s, timedelta) else s for s in fields["step"]
+            ]
             coordinates[date]["levelist"] = list(fields["levels"])
             coordinates[date]["latitude"] = []
             coordinates[date]["longitude"] = []
@@ -211,7 +214,7 @@ class Grid(Encoder):
                         val_dict[para].extend(combined_dict[date][num][para][step])
                 mm = mars_metadata.copy()
                 mm["number"] = num
-                mm["step"] = step
+                mm["step"] = int(step.total_seconds() // 3600) if isinstance(step, timedelta) else step
                 mm["Forecast date"] = date
                 self.add_coverage(mm, coordinates[date], val_dict)
 

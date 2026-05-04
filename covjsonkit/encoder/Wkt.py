@@ -1,6 +1,7 @@
 import gc
 import logging
 import time
+from datetime import timedelta
 
 import pandas as pd
 
@@ -198,7 +199,7 @@ class Wkt(Encoder):
                 for step in val_dict.keys():
                     mm = mars_metadata.copy()
                     mm["number"] = num
-                    mm["step"] = step
+                    mm["step"] = int(step.total_seconds() // 3600) if isinstance(step, timedelta) else step
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 

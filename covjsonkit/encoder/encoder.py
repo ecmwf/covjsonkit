@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import timedelta
 from typing import Any
 
 import numpy as np
@@ -180,6 +181,8 @@ class Encoder(ABC):
                 val = child.values[0]
                 if isinstance(val, np.datetime64):
                     val = str(val)
+                elif isinstance(val, timedelta):
+                    val = int(val.total_seconds() // 3600)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes(child):
@@ -279,6 +282,8 @@ class Encoder(ABC):
                 val = child.values[0]
                 if isinstance(val, np.datetime64):
                     val = str(val)
+                elif isinstance(val, timedelta):
+                    val = int(val.total_seconds() // 3600)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_step(child):
