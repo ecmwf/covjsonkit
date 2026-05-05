@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import timedelta
 from typing import Any
 
 import numpy as np
@@ -10,6 +11,170 @@ from covjson_pydantic.coverage import CoverageCollection
 from covjson_pydantic.domain import DomainType
 
 from covjsonkit.param_db import get_param_ids, get_params, get_units
+
+
+def timedelta_to_step_string(td: timedelta) -> str:
+    """
+    Convert a timedelta object to a step string in the format 'XhYm'.
+
+    Args:
+        td: timedelta object representing the step
+
+    Returns:
+        String in format 'Xh', 'Ym', or 'XhYm' depending on the timedelta value
+
+    Examples:
+        timedelta(hours=13) -> "13h"
+        timedelta(hours=13, minutes=30) -> "13h30m"
+        timedelta(minutes=30) -> "30m"
+        timedelta(hours=0, minutes=0) -> "0h"
+    """
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+
+    if hours > 0 and minutes > 0:
+        return f"{hours}h{minutes}m"
+    elif hours > 0:
+        return f"{hours}h"
+    elif minutes > 0:
+        return f"{minutes}m"
+    else:
+        return "0h"
+
+
+def parse_step_string(step_str: str) -> float:
+    """
+    Parse a step string in format 'XhYm' and return total hours as float.
+
+    Args:
+        step_str: Step string in format 'Xh', 'Ym', or 'XhYm'
+
+    Returns:
+        Total hours as a float value
+
+    Examples:
+        parse_step_string("13h") -> 13.0
+        parse_step_string("13h30m") -> 13.5
+        parse_step_string("30m") -> 0.5
+        parse_step_string("0h") -> 0.0
+    """
+    if isinstance(step_str, (int, float)):
+        return float(step_str)
+
+    step_str = str(step_str)
+    hours = 0.0
+    minutes = 0.0
+
+    # Parse hours
+    if "h" in step_str:
+        parts = step_str.split("h")
+        hours = float(parts[0])
+        step_str = parts[1] if len(parts) > 1 else ""
+
+    # Parse minutes
+    if "m" in step_str and step_str:
+        minutes = float(step_str.replace("m", ""))
+
+    return hours + (minutes / 60.0)
+
+
+def sort_step_values(steps: list) -> list:
+    """
+    Sort a list of step values that might be in various formats.
+
+    Args:
+        steps: List of step values (strings like "13h30m", integers, or floats)
+
+    Returns:
+        Sorted list of step values in their original format
+
+    Examples:
+        sort_step_values(["13h30m", "12h", "14h"]) -> ["12h", "13h30m", "14h"]
+    """
+    # Create tuples of (original_value, numeric_value) for sorting
+    step_tuples = [(step, parse_step_string(step)) for step in steps]
+    # Sort by numeric value
+    step_tuples.sort(key=lambda x: x[1])
+    # Return original values in sorted order
+    return [step[0] for step in step_tuples]
+
+
+def normalize_step_value(step):
+    """
+    Normalize a step value from various formats, preserving integers when possible.
+
+    Handles:
+    - timedelta objects (datetime.timedelta) - converts to int if whole hours, else string "XhYm"
+    - numpy.timedelta64 objects - converts to int if whole hours, else string "XhYm"
+    - integers - returns as-is (legacy compatibility)
+    - floats - converts to int if whole hours, else string "XhYm"
+    - strings - returns as-is if already in correct format
+
+    Args:
+        step: Step value in various formats
+
+    Returns:
+        Integer for whole hour values, string in 'XhYm' format for sub-hourly values
+
+    Examples:
+        normalize_step_value(timedelta(hours=13, minutes=30)) -> "13h30m"
+        normalize_step_value(timedelta(hours=13)) -> 13
+        normalize_step_value(13) -> 13
+        normalize_step_value(13.5) -> "13h30m"
+        normalize_step_value("13h30m") -> "13h30m"
+    """
+    # If it's already a string, return as-is (assumes it's already in correct format)
+    if isinstance(step, str):
+        return step
+
+    # If it's a timedelta or pd.Timedelta, check if it has sub-hourly components
+    if isinstance(step, (timedelta, pd.Timedelta)):
+        if isinstance(step, pd.Timedelta):
+            td = step.to_pytimedelta()
+        else:
+            td = step
+
+        total_seconds = int(td.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+
+        # If there are minutes, return string format
+        if minutes > 0:
+            return timedelta_to_step_string(td)
+        # Otherwise return integer hours
+        return hours
+
+    # If it's a numpy timedelta64, convert to Python timedelta first
+    if isinstance(step, np.timedelta64):
+        td = pd.Timedelta(step).to_pytimedelta()
+        total_seconds = int(td.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+
+        if minutes > 0:
+            return timedelta_to_step_string(td)
+        return hours
+
+    # If it's an integer, return as-is (legacy compatibility)
+    if isinstance(step, (int, np.integer)):
+        return int(step)
+
+    # If it's a float, check if it has fractional hours
+    if isinstance(step, (float, np.floating)):
+        hours = int(step)
+        total_minutes = int(step * 60)
+        minutes = total_minutes % 60
+
+        if minutes > 0:
+            if hours > 0:
+                return f"{hours}h{minutes}m"
+            else:
+                return f"{minutes}m"
+        return hours
+
+    # Fallback: convert to string
+    return str(step)
 
 
 class Encoder(ABC):
@@ -180,6 +345,11 @@ class Encoder(ABC):
                 val = child.values[0]
                 if isinstance(val, np.datetime64):
                     val = str(val)
+                elif isinstance(val, timedelta):
+                    val = timedelta_to_step_string(val)
+                elif child.axis.name == "step":
+                    # Step is not a timedelta! Need to normalize it
+                    val = normalize_step_value(val)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes(child):
@@ -279,6 +449,11 @@ class Encoder(ABC):
                 val = child.values[0]
                 if isinstance(val, np.datetime64):
                     val = str(val)
+                elif isinstance(val, timedelta):
+                    val = timedelta_to_step_string(val)
+                elif child.axis.name == "step":
+                    # Step is not a timedelta! Need to normalize it
+                    val = normalize_step_value(val)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_step(child):

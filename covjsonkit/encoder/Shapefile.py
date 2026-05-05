@@ -1,6 +1,6 @@
 import logging
 
-from .encoder import Encoder
+from .encoder import Encoder, normalize_step_value
 
 
 class Shapefile(Encoder):
@@ -104,7 +104,7 @@ class Shapefile(Encoder):
                     dv_dict = {}
                     mars_metadata = {metadata: dataset.attrs[metadata] for metadata in dataset.attrs}
                     mars_metadata["number"] = int(num)
-                    mars_metadata["step"] = int(step)
+                    mars_metadata["step"] = normalize_step_value(step)
                     mars_metadata["Forecast date"] = str(datetime)
                     for dv in dataset.data_vars:
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
@@ -189,7 +189,7 @@ class Shapefile(Encoder):
                 for step in val_dict.keys():
                     mm = mars_metadata.copy()
                     mm["number"] = num
-                    mm["step"] = step
+                    mm["step"] = normalize_step_value(step)
                     mm["Forecast date"] = date
                     self.add_coverage(mm, coords[date], val_dict[step])
 

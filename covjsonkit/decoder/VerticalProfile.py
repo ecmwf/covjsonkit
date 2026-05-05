@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import xarray as xr
 
+from ..encoder.encoder import parse_step_string, sort_step_values
 from .decoder import Decoder
 
 
@@ -157,7 +158,7 @@ class VerticalProfile(Decoder):
 
             nums = list(set(num))
             datetime = list(set(datetime))
-            steps = list(set(steps))
+            steps = sort_step_values(list(set(steps)))
 
             for parameter in self.parameters:
                 if len(param_values[parameter]) <= domain_idx:
@@ -176,7 +177,7 @@ class VerticalProfile(Decoder):
                                 param_values[parameter][domain_idx][i][j].append([])
                             for coverage in self.covjson["coverages"]:
                                 new_step = (
-                                    dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=int(step))
+                                    dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=parse_step_string(step))
                                 ).isoformat() + "Z"
                                 if (
                                     coverage["mars:metadata"]["number"] == num

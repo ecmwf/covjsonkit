@@ -8,6 +8,7 @@ except ImportError:
 import xarray as xr
 from scipy.spatial import cKDTree
 
+from ..encoder.encoder import sort_step_values
 from .decoder import Decoder
 
 
@@ -177,7 +178,7 @@ class BoundingBox(Decoder):
 
         datetimes = sorted(list(set(datetimes)))
         numbers = sorted(list(set(numbers)))
-        steps = sorted(list(set(steps)))
+        steps = sort_step_values(list(set(steps)))
 
         new_values = {}
         for parameter in values.keys():
