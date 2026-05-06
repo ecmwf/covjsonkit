@@ -286,7 +286,56 @@ class TestDecoder:
         print(decoder.get_coordinates())
         assert decoder.get_coordinates() == coordinates
 
-    def test_timeseries_to_xarray(self):
+    def test_timeseries_to_xarray_param_t(self):
+        covjson = {
+            "type": "CoverageCollection",
+            "domainType": "PointSeries",
+            "coverages": [
+                {
+                    "mars:metadata": {
+                        "Forecast date": "2026-05-04T18:00:00Z",
+                        "number": 1,
+                    },
+                    "type": "Coverage",
+                    "domain": {
+                        "type": "Domain",
+                        "axes": {
+                            "latitude": {"values": [47.5]},
+                            "longitude": {"values": [8.5]},
+                            "levelist": {"values": [74]},
+                            "t": {"values": ["2026-05-04T18:00:00Z"]},
+                        },
+                    },
+                    "ranges": {
+                        "t": {
+                            "type": "NdArray",
+                            "dataType": "float",
+                            "shape": [1],
+                            "axisNames": ["t"],
+                            "values": [285.6],
+                        }
+                    },
+                }
+            ],
+            "referencing": [
+                {
+                    "coordinates": ["latitude", "longitude", "levelist"],
+                    "system": {"type": "GeographicCRS"},
+                }
+            ],
+            "parameters": {
+                "t": {
+                    "type": "Parameter",
+                    "unit": {"symbol": "K"},
+                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+                }
+            },
+        }
+        ds = Covjsonkit().decode(covjson).to_xarray()
+        data_vars = ["t"]
+        assert all(var in ds.data_vars for var in data_vars)
+
+    def test_timeseries_to_xarray_param_t_no_forecast_date(self):
         covjson = {
             "type": "CoverageCollection",
             "domainType": "PointSeries",
@@ -331,6 +380,7 @@ class TestDecoder:
         data_vars = ["t"]
         assert all(var in ds.data_vars for var in data_vars)
 
+    def test_timeseries_to_xarray(self):
         # print(ds)
         # print(ds["Temperature"])
         # xrds.to_netcdf("timeseries.nc")
