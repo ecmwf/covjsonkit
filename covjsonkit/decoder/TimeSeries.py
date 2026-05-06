@@ -203,8 +203,8 @@ class TimeSeries(Decoder):
 
         # Combine all DataArrays into a Dataset
         for mars_metadata in self.mars_metadata[0]:
-            for dss in ds:
-                if mars_metadata != "date" and mars_metadata != "step":
+            if mars_metadata != "date" and mars_metadata != "step":
+                for dss in ds:
                     dss.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
         if len(ds) == 1:
