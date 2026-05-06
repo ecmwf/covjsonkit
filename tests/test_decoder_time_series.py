@@ -294,7 +294,7 @@ class TestDecoder:
         with open(path, "r") as f:
             covjson = json.load(f)
         ds = Covjsonkit().decode(covjson).to_xarray()
-        data_vars = ["t"]
+        data_vars = ["T"]
         assert all(var in ds.data_vars for var in data_vars)
 
     def test_timeseries_to_xarray_no_forecast_date_param_t(self):
@@ -303,7 +303,7 @@ class TestDecoder:
             covjson = json.load(f)
         covjson["coverages"][0].pop("mars:metadata")
         ds = Covjsonkit().decode(covjson).to_xarray()
-        data_vars = ["t"]
+        data_vars = ["T"]
         assert all(var in ds.data_vars for var in data_vars)
 
     def test_timeseries_to_xarray(self):

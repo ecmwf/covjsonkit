@@ -184,6 +184,10 @@ class TimeSeries(Decoder):
                 long_name = self.get_parameter_metadata(parameter)["observedProperty"][
                     "id"
                 ]
+
+                if long_name == "t":
+                    long_name = "T"  # Avoid collision with time dimension 't'
+
                 attrs = {
                     "type": self.get_parameter_metadata(parameter)["type"],
                     "units": self.get_parameter_metadata(parameter)["unit"]["symbol"],
