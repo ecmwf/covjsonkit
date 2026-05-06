@@ -176,53 +176,36 @@ class TimeSeries(Decoder):
                     for j, date in enumerate(datetime):
                         for k, step in enumerate(steps):
                             for coverage in self.covjson["coverages"]:
-                                if (
-                                    coverage["mars:metadata"]["number"] == num
-                                    and coverage["mars:metadata"]["Forecast date"]
-                                    == date
-                                    and coverage["domain"]["axes"][self.x_name][
-                                        "values"
-                                    ]
-                                    == x
-                                    and coverage["domain"]["axes"][self.y_name][
-                                        "values"
-                                    ]
-                                    == y
-                                    and coverage["domain"]["axes"][self.z_name][
-                                        "values"
-                                    ]
-                                    == z
-                                ):
+                                if self._covers_domain(coverage, num, date, x, y, z):
                                     param_values[parameter][domain_idx][i][j] = (
                                         coverage["ranges"][parameter]["values"]
                                     )
 
+            coords = {
+                "latitude": x,
+                "longitude": y,
+                "levelist": z,
+                "number": nums,
+                "datetime": datetime,
+                "t": steps,
+            }
+
             for parameter in self.parameters:
-                param_coords = {
-                    "latitude": x,
-                    "longitude": y,
-                    "levelist": z,
-                    "number": nums,
-                    "datetime": datetime,
-                    "t": steps,
+                long_name = self.get_parameter_metadata(parameter)["observedProperty"][
+                    "id"
+                ]
+                attrs = {
+                    "type": self.get_parameter_metadata(parameter)["type"],
+                    "units": self.get_parameter_metadata(parameter)["unit"]["symbol"],
+                    "long_name": long_name,
                 }
-                dataarray = xr.DataArray(
+                dataarraydict[long_name] = (
+                    dims,
                     [[[param_values[parameter][domain_idx]]]],
-                    dims=dims,
-                    coords=param_coords,
-                    name=f"{parameter}_domain_{domain_idx}",
+                    attrs,
                 )
 
-                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "observedProperty"
-                ]["id"]
-                dataarraydict[dataarray.attrs["long_name"]] = dataarray
-
-            ds.append(xr.Dataset(dataarraydict))
+            ds.append(xr.Dataset(data_vars=dataarraydict, coords=coords))
 
         # Combine all DataArrays into a Dataset
         for mars_metadata in self.mars_metadata[0]:
@@ -234,6 +217,16 @@ class TimeSeries(Decoder):
             return ds[0]
 
         return ds
+
+    def _covers_domain(self, coverage, num, date, x, y, z):
+        """check if coverage matches the given domain parameters (num, date, x, y, z)"""
+        return (
+            coverage["mars:metadata"]["number"] == num
+            and coverage["mars:metadata"]["Forecast date"] == date
+            and coverage["domain"]["axes"][self.x_name]["values"] == x
+            and coverage["domain"]["axes"][self.y_name]["values"] == y
+            and coverage["domain"]["axes"][self.z_name]["values"] == z
+        )
 
     def _to_xarray_no_forecast_date(self):
         """Convert monthly-means CovJSON (no 'Forecast date' in metadata) to xarray.
