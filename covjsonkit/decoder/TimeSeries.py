@@ -110,7 +110,10 @@ class TimeSeries(Decoder):
         # time steps into a single coverage's t-axis and do NOT write "Forecast date"
         # into mars:metadata.  Detect this case and use a simpler (time, point) layout
         # that mirrors the Wkt/Frame/Shapefile decoders.
-        has_forecast_date = any("Forecast date" in cov.get("mars:metadata", {}) for cov in self.covjson["coverages"])
+        has_forecast_date = any(
+            "Forecast date" in cov.get("mars:metadata", {})
+            for cov in self.covjson["coverages"]
+        )
         if not has_forecast_date:
             return self._to_xarray_no_forecast_date()
 
@@ -139,11 +142,23 @@ class TimeSeries(Decoder):
                 unique_domains.append(domain)  # Add to unique domains
 
         all_coords = unique_domains
-        param_values = {}
+
+        num = []
+        datetime = []
+        for coverage in self.covjson["coverages"]:
+            num.append(coverage["mars:metadata"]["number"])
+            datetime.append(coverage["mars:metadata"]["Forecast date"])
+        nums = list(set(num))
+        datetime = list(set(datetime))
 
         # Initialize parameter values for all parameters
-        for parameter in self.parameters:
-            param_values[parameter] = []
+        param_values = {
+            parameter: [
+                [[[] for _ in range(len(datetime))] for _ in range(len(nums))]
+                for _ in range(len(all_coords))
+            ]
+            for parameter in self.parameters
+        }
 
         # Process each coordinate domain
         for domain_idx, coords in enumerate(all_coords):
@@ -155,38 +170,32 @@ class TimeSeries(Decoder):
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
 
-            num = []
-            datetime = []
-            for coverage in self.covjson["coverages"]:
-                num.append(coverage["mars:metadata"]["number"])
-                datetime.append(coverage["mars:metadata"]["Forecast date"])
-
-            nums = list(set(num))
-            datetime = list(set(datetime))
-
             # Extract parameter values for the current domain
             for parameter in self.parameters:
-                if len(param_values[parameter]) <= domain_idx:
-                    param_values[parameter].append([])
-
                 for i, num in enumerate(nums):
-                    if len(param_values[parameter][domain_idx]) <= i:
-                        param_values[parameter][domain_idx].append([])
-
                     for j, date in enumerate(datetime):
-                        if len(param_values[parameter][domain_idx][i]) <= j:
-                            param_values[parameter][domain_idx][i].append([])
-
                         for k, step in enumerate(steps):
                             for coverage in self.covjson["coverages"]:
                                 if (
                                     coverage["mars:metadata"]["number"] == num
-                                    and coverage["mars:metadata"]["Forecast date"] == date
-                                    and coverage["domain"]["axes"][self.x_name]["values"] == x
-                                    and coverage["domain"]["axes"][self.y_name]["values"] == y
-                                    and coverage["domain"]["axes"][self.z_name]["values"] == z
+                                    and coverage["mars:metadata"]["Forecast date"]
+                                    == date
+                                    and coverage["domain"]["axes"][self.x_name][
+                                        "values"
+                                    ]
+                                    == x
+                                    and coverage["domain"]["axes"][self.y_name][
+                                        "values"
+                                    ]
+                                    == y
+                                    and coverage["domain"]["axes"][self.z_name][
+                                        "values"
+                                    ]
+                                    == z
                                 ):
-                                    param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
+                                    param_values[parameter][domain_idx][i][j] = (
+                                        coverage["ranges"][parameter]["values"]
+                                    )
 
             for parameter in self.parameters:
                 param_coords = {
@@ -205,8 +214,12 @@ class TimeSeries(Decoder):
                 )
 
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
+                    "unit"
+                ]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
+                    "observedProperty"
+                ]["id"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
             ds.append(xr.Dataset(dataarraydict))
@@ -252,8 +265,12 @@ class TimeSeries(Decoder):
                     coords={"t": steps},
                 )
                 dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
+                    "unit"
+                ]["symbol"]
+                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
+                    "observedProperty"
+                ]["id"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
             coord_dict = dict(
