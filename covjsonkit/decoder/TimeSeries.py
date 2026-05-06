@@ -243,7 +243,7 @@ class TimeSeries(Decoder):
         """
         ds_list = []
 
-        for cov_idx, coverage in enumerate(self.covjson["coverages"]):
+        for coverage in self.covjson["coverages"]:
             domain = coverage["domain"]["axes"]
             x = domain[self.x_name]["values"]
             y = domain[self.y_name]["values"]
@@ -256,19 +256,24 @@ class TimeSeries(Decoder):
             dataarraydict = {}
             for parameter in self.parameters:
                 values = coverage["ranges"][parameter]["values"]
+                long_name = self.get_parameter_metadata(parameter)["observedProperty"][
+                    "id"
+                ]
+
+                if long_name == "t":
+                    long_name = "T"  # Avoid collision with time dimension 't'
+
+                attrs = {
+                    "type": self.get_parameter_metadata(parameter)["type"],
+                    "units": self.get_parameter_metadata(parameter)["unit"]["symbol"],
+                    "long_name": long_name,
+                }
+
                 dataarray = xr.DataArray(
-                    values,
-                    dims=["t"],
-                    coords={"t": steps},
+                    values, dims=["t"], coords={"t": steps}, attrs=attrs
                 )
-                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)[
-                    "unit"
-                ]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)[
-                    "observedProperty"
-                ]["id"]
-                dataarraydict[dataarray.attrs["long_name"]] = dataarray
+
+                dataarraydict[long_name] = dataarray
 
             coord_dict = dict(
                 latitude=(["latitude"], x),
