@@ -171,15 +171,14 @@ class TimeSeries(Decoder):
             steps = pd.to_datetime(steps)
 
             # Extract parameter values for the current domain
-            for parameter in self.parameters:
-                for i, num in enumerate(nums):
-                    for j, date in enumerate(datetime):
-                        for k, step in enumerate(steps):
-                            for coverage in self.covjson["coverages"]:
-                                if self._covers_domain(coverage, num, date, x, y, z):
-                                    param_values[parameter][domain_idx][i][j] = (
-                                        coverage["ranges"][parameter]["values"]
-                                    )
+            for i, num in enumerate(nums):
+                for j, date in enumerate(datetime):
+                    for coverage in self.covjson["coverages"]:
+                        if self._covers_domain(coverage, num, date, x, y, z):
+                            for parameter in self.parameters:
+                                param_values[parameter][domain_idx][i][j] = (
+                                    coverage["ranges"][parameter]["values"]
+                                )
 
             coords = {
                 "latitude": x,
