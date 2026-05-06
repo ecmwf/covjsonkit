@@ -287,8 +287,50 @@ class TestDecoder:
         assert decoder.get_coordinates() == coordinates
 
     def test_timeseries_to_xarray(self):
-        # decoder = Covjsonkit().decode(self.covjson)
-        # ds = decoder.to_xarray()
+        covjson = {
+            "type": "CoverageCollection",
+            "domainType": "PointSeries",
+            "coverages": [
+                {
+                    "type": "Coverage",
+                    "domain": {
+                        "type": "Domain",
+                        "axes": {
+                            "latitude": {"values": [47.5]},
+                            "longitude": {"values": [8.5]},
+                            "levelist": {"values": [74]},
+                            "t": {"values": ["2026-05-04T18:00:00Z"]},
+                        },
+                    },
+                    "ranges": {
+                        "t": {
+                            "type": "NdArray",
+                            "dataType": "float",
+                            "shape": [1],
+                            "axisNames": ["t"],
+                            "values": [285.6],
+                        }
+                    },
+                }
+            ],
+            "referencing": [
+                {
+                    "coordinates": ["latitude", "longitude", "levelist"],
+                    "system": {"type": "GeographicCRS"},
+                }
+            ],
+            "parameters": {
+                "t": {
+                    "type": "Parameter",
+                    "unit": {"symbol": "K"},
+                    "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+                }
+            },
+        }
+        ds = Covjsonkit().decode(covjson).to_xarray()
+        data_vars = ["t"]
+        assert all(var in ds.data_vars for var in data_vars)
+
         # print(ds)
         # print(ds["Temperature"])
         # xrds.to_netcdf("timeseries.nc")
