@@ -151,17 +151,8 @@ class TimeSeries(Decoder):
         nums = list(set(num))
         datetime = list(set(datetime))
 
-        # Initialize parameter values for all parameters
-        param_values = {
-            parameter: [
-                [[[] for _ in range(len(datetime))] for _ in range(len(nums))]
-                for _ in range(len(all_coords))
-            ]
-            for parameter in self.parameters
-        }
-
         # Process each coordinate domain
-        for domain_idx, coords in enumerate(all_coords):
+        for coords in all_coords:
             dataarraydict = {}
             x = coords["axes"][self.x_name]["values"]
             y = coords["axes"][self.y_name]["values"]
@@ -170,15 +161,7 @@ class TimeSeries(Decoder):
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
 
-            # Extract parameter values for the current domain
-            for i, num in enumerate(nums):
-                for j, date in enumerate(datetime):
-                    for coverage in self.covjson["coverages"]:
-                        if self._covers_domain(coverage, num, date, x, y, z):
-                            for parameter in self.parameters:
-                                param_values[parameter][domain_idx][i][j] = (
-                                    coverage["ranges"][parameter]["values"]
-                                )
+            cov_idx_list = self._find_coverages(nums, datetime, x, y, z)
 
             coords = {
                 "latitude": x,
@@ -190,6 +173,14 @@ class TimeSeries(Decoder):
             }
 
             for parameter in self.parameters:
+                param_values = [
+                    [[] for _ in range(len(datetime))] for _ in range(len(nums))
+                ]
+
+                # Extract parameter values for the current domain
+                for i, j, cov in cov_idx_list:
+                    param_values[i][j] = cov["ranges"][parameter]["values"]
+
                 long_name = self.get_parameter_metadata(parameter)["observedProperty"][
                     "id"
                 ]
@@ -200,7 +191,7 @@ class TimeSeries(Decoder):
                 }
                 dataarraydict[long_name] = (
                     dims,
-                    [[[param_values[parameter][domain_idx]]]],
+                    [[[param_values]]],
                     attrs,
                 )
 
@@ -216,6 +207,16 @@ class TimeSeries(Decoder):
             return ds[0]
 
         return ds
+
+    def _find_coverages(self, nums, datetime, x, y, z):
+        """Find coverages that match the given domain parameters (num, date, x, y, z) and return them along with domain parameter indices."""
+        result = []
+        for i, num in enumerate(nums):
+            for j, date in enumerate(datetime):
+                for coverage in self.covjson["coverages"]:
+                    if self._covers_domain(coverage, num, date, x, y, z):
+                        result.append((i, j, coverage))
+        return result
 
     def _covers_domain(self, coverage, num, date, x, y, z):
         """check if coverage matches the given domain parameters (num, date, x, y, z)"""
