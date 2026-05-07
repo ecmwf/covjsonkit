@@ -159,17 +159,13 @@ class Position(Decoder):
             }
 
             for parameter in self.parameters:
-                param_values = [
-                    [[] for _ in range(len(datetime))] for _ in range(len(nums))
-                ]
+                param_values = [[[] for _ in range(len(datetime))] for _ in range(len(nums))]
 
                 # Extract parameter values for the current domain
                 for i, j, cov in cov_idx_list:
                     param_values[i][j] = cov["ranges"][parameter]["values"]
 
-                long_name = self.get_parameter_metadata(parameter)["observedProperty"][
-                    "id"
-                ]
+                long_name = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
 
                 if long_name == "t":
                     long_name = "T"  # Avoid collision with time dimension 't'

@@ -1,7 +1,7 @@
 import json
+from pathlib import Path
 
 from covjsonkit.api import Covjsonkit
-from pathlib import Path
 
 
 class TestDecoder:
@@ -95,9 +95,7 @@ class TestDecoder:
                     "coordinates": ["z"],
                     "system": {
                         "type": "VerticalCRS",
-                        "cs": {
-                            "csAxes": [{"name": {"en": "level"}, "direction": "down"}]
-                        },
+                        "cs": {"csAxes": [{"name": {"en": "level"}, "direction": "down"}]},
                     },
                 },
             ],
@@ -248,15 +246,13 @@ class TestDecoder:
 
     def test_verticalprofile_to_xarray_param_t(self):
         """to_xarray works with param 't' - no collision since dims use 'time'."""
-        path = Path(__file__).parent / "data/test_verticalprofile_param_t.json" 
+        path = Path(__file__).parent / "data/test_verticalprofile_param_t.json"
         with open(path, "r") as f:
             covjson = json.load(f)
         decoder = Covjsonkit().decode(covjson)
         ds = decoder.to_xarray()
 
         # Param 't' should be in data_vars (no collision with 'time' dim)
-        assert "t" in ds.data_vars, (
-            f"Expected 't' in data_vars, got {list(ds.data_vars)}"
-        )
+        assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
         # Time dimension is 'time', not 't'
         assert "time" in ds.dims
