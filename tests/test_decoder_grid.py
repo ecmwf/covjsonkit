@@ -464,3 +464,26 @@ class TestDecoder:
             ],
         }
         assert decoder.get_values() == values
+
+    def test_grid_to_xarray_param_t_no_collision(self):
+        """to_xarray works with param 't' - no collision since dims use 'datetimes'."""
+        # Add a param named 't' to verify no collision
+        self.covjson["parameters"]["t"] = {
+            "type": "Parameter",
+            "description": "Temperature",
+            "unit": {"symbol": "K"},
+            "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+        }
+        for cov in self.covjson["coverages"]:
+            cov["ranges"]["t"] = cov["ranges"]["2t"].copy()
+
+        for cov in self.covjson["coverages"]:
+            cov["mars:metadata"]["Forecast date"] = cov["mars:metadata"]["date"]
+
+        decoder = Grid.Grid(self.covjson)
+        ds = decoder.to_xarray()
+
+        # Param 't' should be in data_vars (no collision with 'datetimes' dim)
+        assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
+        # Time dimension is 'datetimes', not 't'
+        assert "datetimes" in ds.dims
