@@ -14,7 +14,6 @@ class TestDecoder:
                     "mars:metadata": {
                         "class": "ea",
                         "date": "2017-01-01 12:00:00",
-                        "Forecast date": "2017-01-01T12:00:00Z",
                         "levtype": "pl",
                         "step": "0",
                         "stream": "enda",
@@ -51,7 +50,6 @@ class TestDecoder:
                     "mars:metadata": {
                         "class": "ea",
                         "date": "2017-01-01 12:00:00",
-                        "Forecast date": "2017-01-01T12:00:00Z",
                         "levtype": "pl",
                         "step": "0",
                         "stream": "enda",
@@ -64,7 +62,7 @@ class TestDecoder:
                             "x": {"values": ["0.0"]},
                             "y": {"values": ["0.0"]},
                             "z": {"values": ["500", "850"]},
-                            "t": {"values": ["2017-01-01T12:00:00Z"]},
+                            "t": {"values": ["2017-01-01 12:00:00"]},
                         },
                     },
                     "ranges": {
