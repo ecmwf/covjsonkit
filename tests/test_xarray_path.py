@@ -44,3 +44,23 @@ class TestPathXarray:
             covjson_result["coverages"][0]["ranges"]["2t"]["values"][0]
             == self.test_covjson["coverages"][0]["ranges"]["2t"]["values"][0]
         )
+
+    def test_to_xarray_param_t_no_collision(self):
+        """to_xarray works with param 't' - no collision since dims use 'datetimes'."""
+        # Add a param named 't' to verify no collision
+        self.test_covjson["parameters"]["t"] = {
+            "type": "Parameter",
+            "description": {"en": "Temperature"},
+            "unit": {"symbol": "K"},
+            "observedProperty": {"id": "t", "label": {"en": "Temperature"}},
+        }
+        for cov in self.test_covjson["coverages"]:
+            cov["ranges"]["t"] = cov["ranges"]["2t"].copy()
+
+        decoder_obj = Covjsonkit().decode(self.test_covjson)
+        ds = decoder_obj.to_xarray()
+
+        # Param 't' should be in data_vars (no collision with 'datetimes' dim)
+        assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
+        # Time dimension is 'datetimes', not 't'
+        assert "datetimes" in ds.dims
