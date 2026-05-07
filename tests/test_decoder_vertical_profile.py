@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from covjsonkit.api import Covjsonkit
 
 
@@ -241,9 +244,15 @@ class TestDecoder:
         }
         assert decoder.get_values() == values
 
-    # def test_verticalprofile_to_xarray(self):
-    #    decoder = Covjsonkit().decode(self.covjson)
-    #    dataset = decoder.to_xarray()
-    #    encoder = Covjsonkit.encoder.VerticalProfile.VerticalProfile("CoverageCollection", "VerticalProfile")
-    #    cov = encoder.from_xarray(dataset)
-    #    print(cov)
+    def test_verticalprofile_to_xarray_param_t(self):
+        """to_xarray works with param 't' - no collision since dims use 'time'."""
+        path = Path(__file__).parent / "data/test_verticalprofile_param_t.json"
+        with open(path, "r") as f:
+            covjson = json.load(f)
+        decoder = Covjsonkit().decode(covjson)
+        ds = decoder.to_xarray()
+
+        # Param 't' should be in data_vars (no collision with 'time' dim)
+        assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
+        # Time dimension is 'time', not 't'
+        assert "time" in ds.dims

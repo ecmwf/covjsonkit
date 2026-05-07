@@ -1,0 +1,47 @@
+{
+    "type": "CoverageCollection",
+    "domainType": "PointSeries",
+    "coverages": [
+        {
+            "mars:metadata": {
+                "Forecast date": "2026-05-04T18:00:00Z",
+                "number": 1
+            },
+            "type": "Coverage",
+            "domain": {
+                "type": "Domain",
+                "axes": {
+                    "latitude": {"values": [47.5]},
+                    "longitude": {"values": [8.5]},
+                    "levelist": {"values": [74]},
+                    "t": {"values": ["2026-05-04T18:00:00Z"]}
+                }
+            },
+            "ranges": {
+                "t": {
+                    "type": "NdArray",
+                    "dataType": "float",
+                    "shape": [1],
+                    "axisNames": ["t"],
+                    "values": [285.6]
+                }
+            }
+        }
+    ],
+    "referencing": [
+        {
+            "coordinates": ["latitude", "longitude", "levelist"],
+            "system": {"type": "GeographicCRS"}
+        }
+    ],
+    "parameters": {
+        "t": {
+            "type": "Parameter",
+            "unit": {"symbol": "K"},
+            "observedProperty": {
+                "id": "t",
+                "label": {"en": "Temperature"}
+            }
+        }
+    }
+}

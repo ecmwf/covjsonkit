@@ -109,9 +109,6 @@ class Position(Decoder):
         dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
         ds = []
 
-        # Get coordinates for all domains
-        all_coords = self.get_domains()
-
         unique_coords = set()  # To track unique coordinate tuples
         unique_domains = []  # To store unique domains
 
@@ -131,14 +128,17 @@ class Position(Decoder):
                 unique_domains.append(domain)  # Add to unique domains
 
         all_coords = unique_domains
-        param_values = {}
 
-        # Initialize parameter values for all parameters
-        for parameter in self.parameters:
-            param_values[parameter] = []
+        num = []
+        datetime = []
+        for coverage in self.covjson["coverages"]:
+            num.append(coverage["mars:metadata"]["number"])
+            datetime.append(coverage["mars:metadata"]["Forecast date"])
+        nums = list(set(num))
+        datetime = list(set(datetime))
 
         # Process each coordinate domain
-        for domain_idx, coords in enumerate(all_coords):
+        for coords in all_coords:
             dataarraydict = {}
             x = coords["axes"][self.x_name]["values"]
             y = coords["axes"][self.y_name]["values"]
@@ -147,69 +147,69 @@ class Position(Decoder):
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
 
-            num = []
-            datetime = []
-            for coverage in self.covjson["coverages"]:
-                num.append(coverage["mars:metadata"]["number"])
-                datetime.append(coverage["mars:metadata"]["Forecast date"])
+            cov_idx_list = self._find_coverages(nums, datetime, x, y, z)
 
-            nums = list(set(num))
-            datetime = list(set(datetime))
-
-            # Extract parameter values for the current domain
-            for parameter in self.parameters:
-                if len(param_values[parameter]) <= domain_idx:
-                    param_values[parameter].append([])
-
-                for i, num in enumerate(nums):
-                    if len(param_values[parameter][domain_idx]) <= i:
-                        param_values[parameter][domain_idx].append([])
-
-                    for j, date in enumerate(datetime):
-                        if len(param_values[parameter][domain_idx][i]) <= j:
-                            param_values[parameter][domain_idx][i].append([])
-
-                        for k, step in enumerate(steps):
-                            for coverage in self.covjson["coverages"]:
-                                if (
-                                    coverage["mars:metadata"]["number"] == num
-                                    and coverage["mars:metadata"]["Forecast date"] == date
-                                    and coverage["domain"]["axes"][self.x_name]["values"] == x
-                                    and coverage["domain"]["axes"][self.y_name]["values"] == y
-                                    and coverage["domain"]["axes"][self.z_name]["values"] == z
-                                ):
-                                    param_values[parameter][domain_idx][i][j] = coverage["ranges"][parameter]["values"]
+            coords = {
+                "latitude": x,
+                "longitude": y,
+                "levelist": z,
+                "number": nums,
+                "datetime": datetime,
+                "t": steps,
+            }
 
             for parameter in self.parameters:
-                param_coords = {
-                    "latitude": x,
-                    "longitude": y,
-                    "levelist": z,
-                    "number": nums,
-                    "datetime": datetime,
-                    "t": steps,
+                param_values = [[[] for _ in range(len(datetime))] for _ in range(len(nums))]
+
+                # Extract parameter values for the current domain
+                for i, j, cov in cov_idx_list:
+                    param_values[i][j] = cov["ranges"][parameter]["values"]
+
+                long_name = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+
+                if long_name == "t":
+                    long_name = "T"  # Avoid collision with time dimension 't'
+
+                attrs = {
+                    "type": self.get_parameter_metadata(parameter)["type"],
+                    "units": self.get_parameter_metadata(parameter)["unit"]["symbol"],
+                    "long_name": long_name,
                 }
-                dataarray = xr.DataArray(
-                    [[[param_values[parameter][domain_idx]]]],
-                    dims=dims,
-                    coords=param_coords,
-                    name=f"{parameter}_domain_{domain_idx}",
+                dataarraydict[long_name] = (
+                    dims,
+                    [[[param_values]]],
+                    attrs,
                 )
 
-                dataarray.attrs["type"] = self.get_parameter_metadata(parameter)["type"]
-                dataarray.attrs["units"] = self.get_parameter_metadata(parameter)["unit"]["symbol"]
-                dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
-                dataarraydict[dataarray.attrs["long_name"]] = dataarray
-
-            ds.append(xr.Dataset(dataarraydict))
+            ds.append(xr.Dataset(data_vars=dataarraydict, coords=coords))
 
         # Combine all DataArrays into a Dataset
         for mars_metadata in self.mars_metadata[0]:
-            for dss in ds:
-                if mars_metadata != "date" and mars_metadata != "step":
+            if mars_metadata != "date" and mars_metadata != "step":
+                for dss in ds:
                     dss.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
 
         if len(ds) == 1:
             return ds[0]
 
         return ds
+
+    def _find_coverages(self, nums, datetime, x, y, z):
+        """Find coverages matching domain parameters and return with indices."""
+        result = []
+        for i, num in enumerate(nums):
+            for j, date in enumerate(datetime):
+                for coverage in self.covjson["coverages"]:
+                    if self._covers_domain(coverage, num, date, x, y, z):
+                        result.append((i, j, coverage))
+        return result
+
+    def _covers_domain(self, coverage, num, date, x, y, z):
+        """Check if coverage matches the given domain parameters."""
+        return (
+            coverage["mars:metadata"]["number"] == num
+            and coverage["mars:metadata"]["Forecast date"] == date
+            and coverage["domain"]["axes"][self.x_name]["values"] == x
+            and coverage["domain"]["axes"][self.y_name]["values"] == y
+            and coverage["domain"]["axes"][self.z_name]["values"] == z
+        )

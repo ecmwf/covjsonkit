@@ -1,5 +1,8 @@
 # from earthkit import data
 
+import json
+from pathlib import Path
+
 from covjsonkit.api import Covjsonkit
 
 
@@ -286,9 +289,24 @@ class TestDecoder:
         print(decoder.get_coordinates())
         assert decoder.get_coordinates() == coordinates
 
+    def test_timeseries_to_xarray_param_t(self):
+        path = Path(__file__).parent / "data/test_timeseries_param_t.json"
+        with open(path, "r") as f:
+            covjson = json.load(f)
+        ds = Covjsonkit().decode(covjson).to_xarray()
+        data_vars = ["T"]
+        assert all(var in ds.data_vars for var in data_vars)
+
+    def test_timeseries_to_xarray_no_forecast_date_param_t(self):
+        path = Path(__file__).parent / "data/test_timeseries_param_t.json"
+        with open(path, "r") as f:
+            covjson = json.load(f)
+        covjson["coverages"][0].pop("mars:metadata")
+        ds = Covjsonkit().decode(covjson).to_xarray()
+        data_vars = ["T"]
+        assert all(var in ds.data_vars for var in data_vars)
+
     def test_timeseries_to_xarray(self):
-        # decoder = Covjsonkit().decode(self.covjson)
-        # ds = decoder.to_xarray()
         # print(ds)
         # print(ds["Temperature"])
         # xrds.to_netcdf("timeseries.nc")

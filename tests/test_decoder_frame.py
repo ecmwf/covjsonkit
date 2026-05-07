@@ -314,3 +314,13 @@ class TestDecoder:
         # MARS metadata from the first coverage is attached as dataset attrs
         assert ds.attrs["step"] == "0"
         assert ds.attrs["class"] == "od"
+
+    def test_to_xarray_param_t_no_collision(self):
+        """to_xarray works with param 't' - no collision since dims use 'time'."""
+        decoder = Frame.Frame(self.covjson)
+        ds = decoder.to_xarray()
+
+        # Param 't' should be in data_vars (no collision with 'time' dim)
+        assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
+        # Time dimension is 'time', not 't'
+        assert "time" in ds.dims

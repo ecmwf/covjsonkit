@@ -1,0 +1,94 @@
+{
+    "type": "CoverageCollection",
+    "domainType": "VerticalProfile",
+    "coverages": [
+        {
+            "mars:metadata": {
+                "class": "od",
+                "Forecast date": "2026-05-06T18:00:00Z",
+                "expver": "0001",
+                "levelist": 100,
+                "levtype": "pl",
+                "model": "icon-ch1-eps",
+                "step": 0,
+                "stream": "enfo",
+                "timespan": "none",
+                "type": "cf",
+                "number": 0
+            },
+            "type": "Coverage",
+            "domain": {
+                "type": "Domain",
+                "axes": {
+                    "latitude": {
+                        "values": [
+                            47.45541763305664
+                        ]
+                    },
+                    "longitude": {
+                        "values": [
+                            8.560781121253967
+                        ]
+                    },
+                    "levelist": {
+                        "values": [
+                            100,
+                            150
+                        ]
+                    },
+                    "t": {
+                        "values": [
+                            "2026-05-06T18:00:00Z"
+                        ]
+                    }
+                }
+            },
+            "ranges": {
+                "t": {
+                    "type": "NdArray",
+                    "dataType": "float",
+                    "shape": [
+                        2
+                    ],
+                    "axisNames": [
+                        "levelist"
+                    ],
+                    "values": [
+                        218.3372802734375,
+                        219.89144897460938
+                    ]
+                }
+            }
+        }
+    ],
+    "referencing": [
+        {
+            "coordinates": [
+                "latitude",
+                "longitude",
+                "levelist"
+            ],
+            "system": {
+                "type": "GeographicCRS",
+                "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+            }
+        }
+    ],
+    "parameters": {
+        "t": {
+            "type": "Parameter",
+            "description": {
+                "en": null
+            },
+            "unit": {
+                "symbol": "K"
+            },
+            "observedProperty": {
+                "id": "t",
+                "label": {
+                    "en": "Temperature"
+                }
+            }
+        }
+    }
+}
