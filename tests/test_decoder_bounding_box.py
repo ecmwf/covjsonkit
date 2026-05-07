@@ -68,7 +68,7 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "t": {"values": ["2017-01-01T01:00:00"]},
+                            "t": {"values": ["2017-01-01T00:00:00"]},
                             "composite": {
                                 "dataType": "tuple",
                                 "coordinates": ["x", "y", "z"],
@@ -190,7 +190,7 @@ class TestDecoder:
         domain2 = {
             "type": "Domain",
             "axes": {
-                "t": {"values": ["2017-01-01T01:00:00"]},
+                "t": {"values": ["2017-01-01T00:00:00"]},
                 "composite": {
                     "dataType": "tuple",
                     "coordinates": ["x", "y", "z"],
@@ -263,7 +263,13 @@ class TestDecoder:
         }
         assert decoder.get_values() == values
 
-    # def test_bounding_box_to_xarray(self):
-    #    decoder = BoundingBox.BoundingBox(self.covjson)
-    #    dataset = decoder.to_xarray()
-    #    print(dataset)
+    def test_bounding_box_to_xarray_param_t(self):
+        """to_xarray works with param 't' - no collision since dims use 'datetimes'."""
+        decoder = BoundingBox.BoundingBox(self.covjson)
+        ds = decoder.to_xarray()
+
+        # Param 't' should be in data_vars (no collision with 'datetimes' dim)
+        assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
+        assert "p" in ds.data_vars
+        # Time dimension is 'datetimes', not 't'
+        assert "datetimes" in ds.dims
