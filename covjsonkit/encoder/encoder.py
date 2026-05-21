@@ -589,7 +589,7 @@ class Encoder(ABC):
                                     ]
                                 )
 
-    def walk_tree_month(self, tree, fields, coords, mars_metadata, range_dict):
+    def walk_tree_month(self, tree, fields, coords, mars_metadata, range_dict, _ctx=None):
         """Walk the result tree for monthly-mean streams (e.g. clmn).
 
         These streams use ``year`` and ``month`` axes instead of ``date``/``time``/``step``.
@@ -597,28 +597,21 @@ class Encoder(ABC):
         ``"YYYY-MM"`` that plays the same role as ``date`` does in the standard
         step-based tree walker.
 
-        Because the tree ordering can place ``month`` before ``year`` (or vice
-        versa), both axes are collected independently into ``fields["months"]``
-        and ``fields["years"]``.  The combined "YYYY-MM" keys are only built
-        once both are available — either when the second axis is encountered, or
-        at the leaf node.
+        Dates are accumulated in the order they are actually encountered during
+        tree traversal, so the ordering correctly reflects the tree structure
+        (e.g. month-major when the tree has month as the outer axis).
         """
+        if _ctx is None:
+            _ctx = {}
 
         def _year_month_key(year, month):
             return f"{int(year):04d}-{int(month):02d}"
 
-        def _ensure_date_keys():
-            """Populate ``fields["dates"]`` and ``coords`` once both year and
-            month values are known."""
-            if not fields.get("years") or not fields.get("months"):
-                return
-            for year in fields["years"]:
-                for month in fields["months"]:
-                    key = _year_month_key(year, month)
-                    if key not in fields["dates"]:
-                        fields["dates"].append(key)
-                    if key not in coords:
-                        coords[key] = {"composite": [], "t": [key]}
+        def _register_date_key(key):
+            if key not in fields["dates"]:
+                fields["dates"].append(key)
+            if key not in coords:
+                coords[key] = {"composite": [], "t": [key]}
 
         def handle_non_leaf_node_month(child):
             non_leaf_axes = ["latitude", "longitude", "param", "year", "month"]
@@ -651,6 +644,10 @@ class Encoder(ABC):
             for child in tree.children:
                 handle_non_leaf_node_month(child)
                 result = handle_specific_axes_month(child)
+
+                # Build a child context that inherits the current year/month
+                child_ctx = dict(_ctx)
+
                 if result is not None:
                     if child.axis.name == "latitude":
                         fields["lat"] = result
@@ -661,35 +658,78 @@ class Encoder(ABC):
                     elif child.axis.name == "param":
                         fields["param"] = result
                     elif child.axis.name == "year":
-                        fields["years"] = result
-                        _ensure_date_keys()
+                        fields["years"] = list(result) if fields.get("years") == [] else fields["years"]
+                        child_ctx["years"] = result
+                        child_ctx["_axis_order"] = _ctx.get("_axis_order", []) + ["year"]
+                        # If month is already fixed in context, register dates now.
+                        if "months" in _ctx:
+                            for y in result:
+                                for m in _ctx["months"]:
+                                    _register_date_key(_year_month_key(y, m))
                     elif child.axis.name == "month":
-                        fields["months"] = result
-                        _ensure_date_keys()
+                        fields["months"] = list(result) if fields.get("months") == [] else fields["months"]
+                        child_ctx["months"] = result
+                        # If year is already fixed in context, register dates now.
+                        if "years" in _ctx:
+                            for y in _ctx["years"]:
+                                for m in result:
+                                    _register_date_key(_year_month_key(y, m))
+                        # Track that month is the inner axis relative to year
+                        child_ctx["_axis_order"] = _ctx.get("_axis_order", []) + ["month"]
                     elif child.axis.name == "number":
                         fields["number"] = result
 
-                self.walk_tree_month(child, fields, coords, mars_metadata, range_dict)
+                self.walk_tree_month(child, fields, coords, mars_metadata, range_dict, _ctx=child_ctx)
         else:
-            # Leaf node — make sure date keys are built before processing.
-            _ensure_date_keys()
+            # Leaf node — ensure all (year, month) combinations from context are registered.
+            ctx_years = _ctx.get("years", fields.get("years", []))
+            ctx_months = _ctx.get("months", fields.get("months", []))
+            for y in ctx_years:
+                for m in ctx_months:
+                    _register_date_key(_year_month_key(y, m))
+
+            # Determine the dates in scope for this specific leaf. The loop order
+            # must match the actual tree axis order (outermost axis first) so that
+            # the flat result array is sliced correctly.
+            # _axis_order records axes in the order they were encountered top-down;
+            # the first entry is the outer axis at this leaf.
+            if ctx_years and ctx_months:
+                axis_order = _ctx.get("_axis_order", [])
+                # Default: if year was seen before month in the tree, year is outer.
+                year_is_outer = axis_order.index("year") < axis_order.index("month") if (
+                    "year" in axis_order and "month" in axis_order
+                ) else True
+                if year_is_outer:
+                    leaf_dates = [
+                        _year_month_key(y, m)
+                        for y in ctx_years
+                        for m in ctx_months
+                    ]
+                else:
+                    leaf_dates = [
+                        _year_month_key(y, m)
+                        for m in ctx_months
+                        for y in ctx_years
+                    ]
+            else:
+                leaf_dates = fields["dates"]
 
             tree.values = [float(val) for val in tree.values]
             if all(val is None for val in tree.result):
-                # Remove the last date entry that produced no data.
-                if fields["dates"]:
-                    last_date = fields["dates"][-1]
-                    fields["dates"] = fields["dates"][:-1]
+                # Remove date entries for this leaf that produced no data.
+                for key in leaf_dates:
+                    if key in fields["dates"]:
+                        fields["dates"].remove(key)
                     for level in fields["levels"]:
                         for num in fields["number"]:
                             for para in fields["param"]:
-                                key = (last_date, level, num, para)
-                                if key in range_dict:
-                                    del range_dict[key]
+                                rkey = (key, level, num, para)
+                                if rkey in range_dict:
+                                    del range_dict[rkey]
             else:
                 tree.result = [float(val) if val is not None else val for val in tree.result]
 
-                n_dates = len(fields["dates"])
+                n_dates = len(leaf_dates)
                 n_levels = len(fields["levels"])
                 n_params = len(fields["param"])
 
@@ -698,11 +738,11 @@ class Encoder(ABC):
                 para_len = level_len / n_params if n_params else level_len
 
                 # Append this leaf's longitude values to composite coords for
-                # every date key so spatial points are recorded.
-                for date in fields["dates"]:
+                # every date key in scope.
+                for date in leaf_dates:
                     append_composite_coords_month(date, tree.values, fields["lat"])
 
-                for d, date in enumerate(fields["dates"]):
+                for d, date in enumerate(leaf_dates):
                     for l, level in enumerate(fields["levels"]):  # noqa: E741
                         for i, num in enumerate(fields["number"]):
                             for j, para in enumerate(fields["param"]):
