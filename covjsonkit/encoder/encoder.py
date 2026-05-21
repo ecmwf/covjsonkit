@@ -696,21 +696,15 @@ class Encoder(ABC):
             if ctx_years and ctx_months:
                 axis_order = _ctx.get("_axis_order", [])
                 # Default: if year was seen before month in the tree, year is outer.
-                year_is_outer = axis_order.index("year") < axis_order.index("month") if (
-                    "year" in axis_order and "month" in axis_order
-                ) else True
+                year_is_outer = (
+                    axis_order.index("year") < axis_order.index("month")
+                    if ("year" in axis_order and "month" in axis_order)
+                    else True
+                )
                 if year_is_outer:
-                    leaf_dates = [
-                        _year_month_key(y, m)
-                        for y in ctx_years
-                        for m in ctx_months
-                    ]
+                    leaf_dates = [_year_month_key(y, m) for y in ctx_years for m in ctx_months]
                 else:
-                    leaf_dates = [
-                        _year_month_key(y, m)
-                        for m in ctx_months
-                        for y in ctx_years
-                    ]
+                    leaf_dates = [_year_month_key(y, m) for m in ctx_months for y in ctx_years]
             else:
                 leaf_dates = fields["dates"]
 
