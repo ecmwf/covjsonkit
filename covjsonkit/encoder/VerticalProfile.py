@@ -229,7 +229,7 @@ class VerticalProfile(Encoder):
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         mm["Forecast date"] = date
-                        mm["step"] = step
+                        mm["step"] = normalize_step_value(step)
                         # del mm["step"]
                         self.add_coverage(mm, coordinates[date][i][s], val_dict[step])
 
