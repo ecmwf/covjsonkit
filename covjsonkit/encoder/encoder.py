@@ -383,6 +383,17 @@ class Encoder(ABC):
             for value in tree_values:
                 coords[dates]["composite"].append([lat, value])
 
+        def collect_tags(tree, fields, count):
+            """Collect tags from leaf tree nodes into fields['identifiers']."""
+            if "identifiers" in fields:
+                tags = getattr(tree, "tags", None)
+                if tags:
+                    tag_list = sorted(tags, key=str)
+                else:
+                    tag_list = [None]
+                for _ in range(count):
+                    fields["identifiers"].append(tag_list)
+
         if len(tree.children) != 0:
             for child in tree.children:
                 handle_non_leaf_node(child)
@@ -426,6 +437,7 @@ class Encoder(ABC):
                 step_len = para_len / len(fields["step"])
 
                 append_composite_coords(fields["dates"][-1], tree.values, fields["lat"], coords)
+                collect_tags(tree, fields, len(tree.values))
 
                 for l, level in enumerate(fields["levels"]):  # noqa: E741
                     for i, num in enumerate(fields["number"]):
