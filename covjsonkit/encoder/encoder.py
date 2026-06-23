@@ -384,9 +384,9 @@ class Encoder(ABC):
                 coords[dates]["composite"].append([lat, value])
 
         def collect_tags(tree, fields, count):
-            """Collect tags from leaf tree nodes into fields['identifiers']."""
+            """Collect tags from the latitude node into fields['identifiers']."""
             if "identifiers" in fields:
-                tags = getattr(tree, "tags", None)
+                tags = fields.get("_lat_tags", None) or getattr(tree, "tags", None)
                 if tags:
                     tag_list = sorted(tags, key=str)
                 else:
@@ -401,6 +401,7 @@ class Encoder(ABC):
                 if result is not None:
                     if child.axis.name == "latitude":
                         fields["lat"] = result
+                        fields["_lat_tags"] = getattr(child, "tags", None)
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
                         if "l" in fields:
