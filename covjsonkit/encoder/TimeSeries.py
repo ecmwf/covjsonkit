@@ -143,6 +143,7 @@ class TimeSeries(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["identifiers"] = []
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -243,13 +244,22 @@ class TimeSeries(Encoder):
                                         f"Key {key} not found in range_dict. "
                                         f"Please ensure all axes are compressed in config"
                                     )
-                        mm = mars_metadata.copy()
-                        mm["number"] = num
-                        mm["Forecast date"] = date
-                        mm["levelist"] = level
-                        coordinates[date][i]["levelist"] = [level]
-                        del mm["step"]
-                        self.add_coverage(mm, coordinates[date][i], val_dict)
+                        # Determine identifiers for this point
+                        point_identifiers = [None]
+                        if fields["identifiers"] and i < len(fields["identifiers"]):
+                            point_identifiers = fields["identifiers"][i]
+
+                        # Emit one coverage per identifier (duplicates coverage for merged points)
+                        for identifier in point_identifiers:
+                            mm = mars_metadata.copy()
+                            mm["number"] = num
+                            mm["Forecast date"] = date
+                            mm["levelist"] = level
+                            if identifier is not None:
+                                mm["label"] = identifier
+                            coordinates[date][i]["levelist"] = [level]
+                            del mm["step"]
+                            self.add_coverage(mm, coordinates[date][i], val_dict)
 
         end = time.time()
         delta = end - start
