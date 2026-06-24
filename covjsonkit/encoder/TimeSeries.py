@@ -256,7 +256,7 @@ class TimeSeries(Encoder):
                             mm["Forecast date"] = date
                             mm["levelist"] = level
                             if identifier is not None:
-                                mm["identifier"] = identifier
+                                mm["label"] = identifier
                             coordinates[date][i]["levelist"] = [level]
                             del mm["step"]
                             self.add_coverage(mm, coordinates[date][i], val_dict)
