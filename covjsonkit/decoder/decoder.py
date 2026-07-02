@@ -122,3 +122,7 @@ class Decoder(ABC):
     @abstractmethod
     def to_geotiff(self):
         pass
+
+    @abstractmethod
+    def to_grib(self, output_path="output.grib", backend="auto"):
+        pass

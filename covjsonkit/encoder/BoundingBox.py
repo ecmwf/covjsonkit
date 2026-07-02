@@ -12,13 +12,15 @@ class BoundingBox(Encoder):
         self.covjson["domainType"] = "MultiPoint"
         self.covjson["coverages"] = []
 
-    def add_coverage(self, mars_metadata, coords, values):
+    def add_coverage(self, mars_metadata, coords, values, grid_metadata=None):
         new_coverage = {}
         new_coverage["mars:metadata"] = {}
         new_coverage["type"] = "Coverage"
         new_coverage["domain"] = {}
         new_coverage["ranges"] = {}
         self.add_mars_metadata(new_coverage, mars_metadata)
+        if grid_metadata:
+            new_coverage["mars:grid"] = grid_metadata
         self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
         self.covjson["coverages"].append(new_coverage)

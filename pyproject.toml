@@ -23,6 +23,9 @@ geo = [
     "rasterio",
     "shapely",
 ]
+grib = [
+    "eccodes",
+]
 tests = [
     "pytest",
     "polytope-python",

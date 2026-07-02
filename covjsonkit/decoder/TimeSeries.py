@@ -226,6 +226,9 @@ class TimeSeries(Decoder):
             and coverage["domain"]["axes"][self.z_name]["values"] == z
         )
 
+    def to_grib(self, output_path="output.grib", backend="auto"):
+        raise NotImplementedError("to_grib() is only supported for BoundingBox domains.")
+
     def _to_xarray_no_forecast_date(self):
         """Convert monthly-means CovJSON (no 'Forecast date' in metadata) to xarray.
 
