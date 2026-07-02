@@ -119,8 +119,16 @@ class BoundingBox(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result, date_key: str = "date") -> dict:
-        """Encode a polytope ``TensorIndexTree`` result into a MultiPoint (BoundingBox) CoverageJSON collection."""
+    def from_polytope(self, result, date_key: str = "date", grid_metadata=None) -> dict:
+        """Encode a polytope ``TensorIndexTree`` result into a MultiPoint (BoundingBox) CoverageJSON collection.
+
+        Args:
+            result: The polytope TensorIndexTree result.
+            date_key: The name of the date axis in the tree.
+            grid_metadata: Optional dict with grid geometry from polytope config
+                (e.g. ``{"gridType": "reduced_gg", "N": 1280}``). When provided,
+                stored as ``mars:grid`` on each coverage.
+        """
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -200,7 +208,7 @@ class BoundingBox(Encoder):
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
                     mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step])
+                    self.add_coverage(mm, coords[date], val_dict[step], grid_metadata=grid_metadata)
 
         return self.covjson
 

@@ -248,12 +248,36 @@ class TestToGribEnfo:
 
 
 class TestToGribExplicitGrid:
-    """Test with explicit mars:grid metadata injected into fixture."""
+    """Test with explicit mars:grid metadata (as polytope-mars would provide from config)."""
 
-    def test_explicit_grid_metadata(self, oper_covjson):
-        """When mars:grid is present, its values should be used instead of defaults."""
+    def test_octahedral_grid_from_config(self, oper_covjson):
+        """mars:grid from octahedral mapper config (type=octahedral, resolution=1280)."""
         covjson = copy.deepcopy(oper_covjson)
-        # Inject explicit grid metadata
+        # This is what polytope-mars _get_grid_metadata() produces for:
+        #   axis_name: values, transformations: [{name: mapper, type: octahedral, resolution: 1280}]
+        covjson["coverages"][0]["mars:grid"] = {
+            "gridType": "reduced_gg",
+            "N": 1280,
+        }
+
+        decoder = Covjsonkit().decode(covjson)
+        with tempfile.NamedTemporaryFile(suffix=".grib", delete=False) as tmp:
+            output = tmp.name
+        try:
+            decoder.to_grib(output, backend="eccodes")
+            messages = _read_grib_messages(output)
+            for msg in messages:
+                assert msg["gridType"] == "reduced_gg"
+                assert msg["numberOfDataPoints"] == 9
+        finally:
+            os.unlink(output)
+
+    def test_regular_ll_grid_from_config(self, oper_covjson):
+        """mars:grid from local_regular mapper config (e.g. EFAS)."""
+        covjson = copy.deepcopy(oper_covjson)
+        # This is what polytope-mars _get_grid_metadata() produces for:
+        #   axis_name: values, transformations: [{name: mapper, type: local_regular,
+        #     resolution: [2969, 4529], local: [22.76, 72.24, -25.24, 50.24]}]
         covjson["coverages"][0]["mars:grid"] = {
             "gridType": "regular_ll",
             "Ni": 3,
@@ -271,6 +295,23 @@ class TestToGribExplicitGrid:
             messages = _read_grib_messages(output)
             for msg in messages:
                 assert msg["gridType"] == "regular_ll"
+        finally:
+            os.unlink(output)
+
+    def test_no_grid_metadata_uses_defaults(self, oper_covjson):
+        """Without mars:grid, decoder falls back to reduced_gg N=1280 defaults."""
+        # oper_covjson has no mars:grid key — verify it uses defaults
+        assert "mars:grid" not in oper_covjson["coverages"][0]
+
+        decoder = Covjsonkit().decode(oper_covjson)
+        with tempfile.NamedTemporaryFile(suffix=".grib", delete=False) as tmp:
+            output = tmp.name
+        try:
+            decoder.to_grib(output, backend="eccodes")
+            messages = _read_grib_messages(output)
+            for msg in messages:
+                # Defaults applied
+                assert msg["gridType"] == "reduced_gg"
         finally:
             os.unlink(output)
 
