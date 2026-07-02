@@ -11,10 +11,10 @@ eccodes = pytest.importorskip("eccodes", reason="eccodes required for GRIB tests
 
 from covjsonkit.api import Covjsonkit  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def oper_covjson():
@@ -85,11 +85,13 @@ def _read_grib_messages(filepath):
 # Step 6 stub: other decoders raise NotImplementedError
 # ---------------------------------------------------------------------------
 
+
 class TestToGribStubs:
     """Verify that non-BoundingBox decoders raise NotImplementedError."""
 
     def test_timeseries_raises(self):
         from covjsonkit.decoder.TimeSeries import TimeSeries
+
         with pytest.raises(NotImplementedError):
             # We just need to call to_grib on the class — but we can't
             # instantiate without valid covjson, so test the method directly.
@@ -97,6 +99,7 @@ class TestToGribStubs:
 
     def test_vertical_profile_raises(self):
         from covjsonkit.decoder.VerticalProfile import VerticalProfile
+
         with pytest.raises(NotImplementedError):
             VerticalProfile.to_grib(None)
 
@@ -104,6 +107,7 @@ class TestToGribStubs:
 # ---------------------------------------------------------------------------
 # Core tests
 # ---------------------------------------------------------------------------
+
 
 class TestToGribOper:
     """Tests using the oper (no-ensemble) fixture."""

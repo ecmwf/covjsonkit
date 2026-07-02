@@ -91,9 +91,7 @@ def _read_all_grib_messages(filepath):
                     msg["longitudeOfFirstGridPointInDegrees"] = eccodes.codes_get(
                         gid, "longitudeOfFirstGridPointInDegrees"
                     )
-                    msg["latitudeOfLastGridPointInDegrees"] = eccodes.codes_get(
-                        gid, "latitudeOfLastGridPointInDegrees"
-                    )
+                    msg["latitudeOfLastGridPointInDegrees"] = eccodes.codes_get(gid, "latitudeOfLastGridPointInDegrees")
                     msg["longitudeOfLastGridPointInDegrees"] = eccodes.codes_get(
                         gid, "longitudeOfLastGridPointInDegrees"
                     )
@@ -376,7 +374,7 @@ if __name__ == "__main__":
         match, report = _compare_grib_files(mars_grib_path, covjson_grib_path)
         print(report)
 
-        print(f"\nFiles preserved for inspection:")
+        print("\nFiles preserved for inspection:")
         print(f"  MARS area GRIB:   {mars_grib_path}")
         print(f"  CovJSON→GRIB:     {covjson_grib_path}")
         print(f"  CoverageJSON:     {covjson_path}")

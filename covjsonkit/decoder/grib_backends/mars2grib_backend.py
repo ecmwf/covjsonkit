@@ -20,8 +20,7 @@ class Mars2GribBackend(GribBackend):
             from pymars2grib import Mars2Grib
         except ImportError:
             raise ImportError(
-                "pymars2grib is not installed. "
-                "Build metkit from source with pybind11 support to use this backend."
+                "pymars2grib is not installed. " "Build metkit from source with pybind11 support to use this backend."
             )
         self._encoder = Mars2Grib()
 

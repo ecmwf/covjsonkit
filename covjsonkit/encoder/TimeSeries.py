@@ -98,7 +98,6 @@ class TimeSeries(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 dv_dict = {}
