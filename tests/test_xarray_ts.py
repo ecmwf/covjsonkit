@@ -44,3 +44,12 @@ class TestPointSeriesXarray:
             covjson_result["coverages"][0]["ranges"]["2t"]["values"][0]
             == self.test_covjson_xyz["coverages"][0]["ranges"]["2t"]["values"][0]
         )
+        assert set(covjson_result["coverages"][0]["domain"]["axes"].keys()) == {"x", "y", "z", "t"}
+        assert covjson_result["referencing"] == [
+            {
+                "coordinates": ["x", "y"],
+                "system": {"type": "GeographicCRS", "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"},
+            },
+            {"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}},
+            {"coordinates": ["z"], "system": {"type": "VerticalCRS"}},
+        ]
