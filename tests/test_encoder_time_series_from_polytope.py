@@ -72,9 +72,8 @@ class TestTimeseriesFromPolytope:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [48.0]},
-            "longitude": {"values": [11.0]},
-            "levelist": {"values": [0]},
+            "x": {"values": [11.0]},
+            "y": {"values": [48.0]},
             "t": {"values": ["2025-01-01T00:00:00Z", "2025-01-01T06:00:00Z"]},
         }
 
@@ -83,7 +82,7 @@ class TestTimeseriesFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["t"],
                 "values": [264.931, 263.831],
             }
         }
@@ -99,6 +98,20 @@ class TestTimeseriesFromPolytope:
             "number": 0,
             "levelist": 0,
         }
+
+        assert covjson["referencing"] == [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
 
     def test_standard_forecast_multiple_coverages(self):
         # ce/efas/fc/sfc flood forecast: 2 dates × 2 steps × 2 points → 4 coverages
@@ -150,9 +163,8 @@ class TestTimeseriesFromPolytope:
         assert len(covjson["coverages"]) == len(expected)
         for cov, (lat, lon, t, vals, date) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
-                "latitude": {"values": [lat]},
-                "longitude": {"values": [lon]},
-                "levelist": {"values": [0]},
+                "x": {"values": [lon]},
+                "y": {"values": [lat]},
                 "t": {"values": t},
             }
             assert cov["ranges"]["dis06"]["values"] == vals
@@ -180,14 +192,13 @@ class TestTimeseriesFromPolytope:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [48.0]},
-            "longitude": {"values": [11.0]},
-            "levelist": {"values": [0]},
+            "x": {"values": [11.0]},
+            "y": {"values": [48.0]},
             "t": {"values": ["2025-01-01T00:00:00Z"]},
         }
         assert cov["ranges"] == {
-            "2t": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["2t"], "values": [264.9]},
-            "2d": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["2d"], "values": [250.1]},
+            "2t": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [264.9]},
+            "2d": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [250.1]},
         }
         assert cov["mars:metadata"] == {
             "class": "od",
@@ -200,6 +211,40 @@ class TestTimeseriesFromPolytope:
             "number": 0,
             "levelist": 0,
         }
+
+    def test_real_level_single_point(self):
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("od",)),
+            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("pl",)),
+            node("levelist", (850,)),
+            node("param", ("167",)),
+            node("step", (0,)),
+            node("stream", ("oper",)),
+            node("type", ("fc",)),
+            make_point(48.0, 11.0, [264.931]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
+
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+
+        assert cov["domain"]["axes"] == {
+            "x": {"values": [11.0]},
+            "y": {"values": [48.0]},
+            "z": {"values": [850]},
+            "t": {"values": ["2025-01-01T00:00:00Z"]},
+        }
+        assert covjson["referencing"][-1] == {
+            "coordinates": ["z"],
+            "system": {"type": "VerticalCRS"},
+        }
+        assert cov["ranges"]["2t"]["axisNames"] == ["t"]
+        assert cov["mars:metadata"]["levelist"] == 850
 
 
 class TestTimeseriesFromPolytopeReforecast:
@@ -220,9 +265,8 @@ class TestTimeseriesFromPolytopeReforecast:
 
         # t = hdate(2025-07-14T06:00) + step(6h) = 2025-07-14T12:00:00Z
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [51.5]},
-            "longitude": {"values": [6.5]},
-            "levelist": {"values": [0]},
+            "x": {"values": [6.5]},
+            "y": {"values": [51.5]},
             "t": {"values": ["2025-07-14T12:00:00Z"]},
         }
 
@@ -231,7 +275,7 @@ class TestTimeseriesFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [1],
-                "axisNames": ["dis06"],
+                "axisNames": ["t"],
                 "values": [42.17],
             }
         }
@@ -302,9 +346,8 @@ class TestTimeseriesFromPolytopeReforecast:
         assert len(covjson["coverages"]) == len(expected)
         for cov, (lat, lon, vals) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
-                "latitude": {"values": [lat]},
-                "longitude": {"values": [lon]},
-                "levelist": {"values": [0]},
+                "x": {"values": [lon]},
+                "y": {"values": [lat]},
                 "t": {"values": ["2025-07-14T12:00:00Z"]},
             }
             assert cov["ranges"]["dis06"]["values"] == vals
@@ -338,7 +381,7 @@ class TestTimeseriesFromPolytopeReforecast:
         ]
         assert len(covjson["coverages"]) == len(expected)
         for cov, (lat, t, vals, fc_date) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"]["latitude"]["values"] == [lat]
+            assert cov["domain"]["axes"]["y"]["values"] == [lat]
             assert cov["domain"]["axes"]["t"]["values"] == t
             assert cov["ranges"]["dis06"]["values"] == vals
             assert cov["mars:metadata"] == {"Forecast date": fc_date, **EXPECTED_HDATE_METADATA}
@@ -372,9 +415,8 @@ class TestTimeseriesFromPolytopeReforecast:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [51.5]},
-            "longitude": {"values": [6.5]},
-            "levelist": {"values": [0]},
+            "x": {"values": [6.5]},
+            "y": {"values": [51.5]},
             "t": {"values": ["2025-07-14T12:00:00Z", "2025-07-14T18:00:00Z"]},
         }
         assert cov["ranges"]["dis06"]["values"] == [42.17, 55.30]
@@ -409,14 +451,13 @@ class TestTimeseriesFromPolytopeReforecast:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [51.5]},
-            "longitude": {"values": [6.5]},
-            "levelist": {"values": [0]},
+            "x": {"values": [6.5]},
+            "y": {"values": [51.5]},
             "t": {"values": ["2025-07-14T12:00:00Z"]},
         }
         assert cov["ranges"] == {
-            "dis06": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["dis06"], "values": [42.17]},
-            "rowe": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["rowe"], "values": [99.5]},
+            "dis06": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [42.17]},
+            "rowe": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [99.5]},
         }
         assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **EXPECTED_HDATE_METADATA}
 
@@ -492,3 +533,99 @@ class TestTimeseriesFromPolytopeReforecast:
         # Round-trip through the JSON module to ensure it can be deserialised back to a dict
         deserialised = json_module.loads(serialised)
         assert deserialised == covjson
+
+
+class TestTimeseriesFromPolytopeMonthly:
+    def test_monthly_surface_x_y_t(self):
+        """from_polytope_month: one year, two months, surface → x/y/t axes, no z, two references."""
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("d1",)),
+            node("stream", ("clmn",)),
+            node("levtype", ("sfc",)),
+            node("number", (0,)),
+            node("year", (2020,)),
+            node("month", (2, 3)),
+            node("param", ("167",)),
+            make_point(48.0, 11.0, [300.0, 301.0]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_month(tree)
+
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+
+        assert set(cov["domain"]["axes"].keys()) == {"x", "y", "t"}
+        assert cov["domain"]["axes"]["x"] == {"values": [11.0]}
+        assert cov["domain"]["axes"]["y"] == {"values": [48.0]}
+        assert "z" not in cov["domain"]["axes"]
+        assert cov["domain"]["axes"]["t"]["values"] == [
+            "2020-02-01T00:00:00Z",
+            "2020-03-01T00:00:00Z",
+        ]
+
+        assert cov["ranges"]["2t"]["axisNames"] == ["t"]
+        assert cov["ranges"]["2t"]["shape"] == [2]
+
+        assert covjson["referencing"] == [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
+
+
+class TestTimeseriesFromPolytopeStep:
+    def test_step_surface_x_y_t(self):
+        """from_polytope_step: one date, two time offsets, surface → x/y/t axes, no z, two references."""
+        from datetime import timedelta
+
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("od",)),
+            node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("param", ("167",)),
+            node("step", (0,)),
+            node("stream", ("oper",)),
+            node("type", ("fc",)),
+            node("time", (timedelta(0), timedelta(hours=6))),
+            make_point(48.0, 11.0, [264.0, 263.0]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_step(tree)
+
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+
+        assert set(cov["domain"]["axes"].keys()) == {"x", "y", "t"}
+        assert cov["domain"]["axes"]["x"] == {"values": [11.0]}
+        assert cov["domain"]["axes"]["y"] == {"values": [48.0]}
+        assert "z" not in cov["domain"]["axes"]
+        assert len(cov["domain"]["axes"]["t"]["values"]) == 2
+
+        assert cov["ranges"]["2t"]["axisNames"] == ["t"]
+        assert cov["ranges"]["2t"]["shape"] == [2]
+
+        assert covjson["referencing"] == [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]

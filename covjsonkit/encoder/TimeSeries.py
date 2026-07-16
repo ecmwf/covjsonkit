@@ -53,6 +53,53 @@ class TimeSeries(Encoder):
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
+    def _set_references(self, include_z):
+        refs = [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
+        if include_z:
+            refs.append(
+                {
+                    "coordinates": ["z"],
+                    "system": {"type": "VerticalCRS"},
+                }
+            )
+        self.covjson["referencing"] = refs
+
+    def _add_coverage_from_tree(self, mars_metadata, coords, values, include_z):
+        new_coverage = {}
+        new_coverage["mars:metadata"] = mars_metadata
+        new_coverage["type"] = "Coverage"
+        domain_axes = {
+            "x": {"values": coords["longitude"]},
+            "y": {"values": coords["latitude"]},
+        }
+        if include_z:
+            domain_axes["z"] = {"values": coords["levelist"]}
+        domain_axes["t"] = {"values": coords["t"]}
+        new_coverage["domain"] = {"type": "Domain", "axes": domain_axes}
+        new_coverage["ranges"] = {}
+        for parameter in values.keys():
+            param = self.convert_param_id_to_param(parameter)
+            new_coverage["ranges"][param] = {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [len(values[parameter])],
+                "axisNames": ["t"],
+                "values": values[parameter],
+            }
+        self.covjson["coverages"].append(new_coverage)
+
     def from_xarray(self, datasets):
         """
         Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON
@@ -143,6 +190,7 @@ class TimeSeries(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -155,15 +203,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         coordinates = {}
 
@@ -249,7 +290,7 @@ class TimeSeries(Encoder):
                         mm["levelist"] = level
                         coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
-                        self.add_coverage(mm, coordinates[date][i], val_dict)
+                        self._add_coverage_from_tree(mm, coordinates[date][i], val_dict, include_z)
 
         end = time.time()
         delta = end - start
@@ -276,6 +317,7 @@ class TimeSeries(Encoder):
         fields["months"] = []
         fields["dates"] = []  # populated as "YYYY-MM" keys once both year and month are seen
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)
@@ -287,15 +329,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
@@ -361,7 +396,7 @@ class TimeSeries(Encoder):
                     coord_entry = coordinates[first_date][i].copy()
                     coord_entry["levelist"] = [level]
                     coord_entry["t"] = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
-                    self.add_coverage(mm, coord_entry, val_dict)
+                    self._add_coverage_from_tree(mm, coord_entry, val_dict, include_z)
 
         end = time.time()
         logging.debug("Coverage creation ends: %s", end)
@@ -381,6 +416,7 @@ class TimeSeries(Encoder):
         fields["dates"] = []
         fields["levels"] = [0]
         fields["times"] = []
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -393,15 +429,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         coordinates = {}
 
@@ -465,7 +494,12 @@ class TimeSeries(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
-                    self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
+                    self._add_coverage_from_tree(
+                        mm,
+                        coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)],
+                        val_dict,
+                        include_z,
+                    )
 
         end = time.time()
         delta = end - start

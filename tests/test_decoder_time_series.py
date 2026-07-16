@@ -25,9 +25,9 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "latitude": {"values": [3]},
-                            "longitude": {"values": [7]},
-                            "levelist": {"values": [1]},
+                            "x": {"values": [7]},
+                            "y": {"values": [3]},
+                            "z": {"values": [1]},
                             "t": {
                                 "values": [
                                     "2017-01-01 00:00:00",
@@ -75,9 +75,9 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "latitude": {"values": [3]},
-                            "longitude": {"values": [7]},
-                            "levelist": {"values": [1]},
+                            "x": {"values": [7]},
+                            "y": {"values": [3]},
+                            "z": {"values": [1]},
                             "t": {
                                 "values": [
                                     "2017-01-02 00:00:00",
@@ -115,12 +115,20 @@ class TestDecoder:
             ],
             "referencing": [
                 {
-                    "coordinates": ["x", "y", "z"],
+                    "coordinates": ["x", "y"],
                     "system": {
                         "type": "GeographicCRS",
                         "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                     },
-                }
+                },
+                {
+                    "coordinates": ["t"],
+                    "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+                },
+                {
+                    "coordinates": ["z"],
+                    "system": {"type": "VerticalCRS"},
+                },
             ],
             "parameters": {
                 "t": {
@@ -150,7 +158,7 @@ class TestDecoder:
 
     def test_timeseries_referencing(self):
         decoder = Covjsonkit().decode(self.covjson)
-        assert decoder.get_referencing() == ["x", "y", "z"]
+        assert decoder.get_referencing() == ["x", "y", "t", "z"]
 
     def test_timeseries_mars_metadata(self):
         decoder = Covjsonkit().decode(self.covjson)
@@ -177,9 +185,9 @@ class TestDecoder:
         domain1 = {
             "type": "Domain",
             "axes": {
-                "latitude": {"values": [3]},
-                "longitude": {"values": [7]},
-                "levelist": {"values": [1]},
+                "x": {"values": [7]},
+                "y": {"values": [3]},
+                "z": {"values": [1]},
                 "t": {
                     "values": [
                         "2017-01-01 00:00:00",
@@ -193,9 +201,9 @@ class TestDecoder:
         domain2 = {
             "type": "Domain",
             "axes": {
-                "latitude": {"values": [3]},
-                "longitude": {"values": [7]},
-                "levelist": {"values": [1]},
+                "x": {"values": [7]},
+                "y": {"values": [3]},
+                "z": {"values": [1]},
                 "t": {
                     "values": [
                         "2017-01-02 00:00:00",
@@ -342,9 +350,8 @@ class TestDecoder:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "latitude": {"values": [9.896853442816]},
-                            "longitude": {"values": [9.84375]},
-                            "levelist": {"values": [0]},
+                            "x": {"values": [9.84375]},
+                            "y": {"values": [9.896853442816]},
                             "t": {
                                 "values": [
                                     "2020-02-01T00:00:00Z",
@@ -358,7 +365,7 @@ class TestDecoder:
                             "type": "NdArray",
                             "dataType": "float",
                             "shape": [2],
-                            "axisNames": ["mean2t"],
+                            "axisNames": ["t"],
                             "values": [300.34325408935547, 301.6697769165039],
                         }
                     },
@@ -366,12 +373,16 @@ class TestDecoder:
             ],
             "referencing": [
                 {
-                    "coordinates": ["latitude", "longitude", "levelist"],
+                    "coordinates": ["x", "y"],
                     "system": {
                         "type": "GeographicCRS",
                         "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                     },
-                }
+                },
+                {
+                    "coordinates": ["t"],
+                    "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+                },
             ],
             "parameters": {
                 "mean2t": {

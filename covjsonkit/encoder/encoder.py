@@ -392,6 +392,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
@@ -505,6 +507,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
@@ -653,6 +657,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
