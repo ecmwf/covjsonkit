@@ -1,6 +1,8 @@
 import json
 import os
 
+import numpy as np
+
 from covjsonkit.api import Covjsonkit
 
 
@@ -64,3 +66,26 @@ class TestMultipointXarray:
         assert "t" in ds.data_vars, f"Expected 't' in data_vars, got {list(ds.data_vars)}"
         # Time dimension is 'datetimes', not 't'
         assert "datetimes" in ds.dims
+
+
+class TestMultiPointSeriesXarray:
+    def test_to_xarray_groups_number_and_forecast_date(self):
+        current_dir = os.path.dirname(__file__)
+        file_path = os.path.join(current_dir, "data/test_multipointseries_coverage.json")
+        with open(file_path, "r") as f:
+            covjson = json.load(f)
+
+        dataset = Covjsonkit().decode(covjson).to_xarray()
+
+        assert dataset.sizes == {"number": 2, "datetime": 2, "t": 2, "points": 2}
+        assert dataset.longitude.values.tolist() == [10.0, 20.0]
+        assert dataset.latitude.values.tolist() == [50.0, 60.0]
+        assert dataset.number.values.tolist() == [0, 1]
+        np.testing.assert_array_equal(
+            dataset.datetime.values,
+            [np.datetime64("2025-01-01T00:00:00"), np.datetime64("2025-01-02T00:00:00")],
+        )
+        assert dataset["T"].values.tolist() == [
+            [[[100.0, 101.0], [102.0, 103.0]], [[200.0, 201.0], [202.0, 203.0]]],
+            [[[110.0, 111.0], [112.0, 113.0]], [[210.0, 211.0], [212.0, 213.0]]],
+        ]

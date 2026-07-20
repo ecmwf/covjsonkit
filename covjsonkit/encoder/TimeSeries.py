@@ -48,6 +48,42 @@ class TimeSeries(Encoder):
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]
 
+    def _select_domain_type(self, points, include_z):
+        is_multi_point = points > 1
+        self.covjson["domainType"] = "MultiPointSeries" if is_multi_point else "PointSeries"
+        self._set_references(include_z)
+        return is_multi_point
+
+    def _add_multi_point_coverage(self, mars_metadata, t_values, composite_values, values):
+        coverage = {"mars:metadata": {}, "type": "Coverage", "domain": {"type": "Domain"}, "ranges": {}}
+        self.add_mars_metadata(coverage, mars_metadata)
+        coverage["domain"]["axes"] = {
+            "t": {"values": t_values},
+            "composite": {
+                "dataType": "tuple",
+                "coordinates": ["x", "y", "z"] if len(composite_values[0]) == 3 else ["x", "y"],
+                "values": composite_values,
+            },
+        }
+        for parameter, parameter_values in values.items():
+            param = self.convert_param_id_to_param(parameter)
+            coverage["ranges"][param] = {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [len(t_values), len(composite_values)],
+                "axisNames": ["t", "composite"],
+                "values": parameter_values,
+            }
+        self.covjson["coverages"].append(coverage)
+
+    @staticmethod
+    def _flatten_time_major(point_values):
+        return [value for values_at_time in zip(*point_values) for value in values_at_time]
+
+    @staticmethod
+    def _composite_values(points, level, include_z):
+        return [[longitude, latitude, level] if include_z else [longitude, latitude] for latitude, longitude in points]
+
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
@@ -162,7 +198,6 @@ class TimeSeries(Encoder):
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
         include_z = fields["has_level_axis"]
-        self._set_references(include_z)
 
         coordinates = {}
 
@@ -175,6 +210,7 @@ class TimeSeries(Encoder):
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
         points = len(coords[fields["dates"][0]]["composite"])
+        is_multi_point = self._select_domain_type(points, include_z)
 
         for date in fields["dates"]:
             coordinates[date] = []
@@ -222,33 +258,56 @@ class TimeSeries(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        if is_multi_point:
             for date in fields["dates"]:
                 for level in fields["levels"]:
                     for num in fields["number"]:
                         val_dict = {}
                         for para in fields["param"]:
-                            val_dict[para] = []
-                            for step in fields["step"]:
-                                key = (date, level, num, para, step)
-                                try:
-                                    val_dict[para].append(range_dict[key][i])
-                                except IndexError:
-                                    logging.debug(
-                                        f"Index {i} out of range for key {key} in range_dict. "
-                                        f"Available keys: {list(range_dict.keys())}"
-                                    )
-                                    raise IndexError(
-                                        f"Key {key} not found in range_dict. "
-                                        f"Please ensure all axes are compressed in config"
-                                    )
+                            point_values = [
+                                [range_dict[(date, level, num, para, step)][i] for step in fields["step"]]
+                                for i in range(points)
+                            ]
+                            val_dict[para] = self._flatten_time_major(point_values)
                         mm = mars_metadata.copy()
                         mm["number"] = num
                         mm["Forecast date"] = date
                         mm["levelist"] = level
-                        coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
-                        self.add_coverage(mm, coordinates[date][i], val_dict, include_z)
+                        self._add_multi_point_coverage(
+                            mm,
+                            coordinates[date][0]["t"],
+                            self._composite_values(coords[date]["composite"], level, include_z),
+                            val_dict,
+                        )
+        else:
+            for i, point in enumerate(range(points)):
+                for date in fields["dates"]:
+                    for level in fields["levels"]:
+                        for num in fields["number"]:
+                            val_dict = {}
+                            for para in fields["param"]:
+                                val_dict[para] = []
+                                for step in fields["step"]:
+                                    key = (date, level, num, para, step)
+                                    try:
+                                        val_dict[para].append(range_dict[key][i])
+                                    except IndexError:
+                                        logging.debug(
+                                            f"Index {i} out of range for key {key} in range_dict. "
+                                            f"Available keys: {list(range_dict.keys())}"
+                                        )
+                                        raise IndexError(
+                                            f"Key {key} not found in range_dict. "
+                                            f"Please ensure all axes are compressed in config"
+                                        )
+                            mm = mars_metadata.copy()
+                            mm["number"] = num
+                            mm["Forecast date"] = date
+                            mm["levelist"] = level
+                            coordinates[date][i]["levelist"] = [level]
+                            del mm["step"]
+                            self.add_coverage(mm, coordinates[date][i], val_dict, include_z)
 
         end = time.time()
         delta = end - start
@@ -288,7 +347,6 @@ class TimeSeries(Encoder):
         logging.debug("Coords creation: %s", start)
 
         include_z = fields["has_level_axis"]
-        self._set_references(include_z)
 
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
@@ -302,6 +360,7 @@ class TimeSeries(Encoder):
             raise ValueError("No year/month data was found in the result tree.")
         first_date = fields["dates"][0]
         points = len(coords[first_date]["composite"])
+        is_multi_point = self._select_domain_type(points, include_z)
 
         # Build coordinate structures: one entry per spatial point per date.
         coordinates = {}
@@ -329,32 +388,52 @@ class TimeSeries(Encoder):
         logging.debug("The fields retrieved were: %s", fields)
         logging.debug("The range_dict created was: %s", range_dict)
 
-        for i in range(points):
-            for j, level in enumerate(fields["levels"]):
+        if is_multi_point:
+            for level in fields["levels"]:
                 for num in fields["number"]:
                     val_dict = {}
                     for para in fields["param"]:
-                        val_dict[para] = []
-                        for date in fields["dates"]:
-                            key = (date, level, num, para)
-                            try:
-                                val_dict[para].extend(range_dict[key][i])
-                            except (KeyError, IndexError) as exc:
-                                logging.debug(
-                                    "Key %s not found or index %s out of range in range_dict: %s",
-                                    key,
-                                    i,
-                                    exc,
-                                )
-                                raise
+                        point_values = [
+                            [range_dict[(date, level, num, para)][i][0] for date in fields["dates"]]
+                            for i in range(points)
+                        ]
+                        val_dict[para] = self._flatten_time_major(point_values)
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["levelist"] = level
-                    # Use all date keys as the time series for this coverage.
-                    coord_entry = coordinates[first_date][i].copy()
-                    coord_entry["levelist"] = [level]
-                    coord_entry["t"] = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
-                    self.add_coverage(mm, coord_entry, val_dict, include_z)
+                    self._add_multi_point_coverage(
+                        mm,
+                        [f"{date}-01T00:00:00Z" for date in fields["dates"]],
+                        self._composite_values(coords[first_date]["composite"], level, include_z),
+                        val_dict,
+                    )
+        else:
+            for i in range(points):
+                for j, level in enumerate(fields["levels"]):
+                    for num in fields["number"]:
+                        val_dict = {}
+                        for para in fields["param"]:
+                            val_dict[para] = []
+                            for date in fields["dates"]:
+                                key = (date, level, num, para)
+                                try:
+                                    val_dict[para].extend(range_dict[key][i])
+                                except (KeyError, IndexError) as exc:
+                                    logging.debug(
+                                        "Key %s not found or index %s out of range in range_dict: %s",
+                                        key,
+                                        i,
+                                        exc,
+                                    )
+                                    raise
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["levelist"] = level
+                        # Use all date keys as the time series for this coverage.
+                        coord_entry = coordinates[first_date][i].copy()
+                        coord_entry["levelist"] = [level]
+                        coord_entry["t"] = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
+                        self.add_coverage(mm, coord_entry, val_dict, include_z)
 
         end = time.time()
         logging.debug("Coverage creation ends: %s", end)
@@ -388,7 +467,6 @@ class TimeSeries(Encoder):
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
         include_z = fields["has_level_axis"]
-        self._set_references(include_z)
 
         coordinates = {}
 
@@ -400,6 +478,7 @@ class TimeSeries(Encoder):
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
 
         points = len(coords[fields["dates"][0]]["composite"])
+        is_multi_point = self._select_domain_type(points, include_z)
 
         for step in fields["step"]:
             coordinates[fields["dates"][0]] = []
@@ -437,27 +516,45 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
-            for j, level in enumerate(fields["levels"]):
-                for num in fields["number"]:
-                    val_dict = {}
-                    for para in fields["param"]:
-                        val_dict[para] = []
-                        for date in fields["dates"]:
-                            key = (date, level, num, para)
-                            # for k, v in range_dict.items():
-                            #    if k == key:
-                            # val_dict[para].append(v[0])
-                            val_dict[para].extend(range_dict[key][i])
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["Forecast date"] = date
-                    self.add_coverage(
-                        mm,
-                        coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)],
-                        val_dict,
-                        include_z,
-                    )
+        if is_multi_point:
+            for date in fields["dates"]:
+                for level in fields["levels"]:
+                    for num in fields["number"]:
+                        val_dict = {}
+                        for para in fields["param"]:
+                            point_values = [range_dict[(date, level, num, para)][i] for i in range(points)]
+                            val_dict[para] = self._flatten_time_major(point_values)
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        self._add_multi_point_coverage(
+                            mm,
+                            [str(pd.Timestamp(date) + time).split("+")[0] + "Z" for time in fields["times"]],
+                            self._composite_values(coords[date]["composite"], level, include_z),
+                            val_dict,
+                        )
+        else:
+            for i, point in enumerate(range(points)):
+                for j, level in enumerate(fields["levels"]):
+                    for num in fields["number"]:
+                        val_dict = {}
+                        for para in fields["param"]:
+                            val_dict[para] = []
+                            for date in fields["dates"]:
+                                key = (date, level, num, para)
+                                # for k, v in range_dict.items():
+                                #    if k == key:
+                                # val_dict[para].append(v[0])
+                                val_dict[para].extend(range_dict[key][i])
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        self.add_coverage(
+                            mm,
+                            coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)],
+                            val_dict,
+                            include_z,
+                        )
 
         end = time.time()
         delta = end - start

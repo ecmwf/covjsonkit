@@ -6,6 +6,7 @@ import covjsonkit.decoder.BoundingBox
 import covjsonkit.decoder.Circle
 import covjsonkit.decoder.Frame
 import covjsonkit.decoder.Grid
+import covjsonkit.decoder.MultiPointSeries
 import covjsonkit.decoder.Path
 import covjsonkit.decoder.Position
 import covjsonkit.decoder.Shapefile
@@ -47,6 +48,7 @@ features_decoder = {
     "polygon": covjsonkit.decoder.Wkt.Wkt,
     "circle": covjsonkit.decoder.Circle.Circle,
     "grid": covjsonkit.decoder.Grid.Grid,
+    "multipointseries": covjsonkit.decoder.MultiPointSeries.MultiPointSeries,
     "position": covjsonkit.decoder.Position.Position,
 }
 

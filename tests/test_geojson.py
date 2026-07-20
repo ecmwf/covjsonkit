@@ -31,6 +31,10 @@ class TestGeojsonConversion:
         with open(multipoint, "r") as f:
             self.multipoint = json.load(f)
 
+        multipointseries = os.path.join(current_dir, "data/test_multipointseries_coverage.json")
+        with open(multipointseries, "r") as f:
+            self.multipointseries = json.load(f)
+
     def test_geojson_timeseries(self):
         cov = Covjsonkit().decode(self.timeseries)
         ts = cov.to_geojson()
@@ -70,3 +74,16 @@ class TestGeojsonConversion:
         mp = cov.to_geojson()
         assert mp["type"] == "FeatureCollection"
         assert len(mp["features"]) == 36
+
+    def test_geojson_multipointseries(self):
+        geojson = Covjsonkit().decode(self.multipointseries).to_geojson()
+
+        assert geojson["type"] == "FeatureCollection"
+        assert len(geojson["features"]) == 16
+        assert geojson["features"][0]["geometry"]["coordinates"] == [10.0, 50.0]
+        assert geojson["features"][1]["geometry"]["coordinates"] == [20.0, 60.0]
+        assert geojson["features"][2]["properties"] == {
+            "t": 102.0,
+            "datetime": "2025-01-01T06:00:00Z",
+            "mars:metadata": {"number": 0, "Forecast date": "2025-01-01T00:00:00Z"},
+        }
