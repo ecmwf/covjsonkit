@@ -323,13 +323,26 @@ class TestToGribExplicitGrid:
 class TestBackendSelection:
     """Test backend factory behaviour."""
 
-    def test_auto_selects_eccodes(self):
-        """With pymars2grib unavailable, auto should fall back to eccodes."""
+    def test_auto_selects_available_backend(self):
+        """Auto picks mars2grib if importable, otherwise eccodes."""
         from covjsonkit.decoder.grib_backends import get_backend
         from covjsonkit.decoder.grib_backends.eccodes_backend import EccodesBackend
 
         backend = get_backend("auto")
-        assert isinstance(backend, EccodesBackend)
+        try:
+            from covjsonkit.decoder.grib_backends.mars2grib_backend import (
+                Mars2GribBackend,
+            )
+
+            # pymars2grib available → auto should give mars2grib
+            try:
+                import pymars2grib  # noqa: F401
+
+                assert isinstance(backend, Mars2GribBackend)
+            except ImportError:
+                assert isinstance(backend, EccodesBackend)
+        except ImportError:
+            assert isinstance(backend, EccodesBackend)
 
     def test_explicit_eccodes(self):
         """Explicitly requesting eccodes should work."""
@@ -340,11 +353,16 @@ class TestBackendSelection:
         assert isinstance(backend, EccodesBackend)
 
     def test_mars2grib_raises_when_unavailable(self):
-        """Explicitly requesting mars2grib should raise if not installed."""
+        """Explicitly requesting mars2grib should raise if pymars2grib absent."""
         from covjsonkit.decoder.grib_backends import get_backend
 
-        with pytest.raises(ImportError, match="pymars2grib"):
-            get_backend("mars2grib")
+        try:
+            import pymars2grib  # noqa: F401
+
+            pytest.skip("pymars2grib is installed — this test only runs without it")
+        except ImportError:
+            with pytest.raises(ImportError, match="pymars2grib"):
+                get_backend("mars2grib")
 
 
 class TestBuildHelpers:
