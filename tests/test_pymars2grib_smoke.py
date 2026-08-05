@@ -17,6 +17,17 @@ Run from the Python 3.11 venv where pymars2grib is importable:
 import os
 import tempfile
 
+import pytest
+
+# pymars2grib requires a locally-built metkit bundle (see mars2grib-bundle/).
+# Skip the whole module in CI environments where it isn't available.
+pymars2grib = pytest.importorskip(
+    "pymars2grib",
+    reason="pymars2grib is not installed; build metkit from source "
+    "(see mars2grib-bundle/) to enable these smoke tests",
+)
+pytest.importorskip("eccodes", reason="eccodes required for section-3 overwrite")
+
 
 def test_pymars2grib_basic_encode():
     """Verify pymars2grib can encode and eccodes can overwrite section 3."""

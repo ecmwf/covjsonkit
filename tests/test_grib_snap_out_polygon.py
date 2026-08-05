@@ -154,10 +154,10 @@ def test_polygon_wrap_matches_mars_area(shape):
         mars_norm = [(lat, _normalise_lon(lon)) for lat, lon in mars_pts]
         poly_norm = [(lat, _normalise_lon(lon)) for lat, lon in poly_pts]
         print(
-            f"  MARS lon range (norm):     " f"[{min(l for _, l in mars_norm):.6f}, {max(l for _, l in mars_norm):.6f}]"
+            f"  MARS lon range (norm):     " f"[{min(x for _, x in mars_norm):.6f}, {max(x for _, x in mars_norm):.6f}]"
         )
         print(
-            f"  Polygon lon range (norm):  " f"[{min(l for _, l in poly_norm):.6f}, {max(l for _, l in poly_norm):.6f}]"
+            f"  Polygon lon range (norm):  " f"[{min(x for _, x in poly_norm):.6f}, {max(x for _, x in poly_norm):.6f}]"
         )
 
         # Pair by nearest neighbour on normalised coords
