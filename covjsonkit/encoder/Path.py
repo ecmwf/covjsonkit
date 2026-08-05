@@ -160,13 +160,17 @@ class Path(Encoder):
                     if (date, level, fields["number"][0], fields["param"][0], s) in range_dict:
                         cor_len = len(range_dict[(date, level, fields["number"][0], fields["param"][0], s)])
                         end = start + cor_len
+                        # Normalize the step value before it is placed into the composite (t)
+                        # coordinate so that timedelta/Timedelta values are JSON serialisable.
+                        # The original ``s`` is kept for the range_dict lookups above.
+                        s_norm = normalize_step_value(s)
                         if len(fields["levels"]) != 1:
                             for lev in fields["levels"]:
                                 for cor in coord[int(start) : int(end)]:
-                                    coords[date]["composite"].append([s, cor[0], cor[1], lev])
+                                    coords[date]["composite"].append([s_norm, cor[0], cor[1], lev])
                         else:
                             for cor in coord[int(start) : int(end)]:
-                                coords[date]["composite"].append([s, cor[0], cor[1], level])
+                                coords[date]["composite"].append([s_norm, cor[0], cor[1], level])
                         start = end
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 

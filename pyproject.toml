@@ -1,5 +1,19 @@
 [tool.black]
 line-length = 120
+
+# Align ruff (run by the shared downstream-ci QA job) with the repo's existing
+# black / isort / flake8 configuration so it does not introduce a second,
+# conflicting style standard. Mirrors tox.ini's [flake8] settings.
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+extend-ignore = ["E203"]  # matches flake8 extend-ignore (W503 is not a ruff rule)
+
+[tool.ruff.lint.per-file-ignores]
+"*/__init__.py" = ["F401", "F403"]
+
 [build-system]
 requires = ["setuptools>=61.0","setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
