@@ -1,6 +1,9 @@
 import numpy as np
 from polytope_feature.datacube.datacube_axis import IntDatacubeAxis
-from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
+from polytope_feature.datacube.tensor_index_tree import (
+    MergedTensorIndexNode,
+    TensorIndexTree,
+)
 
 # -- Shared constants for reforecast tests --
 
@@ -61,14 +64,32 @@ def make_point(lat, lon, result):
     return lat_n
 
 
-def forecast_tree(points, param="167", step=(0,), date=np.datetime64("2025-01-01T00:00:00")):
+def make_merged_point(lat, lon, result):
+    """Create a compacted MergedTensorIndexNode for a single spatial point.
+
+    This is the unstructured-grid equivalent of :func:`make_point`: instead of a
+    latitude node with a longitude-leaf child, the (lat, lon) pair is compacted
+    into a single leaf node carrying its own ``result``.
+    """
+    lat_ax = IntDatacubeAxis()
+    lat_ax.name = "latitude"
+    lon_ax = IntDatacubeAxis()
+    lon_ax.name = "longitude"
+    merged = MergedTensorIndexNode(axes=(lat_ax, lon_ax), values=(lat, lon))
+    merged.result = [np.float64(r) for r in result]
+    return merged
+
+
+def forecast_tree(points, param="167", step=(0,), date=np.datetime64("2025-01-01T00:00:00"), point_factory=make_point):
     """Build a standard forecast TensorIndexTree with the given spatial points.
 
     Args:
-        points: list of (lat, lon, result_list) tuples, passed to make_point().
+        points: list of (lat, lon, result_list) tuples, passed to point_factory().
         param: MARS parameter code.
         step: tuple of step values.
         date: forecast date.
+        point_factory: callable(lat, lon, result) -> node. Use make_merged_point
+            to build a compacted unstructured (MergedTensorIndexNode) tree.
     """
     tree = chain(
         TensorIndexTree(),
@@ -84,11 +105,36 @@ def forecast_tree(points, param="167", step=(0,), date=np.datetime64("2025-01-01
     )
     parent = tip(tree)
     for lat, lon, result in points:
-        parent.add_child(make_point(lat, lon, result))
+        parent.add_child(point_factory(lat, lon, result))
     return tree
 
 
-def reforecast_branch(hdate, points, param="167", step=(0,)):
+def month_tree(points, param="167", years=(2020, 2021), months=(1,), point_factory=make_point):
+    """Build a monthly-mean tree (year/month axes) for the walk_tree_month path.
+
+    Args:
+        points: list of (lat, lon, result_list) tuples, passed to point_factory().
+        param: MARS parameter code.
+        years: tuple of year values.
+        months: tuple of month values.
+        point_factory: callable(lat, lon, result) -> node. Use make_merged_point
+            to build a compacted unstructured (MergedTensorIndexNode) tree.
+    """
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("od",)),
+        node("levtype", ("sfc",)),
+        node("param", (param,)),
+        node("year", years),
+        node("month", months),
+    )
+    parent = tip(tree)
+    for lat, lon, result in points:
+        parent.add_child(point_factory(lat, lon, result))
+    return tree
+
+
+def reforecast_branch(hdate, points, param="167", step=(0,), point_factory=make_point):
     """Build a reforecast branch rooted at an hdate node.
 
     Attaches spatial points at the leaf. Caller is responsible for
@@ -106,7 +152,7 @@ def reforecast_branch(hdate, points, param="167", step=(0,)):
     )
     parent = tip(branch)
     for lat, lon, result in points:
-        parent.add_child(make_point(lat, lon, result))
+        parent.add_child(point_factory(lat, lon, result))
     return branch
 
 
