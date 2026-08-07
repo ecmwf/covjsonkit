@@ -1,9 +1,15 @@
 import numpy as np
 from polytope_feature.datacube.datacube_axis import IntDatacubeAxis
-from polytope_feature.datacube.tensor_index_tree import (
-    MergedTensorIndexNode,
-    TensorIndexTree,
-)
+from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
+
+try:
+    # Only available on polytope versions that support compacted unstructured
+    # (ICON, Lambert LAM) results. Absent on released polytope, in which case
+    # the merged-node fixtures/tests below are skipped rather than breaking
+    # collection of the whole test suite.
+    from polytope_feature.datacube.tensor_index_tree import MergedTensorIndexNode
+except ImportError:
+    MergedTensorIndexNode = None
 
 # -- Shared constants for reforecast tests --
 
@@ -71,6 +77,10 @@ def make_merged_point(lat, lon, result):
     latitude node with a longitude-leaf child, the (lat, lon) pair is compacted
     into a single leaf node carrying its own ``result``.
     """
+    if MergedTensorIndexNode is None:
+        raise RuntimeError(
+            "MergedTensorIndexNode is not available in this polytope build; " "merged-node tests should be skipped."
+        )
     lat_ax = IntDatacubeAxis()
     lat_ax.name = "latitude"
     lon_ax = IntDatacubeAxis()

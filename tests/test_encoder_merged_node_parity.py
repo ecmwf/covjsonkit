@@ -9,7 +9,9 @@ uses the legacy layout (``make_point``) or the compacted layout
 """
 
 import numpy as np
+import pytest
 from conftest import (
+    MergedTensorIndexNode,
     chain,
     forecast_tree,
     make_merged_point,
@@ -23,6 +25,13 @@ from conftest import (
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
+
+# These tests require a polytope build with compacted unstructured-grid support.
+# On released polytope (no MergedTensorIndexNode) they are skipped entirely.
+pytestmark = pytest.mark.skipif(
+    MergedTensorIndexNode is None,
+    reason="polytope build lacks MergedTensorIndexNode (compacted unstructured support)",
+)
 
 TWO_POINTS = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
 
