@@ -22,7 +22,7 @@ markers = ["data: uses test data (deselect with '-m \"not data\"')",]
 
 [project]
 name = "covjsonkit"
-version = "0.2.21"
+version = "0.2.22"
 dependencies = [
     "pandas<3",
     "orjson",
