@@ -98,7 +98,6 @@ class Position(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 dv_dict = {}
@@ -123,7 +122,7 @@ class Position(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result, date_key: str = "date") -> dict:
+    def from_polytope(self, result, date_key: str = "date", **kwargs) -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a PointSeries (Position) CoverageJSON collection.
 
         Args:

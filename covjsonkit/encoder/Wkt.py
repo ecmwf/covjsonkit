@@ -118,7 +118,7 @@ class Wkt(Encoder):
         # Return the generated CoverageJSON
         return self.covjson
 
-    def from_polytope(self, result, date_key: str = "date") -> dict:
+    def from_polytope(self, result, date_key: str = "date", **kwargs) -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a MultiPoint (Wkt/Polygon) CoverageJSON collection."""
         coords = {}
         mars_metadata = {}
