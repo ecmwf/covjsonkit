@@ -13,30 +13,28 @@ class TimeSeries(Encoder):
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
 
-    def add_coverage(self, mars_metadata, coords, values):
+    def add_coverage(self, mars_metadata, coords, values, include_z=False):
         new_coverage = {}
         new_coverage["mars:metadata"] = {}
         new_coverage["type"] = "Coverage"
         new_coverage["domain"] = {}
         new_coverage["ranges"] = {}
         self.add_mars_metadata(new_coverage, mars_metadata)
-        self.add_domain(new_coverage, coords)
+        self.add_domain(new_coverage, coords, include_z)
         self.add_range(new_coverage, values)
         self.covjson["coverages"].append(new_coverage)
         # cov = Coverage.model_validate_json(json.dumps(new_coverage))
         # self.pydantic_coverage.coverages.append(cov)
 
-    def add_domain(self, coverage, coords):
+    def add_domain(self, coverage, coords, include_z=False):
         coverage["domain"]["type"] = "Domain"
-        coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["latitude"] = {}
-        coverage["domain"]["axes"]["longitude"] = {}
-        coverage["domain"]["axes"]["levelist"] = {}
-        coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
-        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
-        coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
-        coverage["domain"]["axes"]["t"]["values"] = coords["t"]
+        axes = {}
+        axes["x"] = {"values": coords["longitude"]}
+        axes["y"] = {"values": coords["latitude"]}
+        if include_z:
+            axes["z"] = {"values": coords["levelist"]}
+        axes["t"] = {"values": coords["t"]}
+        coverage["domain"]["axes"] = axes
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -45,13 +43,36 @@ class TimeSeries(Encoder):
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = [str(param)]
+            coverage["ranges"][param]["axisNames"] = ["t"]
             coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
+
+    def _set_references(self, include_z):
+        refs = [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
+        if include_z:
+            refs.append(
+                {
+                    "coordinates": ["z"],
+                    "system": {"type": "VerticalCRS"},
+                }
+            )
+        self.covjson["referencing"] = refs
 
     def from_xarray(self, datasets):
         """
@@ -71,27 +92,10 @@ class TimeSeries(Encoder):
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
 
-        if "latitude" in datasets[0].coords:
-            x_coord = "latitude"
-        elif "x" in datasets[0].coords:
-            x_coord = "x"
-        if "longitude" in datasets[0].coords:
-            y_coord = "longitude"
-        elif "y" in datasets[0].coords:
-            y_coord = "y"
-        if "levelist" in datasets[0].coords:
-            z_coord = "levelist"
+        include_z = "levelist" in datasets[0].coords
 
         # Add reference system
-        self.add_reference(
-            {
-                "coordinates": [x_coord, y_coord, z_coord],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        self._set_references(include_z)
 
         for data_var in datasets[0].data_vars:
             data_var = self.convert_param_to_param_id(data_var)
@@ -115,10 +119,11 @@ class TimeSeries(Encoder):
                     {
                         "latitude": [float(x) for x in dataset["latitude"].values],
                         "longitude": [float(x) for x in dataset["longitude"].values],
-                        "levelist": [float(x) for x in dataset["levelist"].values],
+                        "levelist": [float(x) for x in dataset["levelist"].values] if include_z else None,
                         "t": [str(x) for x in dataset["t"].values],
                     },
                     dv_dict,
+                    include_z=include_z,
                 )
 
         return self.covjson
@@ -143,6 +148,7 @@ class TimeSeries(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -155,15 +161,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         coordinates = {}
 
@@ -249,7 +248,7 @@ class TimeSeries(Encoder):
                         mm["levelist"] = level
                         coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
-                        self.add_coverage(mm, coordinates[date][i], val_dict)
+                        self.add_coverage(mm, coordinates[date][i], val_dict, include_z)
 
         end = time.time()
         delta = end - start
@@ -276,6 +275,7 @@ class TimeSeries(Encoder):
         fields["months"] = []
         fields["dates"] = []  # populated as "YYYY-MM" keys once both year and month are seen
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)
@@ -287,15 +287,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
@@ -361,7 +354,7 @@ class TimeSeries(Encoder):
                     coord_entry = coordinates[first_date][i].copy()
                     coord_entry["levelist"] = [level]
                     coord_entry["t"] = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
-                    self.add_coverage(mm, coord_entry, val_dict)
+                    self.add_coverage(mm, coord_entry, val_dict, include_z)
 
         end = time.time()
         logging.debug("Coverage creation ends: %s", end)
@@ -381,6 +374,7 @@ class TimeSeries(Encoder):
         fields["dates"] = []
         fields["levels"] = [0]
         fields["times"] = []
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -393,15 +387,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         coordinates = {}
 
@@ -465,7 +452,12 @@ class TimeSeries(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
-                    self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
+                    self.add_coverage(
+                        mm,
+                        coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)],
+                        val_dict,
+                        include_z,
+                    )
 
         end = time.time()
         delta = end - start
