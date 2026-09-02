@@ -158,3 +158,6 @@ class Circle(Decoder):
         ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
 
         return ds
+
+    def to_grib(self, output_path="output.grib", backend="auto"):
+        raise NotImplementedError("to_grib() is only supported for BoundingBox domains.")

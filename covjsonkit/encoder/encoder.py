@@ -789,7 +789,7 @@ class Encoder(ABC):
         pass
 
     @abstractmethod
-    def from_polytope(self, result, date_key: str = "date") -> dict:
+    def from_polytope(self, result, date_key: str = "date", **kwargs) -> dict:
         pass
 
     def from_polytope_reforecast(self, result) -> dict:

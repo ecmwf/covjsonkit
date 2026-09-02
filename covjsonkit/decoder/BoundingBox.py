@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 try:
@@ -10,6 +12,16 @@ from scipy.spatial import cKDTree
 
 from ..encoder.encoder import sort_step_values
 from .decoder import Decoder
+
+logger = logging.getLogger(__name__)
+
+# Default grid metadata for ECMWF oper data (TCo1279 → O1280 reduced Gaussian).
+# Used when mars:grid is absent from the CoverageJSON.  Will be replaced once
+# polytope exposes real grid information.
+_OPER_GRID_DEFAULTS = {
+    "gridType": "reduced_gg",
+    "N": 1280,
+}
 
 
 class BoundingBox(Decoder):
@@ -216,3 +228,185 @@ class BoundingBox(Decoder):
         ds.attrs["date"] = self.get_coordinates()["t"]["values"][0]
 
         return ds
+
+    # ------------------------------------------------------------------
+    # GRIB export
+    # ------------------------------------------------------------------
+
+    def to_grib(self, output_path="output.grib", backend="auto"):
+        """Convert the CoverageJSON to a multi-message GRIB file.
+
+        Produces one GRIB message per field — i.e. for each unique
+        combination of (parameter, step, number, date/time) found in
+        the coverage collection.  This mirrors the output of a standard
+        MARS ``retrieve`` with an ``area`` keyword.
+
+        Args:
+            output_path: Filesystem path for the output GRIB file.
+            backend: GRIB encoding backend to use.  One of ``"auto"``
+                (try pymars2grib first, fall back to eccodes),
+                ``"mars2grib"``, or ``"eccodes"``.
+
+        Returns:
+            The *output_path* that was written.
+
+        Raises:
+            ImportError: If no suitable GRIB backend is available.
+        """
+        from .grib_backends import get_backend
+
+        grib_backend = get_backend(backend)
+
+        messages = []
+
+        for coverage in self.coverages:
+            mars_metadata = coverage.get("mars:metadata", {})
+            grid_metadata = coverage.get("mars:grid", {})
+
+            mars_dict = self._build_mars_dict(mars_metadata, coverage)
+            misc_dict = self._build_misc_dict(grid_metadata, coverage)
+
+            # Compute sort order for N→S, W→E point ordering (MARS convention)
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            sort_idx = self._nswe_sort_indices(coords)
+
+            # One GRIB message per parameter
+            for param_shortname in self.parameters:
+                values = coverage["ranges"][param_shortname]["values"]
+
+                # Reorder values to N→S, W→E
+                sorted_values = [values[i] for i in sort_idx]
+
+                field_mars = {**mars_dict, "param": self._shortname_to_param_id(param_shortname)}
+
+                msg_bytes = grib_backend.encode_message(sorted_values, field_mars, misc_dict)
+                messages.append(msg_bytes)
+
+        with open(output_path, "wb") as fh:
+            for msg in messages:
+                fh.write(msg)
+
+        logger.info("Wrote %d GRIB message(s) to %s", len(messages), output_path)
+        return output_path
+
+    # ------------------------------------------------------------------
+    # Private helpers for to_grib
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_mars_dict(mars_metadata, coverage):
+        """Normalise ``mars:metadata`` into the dict expected by GRIB backends.
+
+        Handles the ``Forecast date`` ISO-8601 string that polytope-mars
+        puts on each coverage, splitting it into separate ``date`` and
+        ``time`` keys.
+        """
+        mars = {}
+
+        # Direct MARS keys
+        for key in ("class", "stream", "type", "expver", "levtype", "domain"):
+            if key in mars_metadata:
+                mars[key] = mars_metadata[key]
+
+        # Date / time
+        forecast_date = mars_metadata.get("Forecast date", "")
+        if forecast_date:
+            # "2025-06-23T00:00:00Z" → date=20250623, time=0000
+            dt_str = str(forecast_date).replace("Z", "")
+            if "T" in dt_str:
+                date_part, time_part = dt_str.split("T", 1)
+            else:
+                date_part = dt_str
+                time_part = "0000"
+            mars["date"] = date_part.replace("-", "")
+            mars["time"] = time_part.replace(":", "")[:4]
+        elif "date" in mars_metadata:
+            mars["date"] = str(mars_metadata["date"])
+            if "time" in mars_metadata:
+                mars["time"] = str(mars_metadata["time"])
+
+        # Step
+        if "step" in mars_metadata:
+            mars["step"] = str(mars_metadata["step"])
+
+        # Ensemble number
+        if "number" in mars_metadata:
+            mars["number"] = str(mars_metadata["number"])
+
+        # Level — use the z-coordinate from the first composite point
+        coords = coverage["domain"]["axes"]["composite"]["values"]
+        if coords and len(coords[0]) > 2:
+            level = coords[0][2]
+            if level != 0:
+                mars["levelist"] = str(int(level))
+
+        return mars
+
+    @staticmethod
+    def _build_misc_dict(grid_metadata, coverage):
+        """Build the ``misc`` dict with grid geometry for the GRIB backend.
+
+        When ``mars:grid`` is not present on the coverage (i.e. polytope
+        does not yet expose grid info), oper defaults are applied so that
+        the pipeline can be tested end-to-end.
+        """
+        misc = {}
+
+        if grid_metadata:
+            misc.update(grid_metadata)
+
+        # Apply oper defaults when grid info is missing
+        if "gridType" not in misc:
+            logger.warning(
+                "No gridType in mars:grid metadata — assuming ECMWF oper defaults "
+                "(reduced_gg N1280).  This will be replaced when polytope provides "
+                "real grid information."
+            )
+            for key, default in _OPER_GRID_DEFAULTS.items():
+                misc.setdefault(key, default)
+
+        # Compute area from coordinates if not already present
+        if "area" not in misc:
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            if coords:
+                lats = [c[0] for c in coords]
+                lons = [c[1] for c in coords]
+                misc["area"] = [max(lats), min(lons), min(lats), max(lons)]  # N/W/S/E
+
+        # Compute Nj (number of latitude rows) and pl (points per row)
+        # from the coordinates if not already provided.
+        if "Nj" not in misc or "pl" not in misc:
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            if coords:
+                from collections import Counter
+
+                lat_counts = Counter(round(c[0], 9) for c in coords)
+                # Sort latitudes N→S
+                sorted_lats = sorted(lat_counts.keys(), reverse=True)
+                misc.setdefault("Nj", len(sorted_lats))
+                misc.setdefault("pl", [lat_counts[lat] for lat in sorted_lats])
+
+        return misc
+
+    @staticmethod
+    def _nswe_sort_indices(coords):
+        """Return indices that sort composite coords into N→S, W→E order.
+
+        MARS GRIB convention: first grid point is the north-west corner,
+        scanning west→east within each latitude row, rows ordered north→south.
+        """
+        # coords is a list of [lat, lon, level] tuples
+        # Sort by latitude descending (N→S), then longitude ascending (W→E)
+        indexed = list(enumerate(coords))
+        indexed.sort(key=lambda item: (-item[1][0], item[1][1]))
+        return [i for i, _ in indexed]
+
+    def _shortname_to_param_id(self, shortname):
+        """Map a parameter shortname (e.g. ``'2t'``) to its numeric param ID."""
+        from covjsonkit.param_db import get_param_id_from_db
+
+        try:
+            return str(get_param_id_from_db(shortname))
+        except (KeyError, Exception):
+            # If the shortname is not in the DB, pass it through as-is
+            return shortname

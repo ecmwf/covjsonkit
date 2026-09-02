@@ -228,3 +228,6 @@ class Grid(Decoder):
                 ds[pname].attrs[k] = v
 
         return ds
+
+    def to_grib(self, output_path="output.grib", backend="auto"):
+        raise NotImplementedError("to_grib() is only supported for BoundingBox domains.")

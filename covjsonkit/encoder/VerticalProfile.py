@@ -94,7 +94,6 @@ class VerticalProfile(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 for step in dataset["time"].values:
@@ -121,7 +120,7 @@ class VerticalProfile(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result, date_key: str = "date") -> dict:
+    def from_polytope(self, result, date_key: str = "date", **kwargs) -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a VerticalProfile CoverageJSON collection."""
         coords = {}
         mars_metadata = {}
