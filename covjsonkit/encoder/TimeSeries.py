@@ -74,6 +74,83 @@ class TimeSeries(Encoder):
             )
         self.covjson["referencing"] = refs
 
+    @staticmethod
+    def _hdate_step_timestamp(date, step):
+        """Return the valid-time (as a datetime) for a given hdate and step.
+
+        Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
+        collapsed reanalysis path produces identical timestamps.
+        """
+        date_format = "%Y%m%dT%H%M%S"
+        new_date = pd.Timestamp(date).strftime(date_format)
+        start_time = datetime.strptime(new_date, date_format)
+        if isinstance(step, timedelta):
+            return start_time + step
+        try:
+            int(step)
+        except ValueError:
+            step = step[0]
+        return start_time + timedelta(hours=int(step))
+
+    def _collapse_reanalysis(self, fields, coords, mars_metadata, range_dict):
+        """Collapse all hdates for each point into a single PointSeries coverage.
+
+        Used only for the reanalysis code path (``class=ce``, ``stream=efcl``,
+        ``date_key="hdate"``). Instead of one coverage per hdate, each spatial
+        point (per level/number) yields a single coverage whose ``t``-axis is the
+        chronologically-sorted list of ``hdate + step`` valid-times, with the
+        parameter values concatenated in the same order.
+
+        The scalar ``"Forecast date"`` metadata is intentionally omitted (it no
+        longer represents a single timestep); the decoder handles this via its
+        ``has_forecast_date is False`` fast-path.
+        """
+        points = len(coords[fields["dates"][0]]["composite"])
+        first_date = fields["dates"][0]
+
+        # Ordered list of (stamp, date, step) across every hdate/step combination.
+        stamp_order = []
+        for date in fields["dates"]:
+            for step in fields["step"]:
+                stamp = self._hdate_step_timestamp(date, step)
+                stamp_order.append((stamp, date, step))
+        # Stable sort by valid-time so ties preserve insertion order.
+        stamp_order.sort(key=lambda x: x[0])
+
+        t_values = [stamp.isoformat() + "Z" for stamp, _, _ in stamp_order]
+
+        for i in range(points):
+            lat = coords[first_date]["composite"][i][0]
+            lon = coords[first_date]["composite"][i][1]
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for _stamp, date, step in stamp_order:
+                            key = (date, level, num, para, step)
+                            try:
+                                val_dict[para].append(range_dict[key][i])
+                            except (KeyError, IndexError):
+                                raise IndexError(
+                                    f"Key {key} not found in range_dict. "
+                                    f"Please ensure all axes are compressed in config"
+                                )
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["levelist"] = level
+                    mm.pop("step", None)
+                    mm.pop("Forecast date", None)
+                    coord_entry = {
+                        "latitude": [lat],
+                        "longitude": [lon],
+                        "levelist": [level],
+                        "t": t_values,
+                    }
+                    self.add_coverage(mm, coord_entry, val_dict)
+
+        return self.covjson
+
     def from_xarray(self, datasets):
         """
         Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON
@@ -173,6 +250,12 @@ class TimeSeries(Encoder):
             self.add_parameter(para)
 
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        # Reanalysis code path: collapse all hdates for a point into a single
+        # coverage. Strictly limited to class=ce, stream=efcl over the hdate axis
+        # so all other requests keep their existing per-date output.
+        if date_key == "hdate" and mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efcl":
+            return self._collapse_reanalysis(fields, coords, mars_metadata, range_dict)
 
         points = len(coords[fields["dates"][0]]["composite"])
 
