@@ -164,6 +164,14 @@ class TestDecoderBackwardsCompatibility:
 
         assert new_ds.identical(legacy_ds)
 
+        # Prove the decoder read the legacy coverage by axis NAME (not position):
+        # the resulting dataset must carry latitude/longitude coords, and levelist
+        # when the source had a z axis.
+        assert "latitude" in legacy_ds.coords
+        assert "longitude" in legacy_ds.coords
+        has_z = any("z" in cov["domain"]["axes"] for cov in new_covjson["coverages"])
+        assert ("levelist" in legacy_ds.coords) == has_z
+
     def test_legacy_month_xarray_equivalent(self):
         new_covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_month(_month_tree())
         legacy_covjson = _to_legacy(new_covjson)
