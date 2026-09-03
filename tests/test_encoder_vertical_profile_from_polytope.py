@@ -1,5 +1,5 @@
 import numpy as np
-from conftest import chain, make_leaf, make_point, node, tip
+from conftest import assert_valid_covjson, chain, make_leaf, make_point, node, tip
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
@@ -44,11 +44,27 @@ class TestVerticalProfileFromPolytope:
 
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "VerticalProfile"
+        assert_valid_covjson(covjson)
 
-        # Referencing (folded from removed test_referencing)
-        ref = covjson["referencing"][0]
-        assert ref["coordinates"] == ["latitude", "longitude", "levelist"]
-        assert ref["system"]["type"] == "GeographicCRS"
+        # Spec-compliant split referencing: GeographicCRS (x, y), VerticalCRS (z),
+        # TemporalRS (t).
+        assert covjson["referencing"] == [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["z"],
+                "system": {"type": "VerticalCRS"},
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
 
         # Parameters (folded from removed test_parameters_block)
         assert "t" in covjson["parameters"]
@@ -59,9 +75,9 @@ class TestVerticalProfileFromPolytope:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [48.0]},
-            "longitude": {"values": [11.0]},
-            "levelist": {"values": [1000, 850, 500]},
+            "x": {"values": [11.0]},
+            "y": {"values": [48.0]},
+            "z": {"values": [1000, 850, 500]},
             "t": {"values": ["2025-01-01T00:00:00Z"]},
         }
 
@@ -70,7 +86,7 @@ class TestVerticalProfileFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["levelist"],
+                "axisNames": ["z"],
                 "values": [290.1, 280.2, 250.3],
             }
         }
@@ -109,6 +125,7 @@ class TestVerticalProfileFromPolytope:
         lev_node.add_child(make_point(50.0, 13.0, [288.5, 248.7]))
 
         covjson = Covjsonkit().encode("CoverageCollection", "VerticalProfile").from_polytope(tree)
+        assert_valid_covjson(covjson)
 
         shared_metadata = {
             "class": "od",
@@ -130,9 +147,9 @@ class TestVerticalProfileFromPolytope:
         assert len(covjson["coverages"]) == len(expected)
         for cov, (lat, lon, vals) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
-                "latitude": {"values": [lat]},
-                "longitude": {"values": [lon]},
-                "levelist": {"values": [1000, 500]},
+                "x": {"values": [lon]},
+                "y": {"values": [lat]},
+                "z": {"values": [1000, 500]},
                 "t": {"values": ["2025-06-15T12:00:00Z"]},
             }
             assert cov["ranges"] == {
@@ -140,7 +157,7 @@ class TestVerticalProfileFromPolytope:
                     "type": "NdArray",
                     "dataType": "float",
                     "shape": [2],
-                    "axisNames": ["levelist"],
+                    "axisNames": ["z"],
                     "values": vals,
                 }
             }
@@ -150,14 +167,15 @@ class TestVerticalProfileFromPolytope:
         """Step=6 should shift the t coordinate by 6 hours."""
         tree = self._build_vp_tree(step=6, levels_values={1000: 290.0})
         covjson = Covjsonkit().encode("CoverageCollection", "VerticalProfile").from_polytope(tree)
+        assert_valid_covjson(covjson)
 
         assert len(covjson["coverages"]) == 1
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [48.0]},
-            "longitude": {"values": [11.0]},
-            "levelist": {"values": [1000]},
+            "x": {"values": [11.0]},
+            "y": {"values": [48.0]},
+            "z": {"values": [1000]},
             "t": {"values": ["2025-01-01T06:00:00Z"]},
         }
 
@@ -166,7 +184,7 @@ class TestVerticalProfileFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [1],
-                "axisNames": ["levelist"],
+                "axisNames": ["z"],
                 "values": [290.0],
             }
         }
@@ -227,14 +245,15 @@ class TestVerticalProfileFromPolytopeReforecast:
 
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "VerticalProfile"
+        assert_valid_covjson(covjson)
         assert len(covjson["coverages"]) == 1
 
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "latitude": {"values": [48.0]},
-            "longitude": {"values": [11.0]},
-            "levelist": {"values": [1000, 850, 500]},
+            "x": {"values": [11.0]},
+            "y": {"values": [48.0]},
+            "z": {"values": [1000, 850, 500]},
             "t": {"values": ["2025-07-14T12:00:00Z"]},
         }
 
@@ -243,7 +262,7 @@ class TestVerticalProfileFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["levelist"],
+                "axisNames": ["z"],
                 "values": [290.1, 280.2, 250.3],
             }
         }
@@ -276,6 +295,7 @@ class TestVerticalProfileFromPolytopeReforecast:
             date_node.add_child(branch)
 
         covjson = Covjsonkit().encode("CoverageCollection", "VerticalProfile").from_polytope_reforecast(tree)
+        assert_valid_covjson(covjson)
 
         expected = [
             ("2025-07-14T12:00:00Z", [290.1, 280.2, 250.3], "2025-07-14T06:00:00Z"),
@@ -284,9 +304,9 @@ class TestVerticalProfileFromPolytopeReforecast:
         assert len(covjson["coverages"]) == len(expected)
         for cov, (t, vals, fc_date) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
-                "latitude": {"values": [48.0]},
-                "longitude": {"values": [11.0]},
-                "levelist": {"values": [1000, 850, 500]},
+                "x": {"values": [11.0]},
+                "y": {"values": [48.0]},
+                "z": {"values": [1000, 850, 500]},
                 "t": {"values": [t]},
             }
             assert cov["ranges"] == {
@@ -294,7 +314,7 @@ class TestVerticalProfileFromPolytopeReforecast:
                     "type": "NdArray",
                     "dataType": "float",
                     "shape": [3],
-                    "axisNames": ["levelist"],
+                    "axisNames": ["z"],
                     "values": vals,
                 }
             }

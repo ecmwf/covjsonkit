@@ -25,16 +25,15 @@ class VerticalProfile(Encoder):
         self.covjson["coverages"].append(new_coverage)
 
     def add_domain(self, coverage, coords):
+        # OGC-compliant VerticalProfile domain: x == longitude, y == latitude,
+        # z == the vertical (levelist) profile axis, t == a single time value.
         coverage["domain"]["type"] = "Domain"
-        coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["latitude"] = {}
-        coverage["domain"]["axes"]["longitude"] = {}
-        coverage["domain"]["axes"]["levelist"] = {}
-        coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
-        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
-        coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
-        coverage["domain"]["axes"]["t"]["values"] = coords["t"]
+        coverage["domain"]["axes"] = {
+            "x": {"values": coords["longitude"]},
+            "y": {"values": coords["latitude"]},
+            "z": {"values": coords["levelist"]},
+            "t": {"values": coords["t"]},
+        }
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -43,11 +42,32 @@ class VerticalProfile(Encoder):
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["levelist"]
-            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
+            coverage["ranges"][param]["axisNames"] = ["z"]
+            coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
+
+    def _set_references(self):
+        # VerticalProfile always carries a vertical (z) axis, so referencing is
+        # split into GeographicCRS (x, y), VerticalCRS (z) and TemporalRS (t).
+        self.covjson["referencing"] = [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["z"],
+                "system": {"type": "VerticalCRS"},
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
 
     def from_xarray(self, datasets):
         """
@@ -64,30 +84,11 @@ class VerticalProfile(Encoder):
             datasets = [datasets]
 
         self.covjson["type"] = "CoverageCollection"
-        self.covjson["domainType"] = "VeticalProfile"
+        self.covjson["domainType"] = "VerticalProfile"
         self.covjson["coverages"] = []
 
-        if "latitude" in datasets[0].coords:
-            x_coord = "latitude"
-        elif "x" in datasets[0].coords:
-            x_coord = "x"
-        if "longitude" in datasets[0].coords:
-            y_coord = "longitude"
-        elif "y" in datasets[0].coords:
-            y_coord = "y"
-        if "levelist" in datasets[0].coords:
-            z_coord = "levelist"
-
         # Add reference system
-        self.add_reference(
-            {
-                "coordinates": [x_coord, y_coord, z_coord],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        self._set_references()
 
         for data_var in datasets[0].data_vars:
             data_var = self.convert_param_to_param_id(data_var)
@@ -145,15 +146,7 @@ class VerticalProfile(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        self._set_references()
 
         coordinates = {}
 
@@ -263,15 +256,7 @@ class VerticalProfile(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        self._set_references()
 
         levels = fields["levels"]
         if fields["param"] == 0:

@@ -91,6 +91,23 @@ def _step_tree():
     )
 
 
+def _vertical_profile_tree():
+    return chain(
+        TensorIndexTree(),
+        node("class", ("od",)),
+        node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+        node("domain", ("g",)),
+        node("expver", ("0001",)),
+        node("levtype", ("pl",)),
+        node("param", ("130",)),
+        node("step", (0,)),
+        node("stream", ("oper",)),
+        node("type", ("an",)),
+        node("levelist", (1000, 850, 500)),
+        make_point(48.0, 11.0, [290.1, 280.2, 250.3]),
+    )
+
+
 class TestSpecCompliantOutputValidates:
     """Encoder output must validate against covjson-pydantic (test-only guard)."""
 
@@ -180,3 +197,85 @@ class TestDecoderBackwardsCompatibility:
         legacy_ds = Covjsonkit().decode(legacy_covjson).to_xarray()
 
         assert new_ds.identical(legacy_ds)
+
+
+class TestPositionSpecCompliance:
+    """Position (PointSeries) encoder output validates and decodes with back-compat."""
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_position_output_validates(self, tree_factory):
+        covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree_factory())
+        assert_valid_covjson(covjson)
+
+    def test_position_month_validates(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope_month(_month_tree())
+        assert_valid_covjson(covjson)
+
+    def test_position_step_validates(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope_step(_step_tree())
+        assert_valid_covjson(covjson)
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_position_legacy_and_new_geojson_equivalent(self, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree_factory())
+        legacy_covjson = _to_legacy(new_covjson)
+
+        new_gj = Covjsonkit().decode(new_covjson).to_geojson()
+        legacy_gj = Covjsonkit().decode(legacy_covjson).to_geojson()
+
+        assert legacy_gj == new_gj
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_position_legacy_and_new_xarray_equivalent(self, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", "Position").from_polytope(tree_factory())
+        legacy_covjson = _to_legacy(new_covjson)
+
+        new_ds = Covjsonkit().decode(new_covjson).to_xarray()
+        legacy_ds = Covjsonkit().decode(legacy_covjson).to_xarray()
+
+        assert new_ds.identical(legacy_ds)
+
+        assert "latitude" in legacy_ds.coords
+        assert "longitude" in legacy_ds.coords
+        has_z = any("z" in cov["domain"]["axes"] for cov in new_covjson["coverages"])
+        assert ("levelist" in legacy_ds.coords) == has_z
+
+
+class TestVerticalProfileSpecCompliance:
+    """VerticalProfile encoder output validates and decodes with back-compat."""
+
+    def test_vertical_profile_output_validates(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "VerticalProfile").from_polytope(_vertical_profile_tree())
+        assert_valid_covjson(covjson)
+
+    def test_vertical_profile_legacy_and_new_geojson_equivalent(self):
+        new_covjson = (
+            Covjsonkit().encode("CoverageCollection", "VerticalProfile").from_polytope(_vertical_profile_tree())
+        )
+        legacy_covjson = _to_legacy(new_covjson)
+
+        new_gj = Covjsonkit().decode(new_covjson).to_geojson()
+        legacy_gj = Covjsonkit().decode(legacy_covjson).to_geojson()
+
+        assert legacy_gj == new_gj
+
+        # The vertical (z) axis must survive into the GeoJSON geometry as the
+        # third coordinate, and lon/lat must be in the correct [lon, lat, z] order.
+        first = new_gj["features"][0]["geometry"]["coordinates"]
+        assert first == [11.0, 48.0, 1000]
+
+    def test_vertical_profile_legacy_and_new_xarray_equivalent(self):
+        new_covjson = (
+            Covjsonkit().encode("CoverageCollection", "VerticalProfile").from_polytope(_vertical_profile_tree())
+        )
+        legacy_covjson = _to_legacy(new_covjson)
+
+        new_ds = Covjsonkit().decode(new_covjson).to_xarray()
+        legacy_ds = Covjsonkit().decode(legacy_covjson).to_xarray()
+
+        assert new_ds.identical(legacy_ds)
+
+        # Decoder read legacy coverage by axis NAME: lat/lon/levelist coords present.
+        assert "latitude" in legacy_ds.coords
+        assert "longitude" in legacy_ds.coords
+        assert "levelist" in legacy_ds.coords
