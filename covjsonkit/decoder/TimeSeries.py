@@ -10,9 +10,17 @@ class TimeSeries(Decoder):
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
         first_axes = self.covjson["coverages"][0]["domain"]["axes"]
-        self.x_name = "x"
-        self.y_name = "y"
-        self.z_name = "z" if "z" in first_axes else None
+        # Backwards-compatible axis-name detection: read both spec-compliant
+        # coverages (x/y/z) and legacy coverages (longitude/latitude/levelist).
+        # Semantics are preserved: x == longitude, y == latitude.
+        self.x_name = "x" if "x" in first_axes else "longitude"
+        self.y_name = "y" if "y" in first_axes else "latitude"
+        if "z" in first_axes:
+            self.z_name = "z"
+        elif "levelist" in first_axes:
+            self.z_name = "levelist"
+        else:
+            self.z_name = None
 
     def get_domains(self):
         domains = []
