@@ -98,17 +98,16 @@ class Grid(Encoder):
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        # Prepare coordinates (spec-named axes: x=lon, y=lat, z=level).
-        coords = {
-            "t": [str(x) for x in dataset["steps"].values],
-            "y": dataset["latitude"].values.tolist(),
-            "x": dataset["longitude"].values.tolist(),
-        }
+        # Prepare shared spatial coordinates (spec-named axes: x=lon, y=lat,
+        # z=level). Each coverage carries a single time step, so the ``t`` axis
+        # and range shape use a t-dimension of 1 (set per coverage below).
+        y_vals = dataset["latitude"].values.tolist()
+        x_vals = dataset["longitude"].values.tolist()
+        z_vals = dataset["levelist"].values.tolist() if include_z else None
         if include_z:
-            coords["z"] = dataset["levelist"].values.tolist()
-            self.shp = [len(coords["t"]), len(coords["z"]), len(coords["y"]), len(coords["x"])]
+            self.shp = [1, len(z_vals), len(y_vals), len(x_vals)]
         else:
-            self.shp = [len(coords["t"]), len(coords["y"]), len(coords["x"])]
+            self.shp = [1, len(y_vals), len(x_vals)]
 
         for datetime in dataset["datetimes"].values:
             for num in dataset["number"].values:
@@ -119,11 +118,15 @@ class Grid(Encoder):
                     mars_metadata["step"] = normalize_step_value(step)
                     mars_metadata["Forecast date"] = str(datetime)
                     for dv in dataset.data_vars:
-                        nested_list = dataset[dv].sel(datetimes=datetime, number=num, steps=step).values.tolist()
-                        flattened_list = [item for sublist in nested_list for item in sublist]
-                        flattened_list = [item for sublist in flattened_list for item in sublist]
-                        dv_dict[dv] = flattened_list
+                        # Flatten in axis order z, y, x (or y, x at the surface).
+                        # ravel() handles both the 3D (level) and 2D (surface)
+                        # cases without assuming a level dimension.
+                        arr = dataset[dv].sel(datetimes=datetime, number=num, steps=step).values
+                        dv_dict[dv] = arr.ravel().tolist()
 
+                    coords = {"t": [str(step)], "y": y_vals, "x": x_vals}
+                    if include_z:
+                        coords["z"] = z_vals
                     self.add_coverage(mars_metadata, coords, dv_dict, include_z)
 
         # Return the generated CoverageJSON
