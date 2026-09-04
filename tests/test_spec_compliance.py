@@ -17,7 +17,7 @@ from datetime import timedelta
 
 import numpy as np
 import pytest
-from conftest import assert_valid_covjson, chain, make_leaf, make_point, node
+from conftest import assert_valid_covjson, chain, make_leaf, make_point, node, tip
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
@@ -495,3 +495,133 @@ class TestPathSpecCompliance:
                 feat["geometry"]["coordinates"] = feat["geometry"]["coordinates"][:2]
 
         assert legacy_gj == new_gj
+
+
+def _grid_forecast_tree():
+    """Single-date surface 2x2 grid (analysis) for Grid spec-compliance tests."""
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("od",)),
+        node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+        node("domain", ("g",)),
+        node("expver", ("0001",)),
+        node("levtype", ("sfc",)),
+        node("param", ("167",)),
+        node("step", (0,)),
+        node("stream", ("oper",)),
+        node("type", ("an",)),
+    )
+    parent = tip(tree)
+    for lat, lon, vals in [
+        (48.0, 11.0, [264.9]),
+        (48.0, 12.0, [265.1]),
+        (50.0, 11.0, [266.3]),
+        (50.0, 12.0, [267.5]),
+    ]:
+        parent.add_child(make_point(lat, lon, vals))
+    return tree
+
+
+def _grid_level_tree():
+    """Single-date pressure-level 2x2 grid (analysis) for Grid spec tests."""
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("od",)),
+        node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+        node("domain", ("g",)),
+        node("expver", ("0001",)),
+        node("levtype", ("pl",)),
+        node("levelist", (500,)),
+        node("param", ("129",)),
+        node("step", (0,)),
+        node("stream", ("oper",)),
+        node("type", ("an",)),
+    )
+    parent = tip(tree)
+    for lat, lon, vals in [
+        (48.0, 11.0, [264.9]),
+        (48.0, 12.0, [265.1]),
+        (50.0, 11.0, [266.3]),
+        (50.0, 12.0, [267.5]),
+    ]:
+        parent.add_child(make_point(lat, lon, vals))
+    return tree
+
+
+def _to_legacy_grid(covjson):
+    """Convert a spec-compliant Grid covjson into the legacy form: named axes
+    latitude/longitude/levelist (always including a z axis) with range axisNames
+    ["t", "levelist", "latitude", "longitude"] and a single combined
+    GeographicCRS. Used to assert the decoder reads both."""
+    legacy = copy.deepcopy(covjson)
+    legacy["referencing"] = [
+        {
+            "coordinates": ["latitude", "longitude", "levelist"],
+            "system": {
+                "type": "GeographicCRS",
+                "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            },
+        }
+    ]
+    for coverage in legacy["coverages"]:
+        axes = coverage["domain"]["axes"]
+        has_z = "z" in axes
+        new_axes = {"t": axes["t"]}
+        new_axes["levelist"] = axes["z"] if has_z else {"values": [0]}
+        new_axes["latitude"] = axes["y"]
+        new_axes["longitude"] = axes["x"]
+        coverage["domain"]["axes"] = new_axes
+        for prange in coverage["ranges"].values():
+            prange["axisNames"] = ["t", "levelist", "latitude", "longitude"]
+            if not has_z:
+                # insert the length-1 level dim into the shape
+                t, y, x = prange["shape"]
+                prange["shape"] = [t, 1, y, x]
+    return legacy
+
+
+class TestGridSpecCompliance:
+    """Grid encoder output validates and decodes with back-compat.
+
+    Spec Grid uses named axes x (lon), y (lat), t and an optional z (level),
+    dropping z at the surface, with split referencing. The legacy form uses
+    latitude/longitude/levelist axes (always with z) and a single combined
+    GeographicCRS. The decoder reads both."""
+
+    @pytest.mark.parametrize("tree_factory", [_grid_forecast_tree, _grid_level_tree])
+    def test_grid_output_validates(self, tree_factory):
+        covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(tree_factory())
+        assert_valid_covjson(covjson)
+
+    def test_grid_surface_drops_z(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(_grid_forecast_tree())
+        axes = covjson["coverages"][0]["domain"]["axes"]
+        assert set(axes) == {"t", "y", "x"}
+        assert covjson["coverages"][0]["ranges"]["2t"]["axisNames"] == ["t", "y", "x"]
+
+    def test_grid_level_includes_z(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(_grid_level_tree())
+        axes = covjson["coverages"][0]["domain"]["axes"]
+        assert set(axes) == {"t", "z", "y", "x"}
+        assert axes["z"]["values"] == [500]
+        param_range = next(iter(covjson["coverages"][0]["ranges"].values()))
+        assert param_range["axisNames"] == ["t", "z", "y", "x"]
+
+    def test_grid_axes_lonlat_values(self):
+        # x holds longitude, y holds latitude.
+        covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(_grid_forecast_tree())
+        axes = covjson["coverages"][0]["domain"]["axes"]
+        assert axes["x"]["values"] == [11.0, 12.0]
+        assert axes["y"]["values"] == [48.0, 50.0]
+
+    @pytest.mark.parametrize("tree_factory", [_grid_forecast_tree, _grid_level_tree])
+    def test_grid_legacy_and_new_xarray_equivalent(self, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", "Grid").from_polytope(tree_factory())
+        legacy_covjson = _to_legacy_grid(new_covjson)
+
+        new_ds = Covjsonkit().decode(new_covjson).to_xarray()
+        legacy_ds = Covjsonkit().decode(legacy_covjson).to_xarray()
+
+        assert new_ds.identical(legacy_ds)
+        assert "latitude" in new_ds.coords
+        assert "longitude" in new_ds.coords

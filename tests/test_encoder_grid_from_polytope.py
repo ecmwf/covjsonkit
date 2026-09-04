@@ -14,17 +14,16 @@ from covjsonkit.api import Covjsonkit
 
 GRID_2X2_AXES = {
     "t": {"values": [0]},
-    "latitude": {"values": [48.0, 50.0]},
-    "longitude": {"values": [11.0, 12.0]},
-    "levelist": {"values": [0]},
+    "y": {"values": [48.0, 50.0]},
+    "x": {"values": [11.0, 12.0]},
 }
 
 GRID_2X2_RANGES = {
     "2t": {
         "type": "NdArray",
         "dataType": "float",
-        "shape": [1, 1, 2, 2],
-        "axisNames": ["t", "levelist", "latitude", "longitude"],
+        "shape": [1, 2, 2],
+        "axisNames": ["t", "y", "x"],
         "values": [264.9, 265.1, 266.3, 267.5],
     }
 }
@@ -65,15 +64,19 @@ class TestGridFromPolytope:
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "Grid"
 
-        # Collection-level referencing
+        # Collection-level referencing (split GeographicCRS / TemporalRS)
         assert covjson["referencing"] == [
             {
-                "coordinates": ["latitude", "longitude", "levelist"],
+                "coordinates": ["x", "y"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
-            }
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
         ]
 
         # Collection-level parameters
@@ -124,16 +127,15 @@ class TestGridFromPolytope:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": [0]},
-            "latitude": {"values": [48.0]},
-            "longitude": {"values": [11.0]},
-            "levelist": {"values": [0]},
+            "y": {"values": [48.0]},
+            "x": {"values": [11.0]},
         }
         assert cov["ranges"] == {
             "2t": {
                 "type": "NdArray",
                 "dataType": "float",
-                "shape": [1, 1, 1, 1],
-                "axisNames": ["t", "levelist", "latitude", "longitude"],
+                "shape": [1, 1, 1],
+                "axisNames": ["t", "y", "x"],
                 "values": [264.9],
             }
         }
