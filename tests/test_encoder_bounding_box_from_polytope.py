@@ -12,12 +12,13 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
-# BoundingBox uses lat/lon/levelist coordinates (not x/y/z) and its
-# reforecast metadata intentionally omits "step" (step varies per coverage).
+# BoundingBox emits spec-compliant composite tuples ordered [x, y] (== [lon, lat]).
+# Surface (sfc) data carries no vertical axis, so no z component. Reforecast
+# metadata intentionally omits "step" (step varies per coverage).
 COMPOSITE_TWO_POINTS = {
     "dataType": "tuple",
-    "coordinates": ["latitude", "longitude", "levelist"],
-    "values": [[48.0, 11.0, 0], [50.0, 12.0, 0]],
+    "coordinates": ["x", "y"],
+    "values": [[11.0, 48.0], [12.0, 50.0]],
 }
 
 EXPECTED_REFORECAST_METADATA = {
@@ -52,7 +53,7 @@ class TestBoundingBoxFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
@@ -144,7 +145,7 @@ class TestBoundingBoxFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }

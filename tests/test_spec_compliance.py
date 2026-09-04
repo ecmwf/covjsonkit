@@ -279,3 +279,141 @@ class TestVerticalProfileSpecCompliance:
         assert "latitude" in legacy_ds.coords
         assert "longitude" in legacy_ds.coords
         assert "levelist" in legacy_ds.coords
+
+
+def _to_legacy_composite(covjson):
+    """Rewrite a spec-compliant MultiPoint (composite-axis) CoverageCollection
+    into the pre-#129 legacy shape: composite ``coordinates`` labelled
+    latitude/longitude[/levelist] with tuple values reordered to
+    [lat, lon[, level]], plus a single combined GeographicCRS referencing block.
+    Used to exercise composite decoder backwards-compat.
+    """
+    legacy = copy.deepcopy(covjson)
+
+    first_labels = legacy["coverages"][0]["domain"]["axes"]["composite"]["coordinates"]
+
+    def _idx(labels, names):
+        for name in names:
+            if name in labels:
+                return labels.index(name)
+        return None
+
+    include_z = _idx(first_labels, ("z", "levelist")) is not None
+
+    for cov in legacy["coverages"]:
+        composite = cov["domain"]["axes"]["composite"]
+        labels = composite["coordinates"]
+        x_idx = _idx(labels, ("x", "longitude"))
+        y_idx = _idx(labels, ("y", "latitude"))
+        z_idx = _idx(labels, ("z", "levelist"))
+        new_values = []
+        for tup in composite["values"]:
+            entry = [tup[y_idx], tup[x_idx]]
+            if z_idx is not None:
+                entry.append(tup[z_idx])
+            new_values.append(entry)
+        composite["values"] = new_values
+        composite["coordinates"] = ["latitude", "longitude", "levelist"] if include_z else ["latitude", "longitude"]
+
+    coords = ["latitude", "longitude"]
+    if include_z:
+        coords.append("levelist")
+    legacy["referencing"] = [
+        {
+            "coordinates": coords,
+            "system": {
+                "type": "GeographicCRS",
+                "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            },
+        }
+    ]
+    return legacy
+
+
+class TestBoundingBoxSpecCompliance:
+    """BoundingBox (MultiPoint) encoder output validates and decodes with back-compat."""
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_bounding_box_output_validates(self, tree_factory):
+        covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope(tree_factory())
+        assert_valid_covjson(covjson)
+
+    def test_bounding_box_month_validates(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope_month(_month_tree())
+        assert_valid_covjson(covjson)
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_bounding_box_legacy_and_new_geojson_equivalent(self, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope(tree_factory())
+        legacy_covjson = _to_legacy_composite(new_covjson)
+
+        new_gj = Covjsonkit().decode(new_covjson).to_geojson()
+        legacy_gj = Covjsonkit().decode(legacy_covjson).to_geojson()
+
+        assert legacy_gj == new_gj
+
+    def test_bounding_box_geojson_lonlat_order(self):
+        # Surface data: geometry must be [lon, lat] in the correct order.
+        covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope(_surface_forecast_tree())
+        gj = Covjsonkit().decode(covjson).to_geojson()
+        assert gj["features"][0]["geometry"]["coordinates"] == [11.0, 48.0]
+
+    def test_bounding_box_geojson_lonlat_z_order(self):
+        # Level data: geometry must be [lon, lat, level] in the correct order.
+        covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope(_level_forecast_tree())
+        gj = Covjsonkit().decode(covjson).to_geojson()
+        assert gj["features"][0]["geometry"]["coordinates"] == [11.0, 48.0, 500]
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_bounding_box_legacy_and_new_xarray_equivalent(self, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope(tree_factory())
+        legacy_covjson = _to_legacy_composite(new_covjson)
+
+        new_ds = Covjsonkit().decode(new_covjson).to_xarray()
+        legacy_ds = Covjsonkit().decode(legacy_covjson).to_xarray()
+
+        assert new_ds.identical(legacy_ds)
+
+        # Decoder read the composite by coordinate LABEL, not position: the
+        # resulting dataset carries latitude/longitude, plus levelist when the
+        # source had a z component.
+        assert "latitude" in legacy_ds.coords
+        assert "longitude" in legacy_ds.coords
+        has_z = "z" in new_covjson["coverages"][0]["domain"]["axes"]["composite"]["coordinates"]
+        assert ("levelist" in legacy_ds.coords) == has_z
+
+
+class TestCompositeFeatureSpecCompliance:
+    """Circle/Frame/Shapefile/Wkt (MultiPoint composite-axis) encoders must emit
+    spec-compliant output and decode with composite backwards-compat."""
+
+    FEATURES = ["Circle", "Frame", "Shapefile", "Polygon"]
+
+    @pytest.mark.parametrize("feature", FEATURES)
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_output_validates(self, feature, tree_factory):
+        covjson = Covjsonkit().encode("CoverageCollection", feature).from_polytope(tree_factory())
+        assert_valid_covjson(covjson)
+
+    @pytest.mark.parametrize("feature", FEATURES)
+    def test_geojson_lonlat_order(self, feature):
+        covjson = Covjsonkit().encode("CoverageCollection", feature).from_polytope(_surface_forecast_tree())
+        gj = Covjsonkit().decode(covjson).to_geojson()
+        assert gj["features"][0]["geometry"]["coordinates"] == [11.0, 48.0]
+
+    @pytest.mark.parametrize("feature", FEATURES)
+    def test_geojson_lonlat_z_order(self, feature):
+        covjson = Covjsonkit().encode("CoverageCollection", feature).from_polytope(_level_forecast_tree())
+        gj = Covjsonkit().decode(covjson).to_geojson()
+        assert gj["features"][0]["geometry"]["coordinates"] == [11.0, 48.0, 500]
+
+    @pytest.mark.parametrize("feature", FEATURES)
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_legacy_and_new_geojson_equivalent(self, feature, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", feature).from_polytope(tree_factory())
+        legacy_covjson = _to_legacy_composite(new_covjson)
+
+        new_gj = Covjsonkit().decode(new_covjson).to_geojson()
+        legacy_gj = Covjsonkit().decode(legacy_covjson).to_geojson()
+
+        assert legacy_gj == new_gj

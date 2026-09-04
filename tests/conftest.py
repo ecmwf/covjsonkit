@@ -54,10 +54,10 @@ REFORECAST_METADATA_BASE = {
     "number": 0,
 }
 
-COMPOSITE_TWO_POINTS_XYZ = {
+COMPOSITE_TWO_POINTS = {
     "dataType": "tuple",
-    "coordinates": ["x", "y", "z"],
-    "values": [[48.0, 11.0, 0], [50.0, 12.0, 0]],
+    "coordinates": ["x", "y"],
+    "values": [[11.0, 48.0], [12.0, 50.0]],
 }
 
 

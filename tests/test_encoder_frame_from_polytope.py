@@ -1,6 +1,6 @@
 import numpy as np
 from conftest import (
-    COMPOSITE_TWO_POINTS_XYZ,
+    COMPOSITE_TWO_POINTS,
     REFORECAST_METADATA_BASE,
     forecast_tree,
     reforecast_branch,
@@ -20,7 +20,7 @@ class TestFrameFromPolytope:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": ["2025-01-01T00:00:00Z"]},
-            "composite": COMPOSITE_TWO_POINTS_XYZ,
+            "composite": COMPOSITE_TWO_POINTS,
         }
 
         assert cov["ranges"] == {
@@ -28,7 +28,7 @@ class TestFrameFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
@@ -62,7 +62,7 @@ class TestFrameFromPolytopeReforecast:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": ["2025-07-14T06:00:00Z"]},
-            "composite": COMPOSITE_TWO_POINTS_XYZ,
+            "composite": COMPOSITE_TWO_POINTS,
         }
 
         assert cov["ranges"] == {
@@ -70,7 +70,7 @@ class TestFrameFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
@@ -99,7 +99,7 @@ class TestFrameFromPolytopeReforecast:
         for cov, (fc_date, vals) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
                 "t": {"values": [fc_date]},
-                "composite": COMPOSITE_TWO_POINTS_XYZ,
+                "composite": COMPOSITE_TWO_POINTS,
             }
             assert cov["ranges"]["2t"]["values"] == vals
             assert cov["mars:metadata"] == {

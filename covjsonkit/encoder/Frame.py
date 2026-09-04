@@ -9,30 +9,26 @@ class Frame(Encoder):
         self.covjson["domainType"] = "MultiPoint"
         self.covjson["coverages"] = []
 
-    def add_coverage(self, mars_metadata, coords, values):
+    def add_coverage(self, mars_metadata, coords, values, include_z=False):
         new_coverage = {}
         new_coverage["mars:metadata"] = {}
         new_coverage["type"] = "Coverage"
         new_coverage["domain"] = {}
         new_coverage["ranges"] = {}
         self.add_mars_metadata(new_coverage, mars_metadata)
-        self.add_domain(new_coverage, coords)
+        self.add_domain(new_coverage, coords, include_z)
         self.add_range(new_coverage, values)
-        # cov = Coverage.model_validate_json(json.dumps(new_coverage))
-        # self.pydantic_coverage.coverages.append(cov)
         self.covjson["coverages"].append(new_coverage)
 
-    def add_domain(self, coverage, coords):
+    def add_domain(self, coverage, coords, include_z=False):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["t"]["values"] = coords["t"]
-        coverage["domain"]["axes"]["composite"] = {}
-        coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
-        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0][
-            "coordinates"
-        ]  # self.pydantic_coverage.referencing[0].coordinates
-        coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
+        coverage["domain"]["axes"]["t"] = {"values": coords["t"]}
+        coverage["domain"]["axes"]["composite"] = {
+            "dataType": "tuple",
+            "coordinates": ["x", "y", "z"] if include_z else ["x", "y"],
+            "values": coords["composite"],
+        }
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -41,62 +37,66 @@ class Frame(Encoder):
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = [str(param)]
-            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
+            coverage["ranges"][param]["axisNames"] = ["composite"]
+            coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
-    def from_xarray(self, dataset):
-        """
-        Converts an xarray dataset into a MultiPoint CoverageJSON format.
-        """
-
-        self.covjson["type"] = "CoverageCollection"
-        self.covjson["domainType"] = "PointSeries"
-        self.covjson["coverages"] = []
-
-        if "latitude" in dataset.coords:
-            x_coord = "latitude"
-        elif "x" in dataset.coords:
-            x_coord = "x"
-        if "longitude" in dataset.coords:
-            y_coord = "longitude"
-        elif "y" in dataset.coords:
-            y_coord = "y"
-        if "levelist" in dataset.coords:
-            z_coord = "levelist"
-
-        # Add reference system
-        self.add_reference(
+    def _set_references(self, include_z):
+        refs = [
             {
-                "coordinates": [x_coord, y_coord, z_coord],
+                "coordinates": ["x", "y"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
-            }
-        )
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
+        if include_z:
+            refs.append(
+                {
+                    "coordinates": ["z"],
+                    "system": {"type": "VerticalCRS"},
+                }
+            )
+        self.covjson["referencing"] = refs
+
+    def from_xarray(self, dataset):
+        """
+        Converts an xarray dataset into a MultiPoint CoverageJSON collection.
+        """
+
+        self.covjson["type"] = "CoverageCollection"
+        self.covjson["domainType"] = "MultiPoint"
+        self.covjson["coverages"] = []
+
+        include_z = "levelist" in dataset.coords
+
+        self._set_references(include_z)
 
         for data_var in dataset.data_vars:
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        # Prepare coordinates
+        # Prepare coordinates: composite tuples ordered [x, y(, z)].
         coords = {
             "composite": [],
-            "dataType": "tuple",
             "t": [str(x) for x in dataset["datetimes"].values],
         }
 
         for point in dataset["points"].values:
-            coords["composite"].append(
-                [
-                    float(dataset.isel(points=point).longitude.values),
-                    float(dataset.isel(points=point).latitude.values),
-                    float(dataset.isel(points=point).levelist.values),
-                ]
-            )
+            lon = float(dataset.isel(points=point).longitude.values)
+            lat = float(dataset.isel(points=point).latitude.values)
+            if include_z:
+                level = float(dataset.isel(points=point).levelist.values)
+                coords["composite"].append([lon, lat, level])
+            else:
+                coords["composite"].append([lon, lat])
 
         for datetime in dataset["datetimes"].values:
             for num in dataset["number"].values:
@@ -109,9 +109,8 @@ class Frame(Encoder):
                     for dv in dataset.data_vars:
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
-                    self.add_coverage(mars_metadata, coords, dv_dict)
+                    self.add_coverage(mars_metadata, coords, dv_dict, include_z)
 
-        # Return the generated CoverageJSON
         return self.covjson
 
     def from_polytope(self, result, date_key: str = "date") -> dict:
@@ -126,21 +125,15 @@ class Frame(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
 
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         combined_dict = {}
 
@@ -154,7 +147,6 @@ class Frame(Encoder):
                     for para in fields["param"]:
                         if para not in combined_dict[date][num]:
                             combined_dict[date][num][para] = {}
-                        # for s, value in range_dict[date][level][num][para].items():
                         for s in fields["step"]:
                             key = (date, level, num, para, s)
                             for k, v in range_dict.items():
@@ -162,7 +154,7 @@ class Frame(Encoder):
                                     if s not in combined_dict[date][num][para]:
                                         combined_dict[date][num][para][s] = v
                                     else:
-                                        # Cocatenate arrays
+                                        # Concatenate arrays
                                         combined_dict[date][num][para][s] += v
 
         levels = fields["levels"]
@@ -176,7 +168,10 @@ class Frame(Encoder):
             coords[date]["composite"] = []
             for level in levels:
                 for cor in coord:
-                    coords[date]["composite"].append([cor[0], cor[1], level])
+                    if include_z:
+                        coords[date]["composite"].append([cor[1], cor[0], level])
+                    else:
+                        coords[date]["composite"].append([cor[1], cor[0]])
 
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
@@ -191,7 +186,7 @@ class Frame(Encoder):
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
                     mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step])
+                    self.add_coverage(mm, coords[date], val_dict[step], include_z)
 
         return self.covjson
 
@@ -207,6 +202,7 @@ class Frame(Encoder):
         fields["months"] = []
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         logging.debug("Tree walking starts")
         self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
@@ -215,15 +211,8 @@ class Frame(Encoder):
         logging.debug("The values returned from walking tree: %s", range_dict)
         logging.debug("The coordinates returned from walking tree: %s", coords)
 
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         levels = fields["levels"]
         for para in fields["param"]:
@@ -241,7 +230,10 @@ class Frame(Encoder):
             coord = coords.get(date, {}).get("composite", [])
             for level in levels:
                 for cor in coord:
-                    coordinates[date]["composite"].append([cor[0], cor[1], level])
+                    if include_z:
+                        coordinates[date]["composite"].append([cor[1], cor[0], level])
+                    else:
+                        coordinates[date]["composite"].append([cor[1], cor[0]])
 
         for num in fields["number"]:
             val_dict = {}
@@ -255,6 +247,11 @@ class Frame(Encoder):
                         val_dict[para].extend([item for sublist in vals for item in sublist])
             mm = mars_metadata.copy()
             mm["number"] = num
-            self.add_coverage(mm, coordinates[fields["dates"][0]] if fields["dates"] else {}, val_dict)
+            self.add_coverage(
+                mm,
+                coordinates[fields["dates"][0]] if fields["dates"] else {"composite": [], "t": []},
+                val_dict,
+                include_z,
+            )
 
         return self.covjson
