@@ -417,3 +417,81 @@ class TestCompositeFeatureSpecCompliance:
         legacy_gj = Covjsonkit().decode(legacy_covjson).to_geojson()
 
         assert legacy_gj == new_gj
+
+
+def _to_legacy_path(covjson):
+    """Convert a spec-compliant Trajectory (Path) covjson into the legacy
+    mislabeled form: a single combined GeographicCRS whose coordinates are
+    ["t", "x", "y", "z"], with composite tuples ordered [t, lat, lon, level].
+
+    Spec output orders composite tuples as [t, lon, lat] (surface) or
+    [t, lon, lat, level] (with a vertical axis); the legacy form always carries
+    a z component (0 at the surface). Used to assert the decoder reads both.
+    """
+    legacy = copy.deepcopy(covjson)
+    legacy["referencing"] = [
+        {
+            "coordinates": ["t", "x", "y", "z"],
+            "system": {
+                "type": "GeographicCRS",
+                "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+            },
+        }
+    ]
+    for coverage in legacy["coverages"]:
+        composite = coverage["domain"]["axes"]["composite"]
+        labels = composite["coordinates"]
+        has_z = "z" in labels
+        new_values = []
+        for tup in composite["values"]:
+            t, lon, lat = tup[0], tup[1], tup[2]
+            z = tup[3] if has_z else 0
+            new_values.append([t, lat, lon, z])
+        composite["coordinates"] = ["t", "x", "y", "z"]
+        composite["values"] = new_values
+    return legacy
+
+
+class TestPathSpecCompliance:
+    """Path (Trajectory) encoder output validates and decodes with back-compat.
+
+    The legacy Path form mislabels its spatial components (label ``x`` holds
+    latitude) and uses a single combined GeographicCRS; the spec form uses split
+    referencing with [t, x=lon, y=lat(, z)]. The decoder discriminates via the
+    referencing structure, so both must decode equivalently.
+    """
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_path_output_validates(self, tree_factory):
+        covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope(tree_factory())
+        assert_valid_covjson(covjson)
+
+    def test_path_month_validates(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope_month(_month_tree())
+        assert_valid_covjson(covjson)
+
+    def test_path_geojson_lonlat_order(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope(_surface_forecast_tree())
+        gj = Covjsonkit().decode(covjson).to_geojson()
+        assert gj["features"][0]["geometry"]["coordinates"] == [11.0, 48.0]
+
+    def test_path_geojson_lonlat_z_order(self):
+        covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope(_level_forecast_tree())
+        gj = Covjsonkit().decode(covjson).to_geojson()
+        assert gj["features"][0]["geometry"]["coordinates"] == [11.0, 48.0, 500]
+
+    @pytest.mark.parametrize("tree_factory", [_surface_forecast_tree, _level_forecast_tree])
+    def test_path_legacy_and_new_geojson_equivalent(self, tree_factory):
+        new_covjson = Covjsonkit().encode("CoverageCollection", "Path").from_polytope(tree_factory())
+        legacy_covjson = _to_legacy_path(new_covjson)
+
+        new_gj = Covjsonkit().decode(new_covjson).to_geojson()
+        legacy_gj = Covjsonkit().decode(legacy_covjson).to_geojson()
+
+        # Legacy always carries a z component; drop it from the geometry so the
+        # surface case (spec output has no z) compares equal.
+        for gj in (new_gj, legacy_gj):
+            for feat in gj["features"]:
+                feat["geometry"]["coordinates"] = feat["geometry"]["coordinates"][:2]
+
+        assert legacy_gj == new_gj

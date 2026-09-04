@@ -29,8 +29,8 @@ class TestPathFromPolytope:
         assert cov["domain"]["axes"] == {
             "composite": {
                 "dataType": "tuple",
-                "coordinates": ["t", "x", "y", "z"],
-                "values": [[0, 48.0, 11.0, 0], [0, 49.0, 12.0, 0]],
+                "coordinates": ["t", "x", "y"],
+                "values": [[0, 11.0, 48.0], [0, 12.0, 49.0]],
             }
         }
 
@@ -39,7 +39,7 @@ class TestPathFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
@@ -56,15 +56,19 @@ class TestPathFromPolytope:
             "number": 0,
         }
 
-        # Collection-level referencing
+        # Collection-level referencing (split GeographicCRS / TemporalRS)
         assert covjson["referencing"] == [
             {
-                "coordinates": ["t", "x", "y", "z"],
+                "coordinates": ["x", "y"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
-            }
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
         ]
 
         # Collection-level parameters
@@ -79,8 +83,8 @@ class TestPathFromPolytopeReforecast:
     EXPECTED_AXES = {
         "composite": {
             "dataType": "tuple",
-            "coordinates": ["t", "x", "y", "z"],
-            "values": [[0, 48.0, 11.0, 0], [0, 50.0, 12.0, 0]],
+            "coordinates": ["t", "x", "y"],
+            "values": [[0, 11.0, 48.0], [0, 12.0, 50.0]],
         }
     }
 
@@ -89,7 +93,7 @@ class TestPathFromPolytopeReforecast:
             "type": "NdArray",
             "dataType": "float",
             "shape": [2],
-            "axisNames": ["2t"],
+            "axisNames": ["composite"],
             "values": [264.9, 265.1],
         }
     }
