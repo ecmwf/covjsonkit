@@ -1,6 +1,6 @@
 import logging
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
 
 
 class Path(Encoder):
@@ -164,22 +164,21 @@ class Path(Encoder):
                     if (date, level, fields["number"][0], fields["param"][0], s) in range_dict:
                         cor_len = len(range_dict[(date, level, fields["number"][0], fields["param"][0], s)])
                         end = start + cor_len
-                        # Normalize the step value before it is placed into the
-                        # composite (t) coordinate so that timedelta/Timedelta
-                        # values are JSON serialisable. The original ``s`` is kept
-                        # for the range_dict lookups above.
-                        s_norm = normalize_step_value(s)
+                        # The composite ``t`` coordinate is the valid-time
+                        # (forecast date + step offset), as an ISO-8601 string.
+                        # The original ``s`` is kept for the range_dict lookups.
+                        t_valid = valid_time(date, s)
                         if include_z:
                             if len(fields["levels"]) != 1:
                                 for lev in fields["levels"]:
                                     for cor in coord[int(start) : int(end)]:
-                                        coords[date]["composite"].append([s_norm, cor[1], cor[0], lev])
+                                        coords[date]["composite"].append([t_valid, cor[1], cor[0], lev])
                             else:
                                 for cor in coord[int(start) : int(end)]:
-                                    coords[date]["composite"].append([s_norm, cor[1], cor[0], level])
+                                    coords[date]["composite"].append([t_valid, cor[1], cor[0], level])
                         else:
                             for cor in coord[int(start) : int(end)]:
-                                coords[date]["composite"].append([s_norm, cor[1], cor[0]])
+                                coords[date]["composite"].append([t_valid, cor[1], cor[0]])
                         start = end
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
@@ -227,9 +226,15 @@ class Path(Encoder):
                         val_dict[para].extend(combined_dict[date][num][para][step])
                 mm = mars_metadata.copy()
                 mm["number"] = num
-                mm["Forecast date"] = date
                 if "levelist" in mm:
                     del mm["levelist"]
+                if is_reanalysis(mars_metadata, date_key):
+                    # Reanalysis (class=ce, stream=efcl): expose only the
+                    # valid-time; drop the scalar forecast-date metadata.
+                    mm.pop("Forecast date", None)
+                    mm.pop("step", None)
+                else:
+                    mm["Forecast date"] = date
                 self.add_coverage(mm, coords[date], val_dict, include_z)
 
         return self.covjson

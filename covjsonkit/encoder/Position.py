@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder
+from .encoder import Encoder, is_reanalysis
 
 
 class Position(Encoder):
@@ -244,10 +244,15 @@ class Position(Encoder):
                                     )
                         mm = mars_metadata.copy()
                         mm["number"] = num
-                        mm["Forecast date"] = date
                         mm["levelist"] = level
                         coordinates[date][i]["levelist"] = [level]
-                        del mm["step"]
+                        mm.pop("step", None)
+                        if is_reanalysis(mars_metadata, date_key):
+                            # Reanalysis (class=ce, stream=efcl): expose only the
+                            # valid-time; drop the scalar forecast-date metadata.
+                            mm.pop("Forecast date", None)
+                        else:
+                            mm["Forecast date"] = date
                         self.add_coverage(mm, coordinates[date][i], val_dict, include_z)
 
         end = time.time()

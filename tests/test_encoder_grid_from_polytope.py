@@ -12,11 +12,14 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
-GRID_2X2_AXES = {
-    "t": {"values": [0]},
-    "y": {"values": [48.0, 50.0]},
-    "x": {"values": [11.0, 12.0]},
-}
+
+def grid_2x2_axes(t_val):
+    return {
+        "t": {"values": [t_val]},
+        "y": {"values": [48.0, 50.0]},
+        "x": {"values": [11.0, 12.0]},
+    }
+
 
 GRID_2X2_RANGES = {
     "2t": {
@@ -90,7 +93,7 @@ class TestGridFromPolytope:
         assert len(covjson["coverages"]) == 1
         cov = covjson["coverages"][0]
 
-        assert cov["domain"]["axes"] == GRID_2X2_AXES
+        assert cov["domain"]["axes"] == grid_2x2_axes("2025-01-01T00:00:00Z")
         assert cov["ranges"] == GRID_2X2_RANGES
         assert cov["mars:metadata"] == {
             "class": "od",
@@ -126,7 +129,7 @@ class TestGridFromPolytope:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "t": {"values": [0]},
+            "t": {"values": ["2025-01-01T00:00:00Z"]},
             "y": {"values": [48.0]},
             "x": {"values": [11.0]},
         }
@@ -160,12 +163,9 @@ class TestGridFromPolytopeReforecast:
 
         cov = covjson["coverages"][0]
 
-        assert cov["domain"]["axes"] == GRID_2X2_AXES
+        assert cov["domain"]["axes"] == grid_2x2_axes("2025-07-14T06:00:00Z")
         assert cov["ranges"] == GRID_2X2_RANGES
-        assert cov["mars:metadata"] == {
-            **REFORECAST_METADATA_BASE,
-            "Forecast date": "2025-07-14T06:00:00Z",
-        }
+        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
 
     def test_reforecast_two_hdates_2x2_grid(self):
         """Two hdates each with 2x2 grid -> 2 Grid coverages."""
@@ -184,9 +184,6 @@ class TestGridFromPolytopeReforecast:
         ]
         assert len(covjson["coverages"]) == len(expected)
         for cov, fc_date in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == GRID_2X2_AXES
+            assert cov["domain"]["axes"] == grid_2x2_axes(fc_date)
             assert cov["ranges"] == GRID_2X2_RANGES
-            assert cov["mars:metadata"] == {
-                **REFORECAST_METADATA_BASE,
-                "Forecast date": fc_date,
-            }
+            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE

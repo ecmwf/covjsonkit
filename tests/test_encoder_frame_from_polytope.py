@@ -75,10 +75,7 @@ class TestFrameFromPolytopeReforecast:
             }
         }
 
-        assert cov["mars:metadata"] == {
-            **REFORECAST_METADATA_BASE,
-            "Forecast date": "2025-07-14T06:00:00Z",
-        }
+        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
 
     def test_reforecast_two_hdates_two_points(self):
         points = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
@@ -102,7 +99,4 @@ class TestFrameFromPolytopeReforecast:
                 "composite": COMPOSITE_TWO_POINTS,
             }
             assert cov["ranges"]["2t"]["values"] == vals
-            assert cov["mars:metadata"] == {
-                **REFORECAST_METADATA_BASE,
-                "Forecast date": fc_date,
-            }
+            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE

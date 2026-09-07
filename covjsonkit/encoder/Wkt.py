@@ -4,7 +4,7 @@ import time
 
 import pandas as pd
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
 
 
 class Wkt(Encoder):
@@ -180,6 +180,8 @@ class Wkt(Encoder):
                     else:
                         coords[date]["composite"].append([cor[1], cor[0]])
 
+        reanalysis = is_reanalysis(mars_metadata, date_key)
+
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
@@ -192,8 +194,14 @@ class Wkt(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
-                    mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step], include_z)
+                    cov_coords = dict(coords[date])
+                    cov_coords["t"] = [valid_time(date, step)]
+                    if reanalysis:
+                        mm.pop("Forecast date", None)
+                        mm.pop("step", None)
+                    else:
+                        mm["Forecast date"] = date
+                    self.add_coverage(mm, cov_coords, val_dict[step], include_z)
 
         return self.covjson
 

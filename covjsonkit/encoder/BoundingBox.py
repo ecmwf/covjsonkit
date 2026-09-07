@@ -1,7 +1,7 @@
 import logging
 import time
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
 
 
 class BoundingBox(Encoder):
@@ -188,6 +188,8 @@ class BoundingBox(Encoder):
                     else:
                         coords[date]["composite"].append([cor[1], cor[0]])
 
+        reanalysis = is_reanalysis(mars_metadata, date_key)
+
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
@@ -200,8 +202,17 @@ class BoundingBox(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
-                    mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step], include_z)
+                    # ``t`` is the valid-time (forecast date + step offset).
+                    cov_coords = dict(coords[date])
+                    cov_coords["t"] = [valid_time(date, step)]
+                    if reanalysis:
+                        # Reanalysis (class=ce, stream=efcl): expose only the
+                        # valid-time; drop the scalar forecast-date metadata.
+                        mm.pop("Forecast date", None)
+                        mm.pop("step", None)
+                    else:
+                        mm["Forecast date"] = date
+                    self.add_coverage(mm, cov_coords, val_dict[step], include_z)
 
         return self.covjson
 

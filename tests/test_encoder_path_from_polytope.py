@@ -30,7 +30,10 @@ class TestPathFromPolytope:
             "composite": {
                 "dataType": "tuple",
                 "coordinates": ["t", "x", "y"],
-                "values": [[0, 11.0, 48.0], [0, 12.0, 49.0]],
+                "values": [
+                    ["2025-01-01T00:00:00Z", 11.0, 48.0],
+                    ["2025-01-01T00:00:00Z", 12.0, 49.0],
+                ],
             }
         }
 
@@ -80,13 +83,15 @@ class TestPathFromPolytope:
 class TestPathFromPolytopeReforecast:
     """Tests for Path (Trajectory) encoder's from_polytope_reforecast method."""
 
-    EXPECTED_AXES = {
-        "composite": {
-            "dataType": "tuple",
-            "coordinates": ["t", "x", "y"],
-            "values": [[0, 11.0, 48.0], [0, 12.0, 50.0]],
+    @staticmethod
+    def axes_for(t_val):
+        return {
+            "composite": {
+                "dataType": "tuple",
+                "coordinates": ["t", "x", "y"],
+                "values": [[t_val, 11.0, 48.0], [t_val, 12.0, 50.0]],
+            }
         }
-    }
 
     EXPECTED_RANGES = {
         "2t": {
@@ -113,12 +118,9 @@ class TestPathFromPolytopeReforecast:
 
         cov = covjson["coverages"][0]
 
-        assert cov["domain"]["axes"] == self.EXPECTED_AXES
+        assert cov["domain"]["axes"] == self.axes_for("2025-07-14T06:00:00Z")
         assert cov["ranges"] == self.EXPECTED_RANGES
-        assert cov["mars:metadata"] == {
-            **REFORECAST_METADATA_BASE,
-            "Forecast date": "2025-07-14T06:00:00Z",
-        }
+        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
 
     def test_reforecast_two_hdates_two_points(self):
         """Two hdates each with 2 path points -> 2 Trajectory coverages."""
@@ -137,6 +139,6 @@ class TestPathFromPolytopeReforecast:
         ]
         assert len(covjson["coverages"]) == len(expected)
         for cov, fc_date in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == self.EXPECTED_AXES
+            assert cov["domain"]["axes"] == self.axes_for(fc_date)
             assert cov["ranges"] == self.EXPECTED_RANGES
-            assert cov["mars:metadata"] == {**REFORECAST_METADATA_BASE, "Forecast date": fc_date}
+            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE

@@ -85,7 +85,7 @@ class TestCircleFromPolytopeReforecast:
             }
         }
 
-        assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **REFORECAST_METADATA_BASE}
+        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
 
     def test_reforecast_two_hdates_three_points(self):
         tree = reforecast_tree(
@@ -111,4 +111,4 @@ class TestCircleFromPolytopeReforecast:
                 "composite": THREE_POINTS_COMPOSITE,
             }
             assert cov["ranges"]["2t"]["values"] == range_vals
-            assert cov["mars:metadata"] == {"Forecast date": fc_date, **REFORECAST_METADATA_BASE}
+            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE

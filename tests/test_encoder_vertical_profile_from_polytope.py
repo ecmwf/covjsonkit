@@ -222,7 +222,6 @@ class TestVerticalProfileFromPolytopeReforecast:
         "domain": "g",
         "expver": "4321",
         "levtype": "pl",
-        "step": 6,
         "stream": "efcl",
         "type": "sfo",
         "levelist": 1000,
@@ -267,10 +266,7 @@ class TestVerticalProfileFromPolytopeReforecast:
             }
         }
 
-        assert cov["mars:metadata"] == {
-            "Forecast date": "2025-07-14T06:00:00Z",
-            **self.EXPECTED_REFORECAST_METADATA,
-        }
+        assert cov["mars:metadata"] == self.EXPECTED_REFORECAST_METADATA
 
     def test_reforecast_two_hdates_three_levels(self):
         """2 hdates, 3 levels, 1 point → 2 coverages (one per hdate)."""
@@ -318,7 +314,4 @@ class TestVerticalProfileFromPolytopeReforecast:
                     "values": vals,
                 }
             }
-            assert cov["mars:metadata"] == {
-                "Forecast date": fc_date,
-                **self.EXPECTED_REFORECAST_METADATA,
-            }
+            assert cov["mars:metadata"] == self.EXPECTED_REFORECAST_METADATA

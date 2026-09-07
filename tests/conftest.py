@@ -48,7 +48,6 @@ REFORECAST_METADATA_BASE = {
     "domain": "g",
     "expver": "4321",
     "levtype": "sfc",
-    "step": 0,
     "stream": "efcl",
     "type": "sfo",
     "number": 0,

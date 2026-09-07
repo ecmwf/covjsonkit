@@ -1,8 +1,7 @@
 import logging
 import time
-from datetime import timedelta
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
 
 
 class Grid(Encoder):
@@ -188,9 +187,8 @@ class Grid(Encoder):
         coordinates = {}
         for date in coords.keys():
             coordinates[date] = {}
-            coordinates[date]["t"] = [
-                int(s.total_seconds() // 3600) if isinstance(s, timedelta) else s for s in fields["step"]
-            ]
+            # ``t`` axis holds the valid-time (forecast date + step) for each step.
+            coordinates[date]["t"] = [valid_time(date, s) for s in fields["step"]]
             if include_z:
                 coordinates[date]["z"] = list(fields["levels"])
             coordinates[date]["y"] = []
@@ -214,6 +212,8 @@ class Grid(Encoder):
                 len(coordinates[first_date]["x"]),
             ]
 
+        reanalysis = is_reanalysis(mars_metadata, date_key)
+
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
                 val_dict = {}
@@ -223,8 +223,12 @@ class Grid(Encoder):
                         val_dict[para].extend(combined_dict[date][num][para][step])
                 mm = mars_metadata.copy()
                 mm["number"] = num
-                mm["step"] = normalize_step_value(step)
-                mm["Forecast date"] = date
+                if reanalysis:
+                    mm.pop("Forecast date", None)
+                    mm.pop("step", None)
+                else:
+                    mm["step"] = normalize_step_value(step)
+                    mm["Forecast date"] = date
                 self.add_coverage(mm, coordinates[date], val_dict, include_z)
 
         return self.covjson

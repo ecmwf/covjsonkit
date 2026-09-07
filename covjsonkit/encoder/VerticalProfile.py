@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import Encoder, is_reanalysis, normalize_step_value
 
 
 class VerticalProfile(Encoder):
@@ -221,9 +221,14 @@ class VerticalProfile(Encoder):
                                     )
                         mm = mars_metadata.copy()
                         mm["number"] = num
-                        mm["Forecast date"] = date
-                        mm["step"] = normalize_step_value(step)
-                        # del mm["step"]
+                        if is_reanalysis(mars_metadata, date_key):
+                            # Reanalysis (class=ce, stream=efcl): expose only the
+                            # valid-time; drop the scalar forecast-date metadata.
+                            mm.pop("Forecast date", None)
+                            mm.pop("step", None)
+                        else:
+                            mm["Forecast date"] = date
+                            mm["step"] = normalize_step_value(step)
                         self.add_coverage(mm, coordinates[date][i][s], val_dict[step])
 
         end = time.time()
