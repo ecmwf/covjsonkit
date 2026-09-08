@@ -12,12 +12,13 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
-# BoundingBox uses lat/lon/levelist coordinates (not x/y/z) and its
-# reforecast metadata intentionally omits "step" (step varies per coverage).
+# BoundingBox emits spec-compliant composite tuples ordered [x, y] (== [lon, lat]).
+# Surface (sfc) data carries no vertical axis, so no z component. Reforecast
+# metadata intentionally omits "step" (step varies per coverage).
 COMPOSITE_TWO_POINTS = {
     "dataType": "tuple",
-    "coordinates": ["latitude", "longitude", "levelist"],
-    "values": [[48.0, 11.0, 0], [50.0, 12.0, 0]],
+    "coordinates": ["x", "y"],
+    "values": [[11.0, 48.0], [12.0, 50.0]],
 }
 
 EXPECTED_REFORECAST_METADATA = {
@@ -52,7 +53,7 @@ class TestBoundingBoxFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
@@ -106,15 +107,15 @@ class TestBoundingBoxFromPolytope:
         }
 
         expected = [
-            ("2025-01-01T00:00:00Z", 0, [264.9, 265.1]),
-            ("2025-01-01T00:00:00Z", 6, [270.1, 271.3]),
-            ("2025-01-02T00:00:00Z", 0, [266.0, 267.0]),
-            ("2025-01-02T00:00:00Z", 6, [272.0, 273.0]),
+            ("2025-01-01T00:00:00Z", "2025-01-01T00:00:00Z", 0, [264.9, 265.1]),
+            ("2025-01-01T00:00:00Z", "2025-01-01T06:00:00Z", 6, [270.1, 271.3]),
+            ("2025-01-02T00:00:00Z", "2025-01-02T00:00:00Z", 0, [266.0, 267.0]),
+            ("2025-01-02T00:00:00Z", "2025-01-02T06:00:00Z", 6, [272.0, 273.0]),
         ]
         assert len(covjson["coverages"]) == len(expected)
-        for cov, (date, step, vals) in zip(covjson["coverages"], expected):
+        for cov, (date, valid, step, vals) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
-                "t": {"values": [date]},
+                "t": {"values": [valid]},
                 "composite": COMPOSITE_TWO_POINTS,
             }
             assert cov["ranges"]["2t"]["values"] == vals
@@ -144,16 +145,12 @@ class TestBoundingBoxFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
 
-        assert cov["mars:metadata"] == {
-            **EXPECTED_REFORECAST_METADATA,
-            "Forecast date": "2025-07-14T06:00:00Z",
-            "step": 0,
-        }
+        assert cov["mars:metadata"] == EXPECTED_REFORECAST_METADATA
 
     def test_reforecast_two_hdates_two_points(self):
         tree = reforecast_tree(
@@ -176,11 +173,7 @@ class TestBoundingBoxFromPolytopeReforecast:
                 "composite": COMPOSITE_TWO_POINTS,
             }
             assert cov["ranges"]["2t"]["values"] == vals
-            assert cov["mars:metadata"] == {
-                **EXPECTED_REFORECAST_METADATA,
-                "Forecast date": fc_date,
-                "step": 0,
-            }
+            assert cov["mars:metadata"] == EXPECTED_REFORECAST_METADATA
 
     def test_reforecast_single_hdate_two_steps_two_points(self):
         tree = reforecast_tree(
@@ -196,18 +189,14 @@ class TestBoundingBoxFromPolytopeReforecast:
         covjson = Covjsonkit().encode("CoverageCollection", "BoundingBox").from_polytope_reforecast(tree)
 
         expected = [
-            (0, [264.9, 265.1]),
-            (6, [270.1, 271.3]),
+            ("2025-07-14T06:00:00Z", [264.9, 265.1]),
+            ("2025-07-14T12:00:00Z", [270.1, 271.3]),
         ]
         assert len(covjson["coverages"]) == len(expected)
-        for cov, (step, vals) in zip(covjson["coverages"], expected):
+        for cov, (valid, vals) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
-                "t": {"values": ["2025-07-14T06:00:00Z"]},
+                "t": {"values": [valid]},
                 "composite": COMPOSITE_TWO_POINTS,
             }
             assert cov["ranges"]["2t"]["values"] == vals
-            assert cov["mars:metadata"] == {
-                **EXPECTED_REFORECAST_METADATA,
-                "Forecast date": "2025-07-14T06:00:00Z",
-                "step": step,
-            }
+            assert cov["mars:metadata"] == EXPECTED_REFORECAST_METADATA

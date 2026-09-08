@@ -1,6 +1,6 @@
 import numpy as np
 from conftest import (
-    COMPOSITE_TWO_POINTS_XYZ,
+    COMPOSITE_TWO_POINTS,
     REFORECAST_METADATA_BASE,
     forecast_tree,
     reforecast_branch,
@@ -20,7 +20,7 @@ class TestShapefileFromPolytope:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": ["2025-01-01T00:00:00Z"]},
-            "composite": COMPOSITE_TWO_POINTS_XYZ,
+            "composite": COMPOSITE_TWO_POINTS,
         }
 
         assert cov["ranges"] == {
@@ -28,7 +28,7 @@ class TestShapefileFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
@@ -62,7 +62,7 @@ class TestShapefileFromPolytopeReforecast:
 
         assert cov["domain"]["axes"] == {
             "t": {"values": ["2025-07-14T06:00:00Z"]},
-            "composite": COMPOSITE_TWO_POINTS_XYZ,
+            "composite": COMPOSITE_TWO_POINTS,
         }
 
         assert cov["ranges"] == {
@@ -70,12 +70,12 @@ class TestShapefileFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.1],
             }
         }
 
-        assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **REFORECAST_METADATA_BASE}
+        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
 
     def test_reforecast_two_hdates_two_points(self):
         points = [(48.0, 11.0, [264.9]), (50.0, 12.0, [265.1])]
@@ -96,7 +96,7 @@ class TestShapefileFromPolytopeReforecast:
         for cov, (t_vals, range_vals, fc_date) in zip(covjson["coverages"], expected):
             assert cov["domain"]["axes"] == {
                 "t": {"values": t_vals},
-                "composite": COMPOSITE_TWO_POINTS_XYZ,
+                "composite": COMPOSITE_TWO_POINTS,
             }
             assert cov["ranges"]["2t"]["values"] == range_vals
-            assert cov["mars:metadata"] == {"Forecast date": fc_date, **REFORECAST_METADATA_BASE}
+            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE

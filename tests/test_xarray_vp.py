@@ -34,11 +34,11 @@ class TestVerticalProfileXarray:
         assert covjson_result["type"] == self.test_covjson["type"]
         assert len(covjson_result["coverages"]) == len(self.test_covjson["coverages"])
         assert (
-            covjson_result["coverages"][0]["domain"]["axes"]["latitude"]["values"][0]
+            covjson_result["coverages"][0]["domain"]["axes"]["y"]["values"][0]
             == self.test_covjson["coverages"][0]["domain"]["axes"]["latitude"]["values"][0]
         )
         assert (
-            covjson_result["coverages"][0]["domain"]["axes"]["longitude"]["values"][0]
+            covjson_result["coverages"][0]["domain"]["axes"]["x"]["values"][0]
             == self.test_covjson["coverages"][0]["domain"]["axes"]["longitude"]["values"][0]
         )
         assert (
