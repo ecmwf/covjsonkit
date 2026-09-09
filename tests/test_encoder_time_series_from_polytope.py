@@ -114,7 +114,9 @@ class TestTimeseriesFromPolytope:
         ]
 
     def test_standard_forecast_multiple_coverages(self):
-        # ce/efas/fc/sfc flood forecast: 2 dates × 2 steps × 2 points → 4 coverages
+        # ce/efas/fc/sfc flood forecast: 2 dates × 2 steps × 2 points.
+        # With >1 point the PointSeries request auto-upgrades to MultiPointSeries:
+        # one coverage per date, both points on a shared composite (x/y) axis.
         tree = chain(TensorIndexTree(), node("class", ("ce",)))
         cls = tip(tree)
 
@@ -141,6 +143,8 @@ class TestTimeseriesFromPolytope:
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
 
+        assert covjson["domainType"] == "MultiPointSeries"
+
         shared_metadata = {
             "class": "ce",
             "domain": "g",
@@ -154,20 +158,34 @@ class TestTimeseriesFromPolytope:
             "levelist": 0,
         }
 
+        # One coverage per date; composite = [[lon, lat], ...]; ranges row-major [t, composite].
         expected = [
-            (51.5, 6.5, ["2026-01-01T06:00:00Z", "2026-01-02T06:00:00Z"], [12.5, 19.3], "2026-01-01T00:00:00Z"),
-            (51.5, 6.5, ["2026-01-01T18:00:00Z", "2026-01-02T18:00:00Z"], [15.8, 22.6], "2026-01-01T12:00:00Z"),
-            (52.0, 7.0, ["2026-01-01T06:00:00Z", "2026-01-02T06:00:00Z"], [8.7, 14.1], "2026-01-01T00:00:00Z"),
-            (52.0, 7.0, ["2026-01-01T18:00:00Z", "2026-01-02T18:00:00Z"], [10.2, 16.9], "2026-01-01T12:00:00Z"),
+            (
+                ["2026-01-01T06:00:00Z", "2026-01-02T06:00:00Z"],
+                [12.5, 8.7, 19.3, 14.1],
+                "2026-01-01T00:00:00Z",
+            ),
+            (
+                ["2026-01-01T18:00:00Z", "2026-01-02T18:00:00Z"],
+                [15.8, 10.2, 22.6, 16.9],
+                "2026-01-01T12:00:00Z",
+            ),
         ]
         assert len(covjson["coverages"]) == len(expected)
-        for cov, (lat, lon, t, vals, date) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == {
-                "x": {"values": [lon]},
-                "y": {"values": [lat]},
-                "t": {"values": t},
+        for cov, (t, vals, date) in zip(covjson["coverages"], expected):
+            assert cov["domain"]["axes"]["t"] == {"values": t}
+            assert cov["domain"]["axes"]["composite"] == {
+                "dataType": "tuple",
+                "coordinates": ["x", "y"],
+                "values": [[6.5, 51.5], [7.0, 52.0]],
             }
-            assert cov["ranges"]["dis06"]["values"] == vals
+            assert cov["ranges"]["dis06"] == {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [2, 2],
+                "axisNames": ["t", "composite"],
+                "values": vals,
+            }
             assert cov["mars:metadata"] == {**shared_metadata, "Forecast date": date}
 
     def test_multiple_params(self):
