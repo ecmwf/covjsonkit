@@ -337,7 +337,7 @@ class TestTimeseriesFromPolytopeReforecast:
         assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
 
     def test_two_points(self):
-        # 1 hdate, 2 points → 2 coverages (one per point)
+        # 1 hdate, 2 points → auto-switch to a single MultiPointSeries coverage
         tree = chain(
             TensorIndexTree(),
             node("class", ("ce",)),
@@ -351,22 +351,20 @@ class TestTimeseriesFromPolytopeReforecast:
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
 
-        expected = [
-            (51.5, 6.5, [42.17]),
-            (52.0, 7.0, [38.91]),
-        ]
-        assert len(covjson["coverages"]) == len(expected)
-        for cov, (lat, lon, vals) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == {
-                "x": {"values": [lon]},
-                "y": {"values": [lat]},
-                "t": {"values": ["2025-07-14T12:00:00Z"]},
-            }
-            assert cov["ranges"]["dis06"]["values"] == vals
-            assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
+        assert covjson["domainType"] == "MultiPointSeries"
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T12:00:00Z"]
+        # composite is [x, y] = [lon, lat] per spec.
+        assert cov["domain"]["axes"]["composite"]["values"] == [[6.5, 51.5], [7.0, 52.0]]
+        assert cov["ranges"]["dis06"]["shape"] == [1, 2]
+        assert cov["ranges"]["dis06"]["axisNames"] == ["t", "composite"]
+        # Row-major [t, composite]: t0 → point0, point1.
+        assert cov["ranges"]["dis06"]["values"] == [42.17, 38.91]
+        assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
 
     def test_two_points_two_times(self):
-        # 2 hdate values × 2 points → 2 coverages (one per point, hdates collapsed)
+        # 2 hdate values × 2 points → single MultiPointSeries coverage (hdates on t-axis)
         tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
         date = tip(tree)
 
@@ -385,16 +383,15 @@ class TestTimeseriesFromPolytopeReforecast:
 
         covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
 
-        expected = [
-            (51.5, ["2025-07-14T12:00:00Z", "2025-07-14T18:00:00Z"], [42.17, 55.30]),
-            (52.0, ["2025-07-14T12:00:00Z", "2025-07-14T18:00:00Z"], [38.91, 49.62]),
-        ]
-        assert len(covjson["coverages"]) == len(expected)
-        for cov, (lat, t, vals) in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"]["y"]["values"] == [lat]
-            assert cov["domain"]["axes"]["t"]["values"] == t
-            assert cov["ranges"]["dis06"]["values"] == vals
-            assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
+        assert covjson["domainType"] == "MultiPointSeries"
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T12:00:00Z", "2025-07-14T18:00:00Z"]
+        assert cov["domain"]["axes"]["composite"]["values"] == [[6.5, 51.5], [7.0, 52.0]]
+        assert cov["ranges"]["dis06"]["shape"] == [2, 2]
+        # Row-major [t, composite]: t0 → p0,p1 ; t1 → p0,p1.
+        assert cov["ranges"]["dis06"]["values"] == [42.17, 38.91, 55.30, 49.62]
+        assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
 
     def test_multiple_steps(self):
         """Single hdate, two steps (6h, 12h), single point → 1 coverage with 2 t-values."""
