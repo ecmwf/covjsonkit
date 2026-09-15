@@ -79,10 +79,10 @@ class TimeSeries(Encoder):
         """Return the ``anoffset`` (in hours) from ``mars_metadata`` as an int.
 
         ``anoffset`` shifts the analysis reference time *backward* from the
-        forecast cycle (``date``/``time``). ``step`` is counted from that shifted
-        reference time, so the valid-time must be corrected by subtracting
-        ``anoffset`` hours (see issue #126). Returns ``0`` when ``anoffset`` is
-        absent (the common case), leaving the timestamp unchanged.
+        forecast issue time (``date``/``time``). ``step`` is counted from that
+        shifted reference, so the valid-time must be corrected by subtracting
+        ``anoffset`` hours. Returns ``0`` when ``anoffset`` is absent (the common
+        case), leaving the timestamp unchanged.
         """
         raw = mars_metadata.get("anoffset")
         if raw is None:
@@ -98,13 +98,11 @@ class TimeSeries(Encoder):
                 return 0
 
     @staticmethod
-    def _hdate_step_timestamp(date, step, anoffset_hours=0):
+    def _hdate_step_timestamp(date, step):
         """Return the valid-time (as a datetime) for a given hdate and step.
 
         Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
-        collapsed reanalysis path produces identical timestamps. When
-        ``anoffset_hours`` is non-zero the reference time is shifted backward by
-        that many hours before adding ``step`` (issue #126).
+        collapsed reanalysis path produces identical timestamps.
         """
         date_format = "%Y%m%dT%H%M%S"
         new_date = pd.Timestamp(date).strftime(date_format)
@@ -117,8 +115,6 @@ class TimeSeries(Encoder):
             except ValueError:
                 step = step[0]
             stamp = start_time + timedelta(hours=int(step))
-        if anoffset_hours:
-            stamp -= timedelta(hours=anoffset_hours)
         return stamp
 
     def _collapse_reanalysis(self, fields, coords, mars_metadata, range_dict):
@@ -137,16 +133,11 @@ class TimeSeries(Encoder):
         points = len(coords[fields["dates"][0]]["composite"])
         first_date = fields["dates"][0]
 
-        # ``anoffset`` (if present) shifts the reference time backward; step is
-        # counted from the shifted reference, so subtract it from every valid-time
-        # (issue #126). Confined to this efcl reanalysis path.
-        anoffset_hours = self._anoffset_hours(mars_metadata)
-
         # Ordered list of (stamp, date, step) across every hdate/step combination.
         stamp_order = []
         for date in fields["dates"]:
             for step in fields["step"]:
-                stamp = self._hdate_step_timestamp(date, step, anoffset_hours)
+                stamp = self._hdate_step_timestamp(date, step)
                 stamp_order.append((stamp, date, step))
         # Stable sort by valid-time so ties preserve insertion order.
         stamp_order.sort(key=lambda x: x[0])
@@ -293,6 +284,16 @@ class TimeSeries(Encoder):
 
         points = len(coords[fields["dates"][0]]["composite"])
 
+        # Regular forecast valid-time correction for ``class=ce, stream=efas``:
+        # valid_datetime = forecast_issue_datetime + step - anoffset. Most efas
+        # types have no anoffset in the request, so this defaults to 0h (no-op).
+        # Restricted to efas; all other streams are unaffected.
+        efas_anoffset = (
+            self._anoffset_hours(mars_metadata)
+            if mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efas"
+            else 0
+        )
+
         for date in fields["dates"]:
             coordinates[date] = []
             for i, point in enumerate(range(points)):
@@ -320,6 +321,8 @@ class TimeSeries(Encoder):
                                     except ValueError:
                                         step = step[0]
                                     stamp = start_time + timedelta(hours=int(step))
+                                if efas_anoffset:
+                                    stamp -= timedelta(hours=efas_anoffset)
                                 coordinates[date][i]["t"].append(stamp.isoformat() + "Z")
                             break
                         break
