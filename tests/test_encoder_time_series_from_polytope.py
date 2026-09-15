@@ -318,6 +318,69 @@ class TestTimeseriesFromPolytopeReforecast:
         assert cov["ranges"]["dis06"]["values"] == [42.17, 55.30]
         assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
 
+    def test_anoffset_shifts_valid_time(self):
+        # anoffset shifts the reference time backward, so the valid-time is
+        # (hdate - anoffset) + step. Here hdate 06:00 + step 6h = 12:00, but with
+        # anoffset=6 the corrected valid-time is (06:00 - 6h) + 6h = 06:00. (issue #126)
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (np.datetime64("2024-03-01"),)),
+            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
+            node("anoffset", (6,)),
+            *[node(n, v) for n, v in HDATE_SUFFIX],
+            make_point(51.5, 6.5, [42.17]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
+
+        assert len(covjson["coverages"]) == 1
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T06:00:00Z"]
+        assert cov["ranges"]["dis06"]["values"] == [42.17]
+        # anoffset is preserved in the metadata.
+        assert cov["mars:metadata"] == {**EXPECTED_HDATE_METADATA, "anoffset": 6}
+
+    def test_anoffset_absent_leaves_valid_time_unchanged(self):
+        # No anoffset → valid-time is the plain hdate + step (06:00 + 6h = 12:00).
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (np.datetime64("2024-03-01"),)),
+            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
+            *[node(n, v) for n, v in HDATE_SUFFIX],
+            make_point(51.5, 6.5, [42.17]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
+
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T12:00:00Z"]
+        assert "anoffset" not in cov["mars:metadata"]
+
+    def test_anoffset_applied_across_multiple_hdates(self):
+        # anoffset=3 subtracted from every valid-time across two hdates.
+        tree = chain(TensorIndexTree(), node("class", ("ce",)), node("date", (np.datetime64("2024-03-01"),)))
+        date = tip(tree)
+        for hdate_val, val in [
+            (np.datetime64("2025-07-14T06:00:00"), [42.17]),
+            (np.datetime64("2025-07-15T06:00:00"), [55.30]),
+        ]:
+            branch = chain(
+                node("hdate", (hdate_val,)),
+                node("anoffset", (3,)),
+                *[node(n, v) for n, v in HDATE_SUFFIX],
+                make_point(51.5, 6.5, val),
+            )
+            date.add_child(branch)
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
+
+        cov = covjson["coverages"][0]
+        # each: (hdate 06:00 - 3h) + step 6h = 09:00
+        assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T09:00:00Z", "2025-07-15T09:00:00Z"]
+        assert cov["ranges"]["dis06"]["values"] == [42.17, 55.30]
+
     def test_two_points(self):
         # 1 hdate, 2 points → 2 coverages (one per point)
         tree = chain(

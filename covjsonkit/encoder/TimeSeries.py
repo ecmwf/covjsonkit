@@ -75,22 +75,51 @@ class TimeSeries(Encoder):
         self.covjson["referencing"] = refs
 
     @staticmethod
-    def _hdate_step_timestamp(date, step):
+    def _anoffset_hours(mars_metadata):
+        """Return the ``anoffset`` (in hours) from ``mars_metadata`` as an int.
+
+        ``anoffset`` shifts the analysis reference time *backward* from the
+        forecast cycle (``date``/``time``). ``step`` is counted from that shifted
+        reference time, so the valid-time must be corrected by subtracting
+        ``anoffset`` hours (see issue #126). Returns ``0`` when ``anoffset`` is
+        absent (the common case), leaving the timestamp unchanged.
+        """
+        raw = mars_metadata.get("anoffset")
+        if raw is None:
+            return 0
+        if isinstance(raw, (list, tuple)):
+            raw = raw[0]
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            try:
+                return int(str(raw).split("h")[0])
+            except (TypeError, ValueError):
+                return 0
+
+    @staticmethod
+    def _hdate_step_timestamp(date, step, anoffset_hours=0):
         """Return the valid-time (as a datetime) for a given hdate and step.
 
         Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
-        collapsed reanalysis path produces identical timestamps.
+        collapsed reanalysis path produces identical timestamps. When
+        ``anoffset_hours`` is non-zero the reference time is shifted backward by
+        that many hours before adding ``step`` (issue #126).
         """
         date_format = "%Y%m%dT%H%M%S"
         new_date = pd.Timestamp(date).strftime(date_format)
         start_time = datetime.strptime(new_date, date_format)
         if isinstance(step, timedelta):
-            return start_time + step
-        try:
-            int(step)
-        except ValueError:
-            step = step[0]
-        return start_time + timedelta(hours=int(step))
+            stamp = start_time + step
+        else:
+            try:
+                int(step)
+            except ValueError:
+                step = step[0]
+            stamp = start_time + timedelta(hours=int(step))
+        if anoffset_hours:
+            stamp -= timedelta(hours=anoffset_hours)
+        return stamp
 
     def _collapse_reanalysis(self, fields, coords, mars_metadata, range_dict):
         """Collapse all hdates for each point into a single PointSeries coverage.
@@ -108,11 +137,16 @@ class TimeSeries(Encoder):
         points = len(coords[fields["dates"][0]]["composite"])
         first_date = fields["dates"][0]
 
+        # ``anoffset`` (if present) shifts the reference time backward; step is
+        # counted from the shifted reference, so subtract it from every valid-time
+        # (issue #126). Confined to this efcl reanalysis path.
+        anoffset_hours = self._anoffset_hours(mars_metadata)
+
         # Ordered list of (stamp, date, step) across every hdate/step combination.
         stamp_order = []
         for date in fields["dates"]:
             for step in fields["step"]:
-                stamp = self._hdate_step_timestamp(date, step)
+                stamp = self._hdate_step_timestamp(date, step, anoffset_hours)
                 stamp_order.append((stamp, date, step))
         # Stable sort by valid-time so ties preserve insertion order.
         stamp_order.sort(key=lambda x: x[0])
