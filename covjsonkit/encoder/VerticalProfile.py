@@ -1,10 +1,13 @@
 import logging
 import time
-from datetime import datetime, timedelta
 
-import pandas as pd
-
-from .encoder import Encoder, is_reanalysis, normalize_step_value
+from .encoder import (
+    Encoder,
+    efas_anoffset_hours,
+    is_reanalysis,
+    normalize_step_value,
+    valid_time,
+)
 
 
 class VerticalProfile(Encoder):
@@ -160,29 +163,22 @@ class VerticalProfile(Encoder):
 
         points = len(coords[fields["dates"][0]]["composite"])
 
+        # Regular forecast valid-time correction for ``class=ce, stream=efas``:
+        # valid_datetime = forecast_issue_datetime + step - anoffset (0h no-op
+        # otherwise, and restricted to efas so other streams are unaffected).
+        efas_anoffset = efas_anoffset_hours(mars_metadata)
+
         for date in fields["dates"]:
             coordinates[date] = {}
             for i, point in enumerate(range(points)):
                 coordinates[date][i] = []
                 for step in fields["step"]:
-                    date_format = "%Y%m%dT%H%M%S"
-                    new_date = pd.Timestamp(date).strftime(date_format)
-                    start_time = datetime.strptime(new_date, date_format)
-                    # add current date to list by converting it to iso format
-                    if isinstance(step, timedelta):
-                        stamp = start_time + step
-                    else:
-                        try:
-                            int(step)
-                        except ValueError:
-                            step = step[0]
-                        stamp = start_time + timedelta(hours=int(step))
                     coordinates[date][i].append(
                         {
                             "latitude": [coords[date]["composite"][i][0]],
                             "longitude": [coords[date]["composite"][i][1]],
                             "levelist": list(levels),
-                            "t": [stamp.isoformat() + "Z"],
+                            "t": [valid_time(date, step, efas_anoffset)],
                         }
                     )
 

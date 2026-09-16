@@ -1,6 +1,12 @@
 import logging
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    efas_anoffset_hours,
+    is_reanalysis,
+    normalize_step_value,
+    valid_time,
+)
 
 
 class Path(Encoder):
@@ -167,7 +173,7 @@ class Path(Encoder):
                         # The composite ``t`` coordinate is the valid-time
                         # (forecast date + step offset), as an ISO-8601 string.
                         # The original ``s`` is kept for the range_dict lookups.
-                        t_valid = valid_time(date, s)
+                        t_valid = valid_time(date, s, efas_anoffset_hours(mars_metadata))
                         if include_z:
                             if len(fields["levels"]) != 1:
                                 for lev in fields["levels"]:

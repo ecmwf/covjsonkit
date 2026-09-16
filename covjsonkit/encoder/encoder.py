@@ -196,13 +196,19 @@ def normalize_step_value(step):
     return str(step)
 
 
-def valid_time(date, step):
+def valid_time(date, step, anoffset_hours=0):
     """Return the ISO-8601 valid-time string for a forecast ``date`` and ``step``.
 
-    The valid time is ``date + step``. ``date`` may be any value accepted by
-    ``pandas.Timestamp`` (e.g. a MARS ``"YYYYMMDDTHHMMSS"`` string, optionally
-    suffixed with ``"Z"``). ``step`` may be a ``timedelta``/``numpy.timedelta64``
-    or an hour count (int, float, numeric string, or a single-element list).
+    The valid time is ``date + step - anoffset``. ``date`` may be any value
+    accepted by ``pandas.Timestamp`` (e.g. a MARS ``"YYYYMMDDTHHMMSS"`` string,
+    optionally suffixed with ``"Z"``). ``step`` may be a
+    ``timedelta``/``numpy.timedelta64`` or an hour count (int, float, numeric
+    string, or a single-element list).
+
+    ``anoffset_hours`` (default ``0``) shifts the analysis reference time
+    backward: ``step`` is counted from that shifted reference, so the offset is
+    subtracted from the valid-time. Use :func:`efas_anoffset_hours` to derive it
+    from ``mars_metadata`` (it is non-zero only for ``class=ce``/``stream=efas``).
 
     The result is an ISO-8601 string with a trailing ``"Z"``, matching the
     valid-time strings produced by the PointSeries encoders.
@@ -220,7 +226,44 @@ def valid_time(date, step):
         except (TypeError, ValueError):
             hours = int(str(step).split("h")[0])
         stamp = start_time + timedelta(hours=hours)
+    if anoffset_hours:
+        stamp -= timedelta(hours=anoffset_hours)
     return stamp.isoformat() + "Z"
+
+
+def anoffset_hours(mars_metadata) -> int:
+    """Return the ``anoffset`` (in hours) from ``mars_metadata`` as an int.
+
+    ``anoffset`` shifts the analysis reference time *backward* from the forecast
+    issue time (``date``/``time``). ``step`` is counted from that shifted
+    reference, so the valid-time must be corrected by subtracting ``anoffset``
+    hours. Returns ``0`` when ``anoffset`` is absent (the common case).
+    """
+    raw = mars_metadata.get("anoffset")
+    if raw is None:
+        return 0
+    if isinstance(raw, (list, tuple)):
+        raw = raw[0]
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        try:
+            return int(str(raw).split("h")[0])
+        except (TypeError, ValueError):
+            return 0
+
+
+def efas_anoffset_hours(mars_metadata) -> int:
+    """Return the anoffset correction (hours) but only for ``class=ce``/``stream=efas``.
+
+    The ``anoffset`` valid-time correction is restricted to regular forecast data
+    under ``class=ce``, ``stream=efas``. Other streams may carry an ``anoffset``
+    in the request, but their valid-times must not be shifted, so this returns
+    ``0`` for them. Returns ``0`` when ``anoffset`` is absent as well.
+    """
+    if mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efas":
+        return anoffset_hours(mars_metadata)
+    return 0
 
 
 def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:

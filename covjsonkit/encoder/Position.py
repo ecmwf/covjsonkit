@@ -1,10 +1,9 @@
 import logging
 import time
-from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder, is_reanalysis
+from .encoder import Encoder, efas_anoffset_hours, is_reanalysis, valid_time
 
 
 class Position(Encoder):
@@ -176,6 +175,11 @@ class Position(Encoder):
 
         points = len(coords[fields["dates"][0]]["composite"])
 
+        # Regular forecast valid-time correction for ``class=ce, stream=efas``:
+        # valid_datetime = forecast_issue_datetime + step - anoffset (0h no-op
+        # otherwise, and restricted to efas so other streams are unaffected).
+        efas_anoffset = efas_anoffset_hours(mars_metadata)
+
         for date in fields["dates"]:
             coordinates[date] = []
             for i, point in enumerate(range(points)):
@@ -191,19 +195,7 @@ class Position(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                date_format = "%Y%m%dT%H%M%S"
-                                new_date = pd.Timestamp(date).strftime(date_format)
-                                start_time = datetime.strptime(new_date, date_format)
-                                # add current date to list by converting it to iso format
-                                if isinstance(step, timedelta):
-                                    stamp = start_time + step
-                                else:
-                                    try:
-                                        int(step)
-                                    except ValueError:
-                                        step = step[0]
-                                    stamp = start_time + timedelta(hours=int(step))
-                                coordinates[date][i]["t"].append(stamp.isoformat() + "Z")
+                                coordinates[date][i]["t"].append(valid_time(date, step, efas_anoffset))
                             break
                         break
                     break

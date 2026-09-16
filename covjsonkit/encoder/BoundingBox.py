@@ -1,7 +1,13 @@
 import logging
 import time
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    efas_anoffset_hours,
+    is_reanalysis,
+    normalize_step_value,
+    valid_time,
+)
 
 
 class BoundingBox(Encoder):
@@ -204,7 +210,7 @@ class BoundingBox(Encoder):
                     mm["step"] = normalize_step_value(step)
                     # ``t`` is the valid-time (forecast date + step offset).
                     cov_coords = dict(coords[date])
-                    cov_coords["t"] = [valid_time(date, step)]
+                    cov_coords["t"] = [valid_time(date, step, efas_anoffset_hours(mars_metadata))]
                     if reanalysis:
                         # Reanalysis (class=ce, stream=efcl): expose only the
                         # valid-time; drop the scalar forecast-date metadata.
