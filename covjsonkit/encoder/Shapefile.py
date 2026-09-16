@@ -1,6 +1,12 @@
 import logging
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    efas_anoffset_hours,
+    is_reanalysis,
+    normalize_step_value,
+    valid_time,
+)
 
 
 class Shapefile(Encoder):
@@ -188,7 +194,7 @@ class Shapefile(Encoder):
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
                     cov_coords = dict(coords[date])
-                    cov_coords["t"] = [valid_time(date, step)]
+                    cov_coords["t"] = [valid_time(date, step, efas_anoffset_hours(mars_metadata))]
                     if reanalysis:
                         mm.pop("Forecast date", None)
                         mm.pop("step", None)

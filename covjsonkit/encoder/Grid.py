@@ -1,7 +1,13 @@
 import logging
 import time
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    efas_anoffset_hours,
+    is_reanalysis,
+    normalize_step_value,
+    valid_time,
+)
 
 
 class Grid(Encoder):
@@ -188,7 +194,8 @@ class Grid(Encoder):
         for date in coords.keys():
             coordinates[date] = {}
             # ``t`` axis holds the valid-time (forecast date + step) for each step.
-            coordinates[date]["t"] = [valid_time(date, s) for s in fields["step"]]
+            _ao = efas_anoffset_hours(mars_metadata)
+            coordinates[date]["t"] = [valid_time(date, s, _ao) for s in fields["step"]]
             if include_z:
                 coordinates[date]["z"] = list(fields["levels"])
             coordinates[date]["y"] = []
