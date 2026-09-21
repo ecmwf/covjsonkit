@@ -1,6 +1,6 @@
 import logging
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import Encoder, normalize_step_value
 
 
 class Circle(Encoder):
@@ -9,26 +9,30 @@ class Circle(Encoder):
         self.covjson["domainType"] = "MultiPoint"
         self.covjson["coverages"] = []
 
-    def add_coverage(self, mars_metadata, coords, values, include_z=False):
+    def add_coverage(self, mars_metadata, coords, values):
         new_coverage = {}
         new_coverage["mars:metadata"] = {}
         new_coverage["type"] = "Coverage"
         new_coverage["domain"] = {}
         new_coverage["ranges"] = {}
         self.add_mars_metadata(new_coverage, mars_metadata)
-        self.add_domain(new_coverage, coords, include_z)
+        self.add_domain(new_coverage, coords)
         self.add_range(new_coverage, values)
         self.covjson["coverages"].append(new_coverage)
+        # cov = Coverage.model_validate_json(json.dumps(new_coverage))
+        # self.pydantic_coverage.coverages.append(json.dumps(new_coverage))
 
-    def add_domain(self, coverage, coords, include_z=False):
+    def add_domain(self, coverage, coords):
         coverage["domain"]["type"] = "Domain"
         coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["t"] = {"values": coords["t"]}
-        coverage["domain"]["axes"]["composite"] = {
-            "dataType": "tuple",
-            "coordinates": ["x", "y", "z"] if include_z else ["x", "y"],
-            "values": coords["composite"],
-        }
+        coverage["domain"]["axes"]["t"] = {}
+        coverage["domain"]["axes"]["t"]["values"] = coords["t"]
+        coverage["domain"]["axes"]["composite"] = {}
+        coverage["domain"]["axes"]["composite"]["dataType"] = "tuple"
+        coverage["domain"]["axes"]["composite"]["coordinates"] = self.covjson["referencing"][0][
+            "coordinates"
+        ]  # self.pydantic_coverage.referencing[0].coordinates
+        coverage["domain"]["axes"]["composite"]["values"] = coords["composite"]
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -37,66 +41,62 @@ class Circle(Encoder):
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
             coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["composite"]
-            coverage["ranges"][param]["values"] = values[parameter]
+            coverage["ranges"][param]["axisNames"] = [str(param)]
+            coverage["ranges"][param]["values"] = values[parameter]  # [values[parameter]]
 
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
-    def _set_references(self, include_z):
-        refs = [
+    def from_xarray(self, dataset):
+        """
+        Converts an xarray dataset into a MultiPoint CoverageJSON format.
+        """
+
+        self.covjson["type"] = "CoverageCollection"
+        self.covjson["domainType"] = "PointSeries"
+        self.covjson["coverages"] = []
+
+        if "latitude" in dataset.coords:
+            x_coord = "latitude"
+        elif "x" in dataset.coords:
+            x_coord = "x"
+        if "longitude" in dataset.coords:
+            y_coord = "longitude"
+        elif "y" in dataset.coords:
+            y_coord = "y"
+        if "levelist" in dataset.coords:
+            z_coord = "levelist"
+
+        # Add reference system
+        self.add_reference(
             {
-                "coordinates": ["x", "y"],
+                "coordinates": [x_coord, y_coord, z_coord],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
-            },
-            {
-                "coordinates": ["t"],
-                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
-            },
-        ]
-        if include_z:
-            refs.append(
-                {
-                    "coordinates": ["z"],
-                    "system": {"type": "VerticalCRS"},
-                }
-            )
-        self.covjson["referencing"] = refs
-
-    def from_xarray(self, dataset):
-        """
-        Converts an xarray dataset into a MultiPoint CoverageJSON collection.
-        """
-
-        self.covjson["type"] = "CoverageCollection"
-        self.covjson["domainType"] = "MultiPoint"
-        self.covjson["coverages"] = []
-
-        include_z = "levelist" in dataset.coords
-
-        self._set_references(include_z)
+            }
+        )
 
         for data_var in dataset.data_vars:
             data_var = self.convert_param_to_param_id(data_var)
             self.add_parameter(data_var)
 
-        # Prepare coordinates: composite tuples ordered [x, y(, z)].
+        # Prepare coordinates
         coords = {
             "composite": [],
+            "dataType": "tuple",
             "t": [str(x) for x in dataset["datetimes"].values],
         }
 
         for point in dataset["points"].values:
-            lon = float(dataset.isel(points=point).longitude.values)
-            lat = float(dataset.isel(points=point).latitude.values)
-            if include_z:
-                level = float(dataset.isel(points=point).levelist.values)
-                coords["composite"].append([lon, lat, level])
-            else:
-                coords["composite"].append([lon, lat])
+            coords["composite"].append(
+                [
+                    float(dataset.isel(points=point).longitude.values),
+                    float(dataset.isel(points=point).latitude.values),
+                    float(dataset.isel(points=point).levelist.values),
+                ]
+            )
 
         for datetime in dataset["datetimes"].values:
             for num in dataset["number"].values:
@@ -109,8 +109,9 @@ class Circle(Encoder):
                     for dv in dataset.data_vars:
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
-                    self.add_coverage(mars_metadata, coords, dv_dict, include_z)
+                    self.add_coverage(mars_metadata, coords, dv_dict)
 
+        # Return the generated CoverageJSON
         return self.covjson
 
     def from_polytope(self, result, date_key: str = "date") -> dict:
@@ -125,15 +126,21 @@ class Circle(Encoder):
         fields["step"] = [0]
         fields["dates"] = []
         fields["levels"] = [0]
-        fields["has_level_axis"] = False
 
         self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
 
         logging.debug("The values returned from walking tree: %s", range_dict)  # noqa: E501
         logging.debug("The coordinates returned from walking tree: %s", coords)  # noqa: E501
 
-        include_z = fields["has_level_axis"]
-        self._set_references(include_z)
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
 
         combined_dict = {}
 
@@ -147,12 +154,15 @@ class Circle(Encoder):
                     for para in fields["param"]:
                         if para not in combined_dict[date][num]:
                             combined_dict[date][num][para] = {}
+                        # for s, value in range_dict[date][level][num][para].items():
                         for s in fields["step"]:
                             key = (date, level, num, para, s)
+                            # for k, v in range_dict.items():
+                            # if k == key:
                             if s not in combined_dict[date][num][para]:
                                 combined_dict[date][num][para][s] = range_dict[key]
                             else:
-                                # Concatenate arrays
+                                # Cocatenate arrays
                                 combined_dict[date][num][para][s] += range_dict[key]
 
         levels = fields["levels"]
@@ -171,12 +181,7 @@ class Circle(Encoder):
             coords[date]["composite"] = []
             for level in levels:
                 for cor in coord:
-                    if include_z:
-                        coords[date]["composite"].append([cor[1], cor[0], level])
-                    else:
-                        coords[date]["composite"].append([cor[1], cor[0]])
-
-        reanalysis = is_reanalysis(mars_metadata, date_key)
+                    coords[date]["composite"].append([cor[0], cor[1], level])
 
         for date in combined_dict.keys():
             for num in combined_dict[date].keys():
@@ -190,14 +195,8 @@ class Circle(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
-                    cov_coords = dict(coords[date])
-                    cov_coords["t"] = [valid_time(date, step)]
-                    if reanalysis:
-                        mm.pop("Forecast date", None)
-                        mm.pop("step", None)
-                    else:
-                        mm["Forecast date"] = date
-                    self.add_coverage(mm, cov_coords, val_dict[step], include_z)
+                    mm["Forecast date"] = date
+                    self.add_coverage(mm, coords[date], val_dict[step])
 
         return self.covjson
 
@@ -213,7 +212,6 @@ class Circle(Encoder):
         fields["months"] = []
         fields["dates"] = []
         fields["levels"] = [0]
-        fields["has_level_axis"] = False
 
         logging.debug("Tree walking starts")
         self.walk_tree_month(result, fields, coords, mars_metadata, range_dict)
@@ -222,8 +220,15 @@ class Circle(Encoder):
         logging.debug("The values returned from walking tree: %s", range_dict)
         logging.debug("The coordinates returned from walking tree: %s", coords)
 
-        include_z = fields["has_level_axis"]
-        self._set_references(include_z)
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
 
         levels = fields["levels"]
         if fields["param"] == 0:
@@ -236,7 +241,7 @@ class Circle(Encoder):
         logging.debug("The range_dict created was: %s", range_dict)
 
         # Build per-date composite coordinates, expanding each spatial point
-        # across all levels when a vertical axis is present.
+        # across all levels to produce [lat, lon, level] tuples.
         coordinates = {}
         for date in fields["dates"]:
             t_val = f"{date}-01T00:00:00Z"
@@ -246,10 +251,7 @@ class Circle(Encoder):
             coord = coords.get(date, {}).get("composite", [])
             for level in levels:
                 for cor in coord:
-                    if include_z:
-                        coordinates[date]["composite"].append([cor[1], cor[0], level])
-                    else:
-                        coordinates[date]["composite"].append([cor[1], cor[0]])
+                    coordinates[date]["composite"].append([cor[0], cor[1], level])
 
         for num in fields["number"]:
             for date in fields["dates"]:
@@ -263,6 +265,6 @@ class Circle(Encoder):
                 mm = mars_metadata.copy()
                 mm["number"] = num
                 mm["Forecast date"] = f"{date}-01T00:00:00Z"
-                self.add_coverage(mm, coordinates[date], val_dict, include_z)
+                self.add_coverage(mm, coordinates[date], val_dict)
 
         return self.covjson
