@@ -196,6 +196,43 @@ def normalize_step_value(step):
     return str(step)
 
 
+def valid_time(date, step):
+    """Return the ISO-8601 valid-time string for a forecast ``date`` and ``step``.
+
+    The valid time is ``date + step``. ``date`` may be any value accepted by
+    ``pandas.Timestamp`` (e.g. a MARS ``"YYYYMMDDTHHMMSS"`` string, optionally
+    suffixed with ``"Z"``). ``step`` may be a ``timedelta``/``numpy.timedelta64``
+    or an hour count (int, float, numeric string, or a single-element list).
+
+    The result is an ISO-8601 string with a trailing ``"Z"``, matching the
+    valid-time strings produced by the PointSeries encoders.
+    """
+    date_format = "%Y%m%dT%H%M%S"
+    new_date = pd.Timestamp(str(date).rstrip("Z")).strftime(date_format)
+    start_time = pd.Timestamp(new_date).to_pydatetime()
+    if isinstance(step, (timedelta, pd.Timedelta, np.timedelta64)):
+        stamp = start_time + pd.Timedelta(step).to_pytimedelta()
+    else:
+        if isinstance(step, (list, tuple)):
+            step = step[0]
+        try:
+            hours = int(step)
+        except (TypeError, ValueError):
+            hours = int(str(step).split("h")[0])
+        stamp = start_time + timedelta(hours=hours)
+    return stamp.isoformat() + "Z"
+
+
+def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:
+    """True for the collapsed reanalysis path (``class=ce``, ``stream=efcl``).
+
+    When walking the ``hdate`` axis for ``class=ce``/``stream=efcl`` requests the
+    encoders omit the scalar ``"Forecast date"`` metadata and expose only the
+    valid-time on the ``t`` axis, mirroring the PointSeries behaviour.
+    """
+    return date_key == "hdate" and mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efcl"
+
+
 class Encoder(ABC):
     def __init__(self, type, domaintype):
         """

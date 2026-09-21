@@ -9,6 +9,45 @@ class Path(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
+        # Backwards-compatible composite ordering for the Trajectory ``composite``
+        # tuple. Both the spec-compliant output and the legacy output label the
+        # spatial components ``x``/``y``, but with SWAPPED meaning:
+        #   * spec:   values ordered [t, x=lon, y=lat(, z)] with split referencing
+        #             (a GeographicCRS whose coordinates are exactly ["x", "y"]).
+        #   * legacy: values ordered [t, lat, lon(, z)] with a single combined
+        #             GeographicCRS whose coordinates are ["t", "x", "y", "z"].
+        # Labels alone cannot disambiguate these, so the referencing structure is
+        # used: a split GeographicCRS(["x", "y"]) marks spec-compliant output.
+        self.t_idx, self.x_idx, self.y_idx, self.z_idx = self._composite_indices()
+
+    def _composite_indices(self):
+        labels = self.domains[0]["axes"]["composite"]["coordinates"]
+        refs = self.covjson.get("referencing", [])
+        is_spec = any(
+            ref.get("system", {}).get("type") == "GeographicCRS" and set(ref.get("coordinates", [])) == {"x", "y"}
+            for ref in refs
+        )
+
+        t_idx = labels.index("t") if "t" in labels else None
+        z_idx = None
+        for name in ("z", "levelist"):
+            if name in labels:
+                z_idx = labels.index(name)
+                break
+
+        if is_spec:
+            # Spec order: label ``x`` holds longitude, label ``y`` holds latitude.
+            x_idx = labels.index("x") if "x" in labels else labels.index("longitude")
+            y_idx = labels.index("y") if "y" in labels else labels.index("latitude")
+        else:
+            # Legacy order: values are [t, lat, lon(, z)]; the mislabeled ``x``
+            # component actually holds latitude and ``y`` holds longitude.
+            lat_label = "x" if "x" in labels else "latitude"
+            lon_label = "y" if "y" in labels else "longitude"
+            y_idx = labels.index(lat_label)  # latitude
+            x_idx = labels.index(lon_label)  # longitude
+
+        return t_idx, x_idx, y_idx, z_idx
 
     def get_domains(self):
         domains = []
@@ -55,13 +94,17 @@ class Path(Decoder):
                     param_vals[key] = values[key][idx]
                 if "mars:metadata" in coverage:
                     param_vals["mars:metadata"] = mars_metadata
-                param_vals["datetime"] = coord[0]
+                if self.t_idx is not None:
+                    param_vals["datetime"] = coord[self.t_idx]
+                geom_coords = [coord[self.x_idx], coord[self.y_idx]]  # lon, lat
+                if self.z_idx is not None:
+                    geom_coords.append(coord[self.z_idx])
                 features.append(
                     {
                         "type": "Feature",
                         "geometry": {
                             "type": "Point",
-                            "coordinates": [[coord[1], coord[2], coord[3]]],  # lon, lat, z
+                            "coordinates": geom_coords,
                         },
                         "properties": param_vals,
                     }
@@ -76,15 +119,17 @@ class Path(Decoder):
         dataarraydict = {}
 
         # Get coordinates
-        x = []
-        y = []
+        longitude = []
+        latitude = []
         levelist = []
         time = []
         for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[1]))
-            y.append(float(coord[2]))
-            levelist.append(float(coord[3]))
-            time.append(coord[0])
+            longitude.append(float(coord[self.x_idx]))
+            latitude.append(float(coord[self.y_idx]))
+            if self.z_idx is not None:
+                levelist.append(float(coord[self.z_idx]))
+            if self.t_idx is not None:
+                time.append(coord[self.t_idx])
 
         values = {}
         for parameter in self.parameters:
@@ -143,10 +188,10 @@ class Path(Decoder):
                 datetimes=(["datetimes"], datetimes),
                 number=(["number"], numbers),
                 steps=(["steps"], steps),
-                points=(["points"], list(range(0, len(x)))),
-                latitude=(["points"], x),
-                longitude=(["points"], y),
-                levelist=(["points"], levelist),
+                points=(["points"], list(range(0, len(longitude)))),
+                latitude=(["points"], latitude),
+                longitude=(["points"], longitude),
+                **({"levelist": (["points"], levelist)} if self.z_idx is not None else {}),
                 time=(["points"], time),
             ),
         )
