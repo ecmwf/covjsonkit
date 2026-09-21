@@ -46,30 +46,13 @@ class Grid(Decoder):
     def to_geopandas(self):
         pass
 
-    def _grid_axes(self, domain):
-        """Resolve (lon_values, lat_values, z_values_or_None) from a Grid domain,
-        reading both spec (x/y/z) and legacy (longitude/latitude/levelist) axes."""
-        lon_axis = "x" if "x" in domain else "longitude"
-        lat_axis = "y" if "y" in domain else "latitude"
-        if "z" in domain:
-            z_axis = "z"
-        elif "levelist" in domain:
-            z_axis = "levelist"
-        else:
-            z_axis = None
-        lon = domain[lon_axis]["values"]
-        lat = domain[lat_axis]["values"]
-        z = domain[z_axis]["values"] if z_axis is not None else None
-        return lon, lat, z
-
-    def to_geotiff(self, output_file="grid", resolution=0.01):
+    def to_geotiff(self, output_file="multipoint", resolution=0.01):
         if rasterio is None:
             raise ImportError("Please install 'rasterio' to use this feature: pip install covjsonkit[geo]")
-        domain = self.covjson["coverages"][0]["domain"]["axes"]
-        lon_vals, lat_vals, _ = self._grid_axes(domain)
-        # Full grid of (lon, lat) cell centres.
-        x = [lon for lat in lat_vals for lon in lon_vals]
-        y = [lat for lat in lat_vals for lon in lon_vals]
+        coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
+        x = [c[1] for c in coords]  # longitude
+        y = [c[0] for c in coords]  # latitude
+        # z = [c[2] for c in coords]  # height/time/etc (not used yet)
 
         # Define grid
         x_min, x_max = min(x), max(x)
@@ -119,36 +102,29 @@ class Grid(Decoder):
     def to_geojson(self):
         features = []
         for coverage in self.covjson["coverages"]:
-            domain = coverage["domain"]["axes"]
-            lon_vals, lat_vals, z_vals = self._grid_axes(domain)
-            datetime = domain["t"]["values"][0]
-            mars_metadata = coverage.get("mars:metadata")
+            coords = coverage["domain"]["axes"]["composite"]["values"]
+            datetime = coverage["domain"]["axes"]["t"]["values"][0]
+            if "mars:metadata" in coverage:
+                mars_metadata = coverage["mars:metadata"]
 
             values = {}
             for key in coverage["ranges"]:
                 values[key] = coverage["ranges"][key]["values"]
 
-            # Grid points iterate latitude-major then longitude (matching the
-            # [t, (z), y, x] range value ordering).
-            idx = 0
-            z = z_vals[0] if z_vals else None
-            for lat in lat_vals:
-                for lon in lon_vals:
-                    param_vals = {}
-                    for key in values.keys():
-                        param_vals[key] = values[key][idx]
-                    param_vals["datetime"] = datetime
-                    if mars_metadata is not None:
-                        param_vals["mars:metadata"] = mars_metadata
-                    geom_coords = [lon, lat] if z is None else [lon, lat, z]
-                    features.append(
-                        {
-                            "type": "Feature",
-                            "geometry": {"type": "Point", "coordinates": geom_coords},
-                            "properties": param_vals,
-                        }
-                    )
-                    idx += 1
+            for idx, lonlat in enumerate(coords):
+                param_vals = {}
+                for key in values.keys():
+                    param_vals[key] = values[key][idx]
+                param_vals["datetime"] = datetime
+                if "mars:metadata" in coverage:
+                    param_vals["mars:metadata"] = mars_metadata
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lonlat[1], lonlat[0], lonlat[2]]},
+                        "properties": param_vals,
+                    }
+                )
 
         geojson = {"type": "FeatureCollection", "features": features}
         return geojson
@@ -184,21 +160,23 @@ class Grid(Decoder):
         first_cov = self.covjson["coverages"][0]
         domain = first_cov["domain"]["axes"]
 
-        # Resolve named axes with back-compat: spec output uses x/y/z, legacy
-        # output uses longitude/latitude/levelist. x == longitude, y == latitude.
-        lon_axis = "x" if "x" in domain else "longitude"
-        lat_axis = "y" if "y" in domain else "latitude"
-        if "z" in domain:
-            z_axis = "z"
-        elif "levelist" in domain:
-            z_axis = "levelist"
+        if "latitude" in domain:
+            x_coords = "latitude"
         else:
-            z_axis = None
+            x_coords = "x"
+        if "longitude" in domain:
+            y_coords = "longitude"
+        else:
+            y_coords = "y"
+        if "levelist" in domain:
+            z_coords = "levelist"
+        else:
+            z_coords = "z"
 
         steps = np.array(domain.get("t", {}).get("values", [0]))
-        levels = np.array(domain[z_axis]["values"]) if z_axis is not None else np.array([0])
-        lat = np.array(domain[lat_axis]["values"])
-        lon = np.array(domain[lon_axis]["values"])
+        levels = np.array(domain.get(z_coords, {}).get("values", [0]))
+        lat = np.array(domain[x_coords]["values"])
+        lon = np.array(domain[y_coords]["values"])
 
         # Prepare arrays for each parameter
         data_arrays = {
@@ -221,11 +199,6 @@ class Grid(Decoder):
 
             for pname, prange in coverage["ranges"].items():
                 arr = np.array(prange["values"]).reshape(prange["shape"])
-                # Spec-compliant surface grids drop the z axis (shape
-                # [t, y, x]); insert a length-1 level dim so the target 4D
-                # (steps, levels, lat, lon) block assignment lines up.
-                if arr.ndim == 3:
-                    arr = arr[:, np.newaxis, :, :]
                 data_arrays[pname][t_idx, n_idx, :, :, :, :] = arr
 
         # Build xarray Dataset

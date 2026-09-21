@@ -29,11 +29,8 @@ class TestPathFromPolytope:
         assert cov["domain"]["axes"] == {
             "composite": {
                 "dataType": "tuple",
-                "coordinates": ["t", "x", "y"],
-                "values": [
-                    ["2025-01-01T00:00:00Z", 11.0, 48.0],
-                    ["2025-01-01T00:00:00Z", 12.0, 49.0],
-                ],
+                "coordinates": ["t", "x", "y", "z"],
+                "values": [[0, 48.0, 11.0, 0], [0, 49.0, 12.0, 0]],
             }
         }
 
@@ -42,7 +39,7 @@ class TestPathFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [2],
-                "axisNames": ["composite"],
+                "axisNames": ["2t"],
                 "values": [264.9, 265.1],
             }
         }
@@ -59,19 +56,15 @@ class TestPathFromPolytope:
             "number": 0,
         }
 
-        # Collection-level referencing (split GeographicCRS / TemporalRS)
+        # Collection-level referencing
         assert covjson["referencing"] == [
             {
-                "coordinates": ["x", "y"],
+                "coordinates": ["t", "x", "y", "z"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
-            },
-            {
-                "coordinates": ["t"],
-                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
-            },
+            }
         ]
 
         # Collection-level parameters
@@ -83,22 +76,20 @@ class TestPathFromPolytope:
 class TestPathFromPolytopeReforecast:
     """Tests for Path (Trajectory) encoder's from_polytope_reforecast method."""
 
-    @staticmethod
-    def axes_for(t_val):
-        return {
-            "composite": {
-                "dataType": "tuple",
-                "coordinates": ["t", "x", "y"],
-                "values": [[t_val, 11.0, 48.0], [t_val, 12.0, 50.0]],
-            }
+    EXPECTED_AXES = {
+        "composite": {
+            "dataType": "tuple",
+            "coordinates": ["t", "x", "y", "z"],
+            "values": [[0, 48.0, 11.0, 0], [0, 50.0, 12.0, 0]],
         }
+    }
 
     EXPECTED_RANGES = {
         "2t": {
             "type": "NdArray",
             "dataType": "float",
             "shape": [2],
-            "axisNames": ["composite"],
+            "axisNames": ["2t"],
             "values": [264.9, 265.1],
         }
     }
@@ -118,9 +109,12 @@ class TestPathFromPolytopeReforecast:
 
         cov = covjson["coverages"][0]
 
-        assert cov["domain"]["axes"] == self.axes_for("2025-07-14T06:00:00Z")
+        assert cov["domain"]["axes"] == self.EXPECTED_AXES
         assert cov["ranges"] == self.EXPECTED_RANGES
-        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
+        assert cov["mars:metadata"] == {
+            **REFORECAST_METADATA_BASE,
+            "Forecast date": "2025-07-14T06:00:00Z",
+        }
 
     def test_reforecast_two_hdates_two_points(self):
         """Two hdates each with 2 path points -> 2 Trajectory coverages."""
@@ -139,6 +133,6 @@ class TestPathFromPolytopeReforecast:
         ]
         assert len(covjson["coverages"]) == len(expected)
         for cov, fc_date in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == self.axes_for(fc_date)
+            assert cov["domain"]["axes"] == self.EXPECTED_AXES
             assert cov["ranges"] == self.EXPECTED_RANGES
-            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
+            assert cov["mars:metadata"] == {**REFORECAST_METADATA_BASE, "Forecast date": fc_date}

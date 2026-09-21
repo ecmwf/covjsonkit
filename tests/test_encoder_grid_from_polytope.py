@@ -12,21 +12,19 @@ from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
 
 from covjsonkit.api import Covjsonkit
 
-
-def grid_2x2_axes(t_val):
-    return {
-        "t": {"values": [t_val]},
-        "y": {"values": [48.0, 50.0]},
-        "x": {"values": [11.0, 12.0]},
-    }
-
+GRID_2X2_AXES = {
+    "t": {"values": [0]},
+    "latitude": {"values": [48.0, 50.0]},
+    "longitude": {"values": [11.0, 12.0]},
+    "levelist": {"values": [0]},
+}
 
 GRID_2X2_RANGES = {
     "2t": {
         "type": "NdArray",
         "dataType": "float",
-        "shape": [1, 2, 2],
-        "axisNames": ["t", "y", "x"],
+        "shape": [1, 1, 2, 2],
+        "axisNames": ["t", "levelist", "latitude", "longitude"],
         "values": [264.9, 265.1, 266.3, 267.5],
     }
 }
@@ -67,19 +65,15 @@ class TestGridFromPolytope:
         assert covjson["type"] == "CoverageCollection"
         assert covjson["domainType"] == "Grid"
 
-        # Collection-level referencing (split GeographicCRS / TemporalRS)
+        # Collection-level referencing
         assert covjson["referencing"] == [
             {
-                "coordinates": ["x", "y"],
+                "coordinates": ["latitude", "longitude", "levelist"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
-            },
-            {
-                "coordinates": ["t"],
-                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
-            },
+            }
         ]
 
         # Collection-level parameters
@@ -93,7 +87,7 @@ class TestGridFromPolytope:
         assert len(covjson["coverages"]) == 1
         cov = covjson["coverages"][0]
 
-        assert cov["domain"]["axes"] == grid_2x2_axes("2025-01-01T00:00:00Z")
+        assert cov["domain"]["axes"] == GRID_2X2_AXES
         assert cov["ranges"] == GRID_2X2_RANGES
         assert cov["mars:metadata"] == {
             "class": "od",
@@ -129,16 +123,17 @@ class TestGridFromPolytope:
         cov = covjson["coverages"][0]
 
         assert cov["domain"]["axes"] == {
-            "t": {"values": ["2025-01-01T00:00:00Z"]},
-            "y": {"values": [48.0]},
-            "x": {"values": [11.0]},
+            "t": {"values": [0]},
+            "latitude": {"values": [48.0]},
+            "longitude": {"values": [11.0]},
+            "levelist": {"values": [0]},
         }
         assert cov["ranges"] == {
             "2t": {
                 "type": "NdArray",
                 "dataType": "float",
-                "shape": [1, 1, 1],
-                "axisNames": ["t", "y", "x"],
+                "shape": [1, 1, 1, 1],
+                "axisNames": ["t", "levelist", "latitude", "longitude"],
                 "values": [264.9],
             }
         }
@@ -163,9 +158,12 @@ class TestGridFromPolytopeReforecast:
 
         cov = covjson["coverages"][0]
 
-        assert cov["domain"]["axes"] == grid_2x2_axes("2025-07-14T06:00:00Z")
+        assert cov["domain"]["axes"] == GRID_2X2_AXES
         assert cov["ranges"] == GRID_2X2_RANGES
-        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
+        assert cov["mars:metadata"] == {
+            **REFORECAST_METADATA_BASE,
+            "Forecast date": "2025-07-14T06:00:00Z",
+        }
 
     def test_reforecast_two_hdates_2x2_grid(self):
         """Two hdates each with 2x2 grid -> 2 Grid coverages."""
@@ -184,6 +182,9 @@ class TestGridFromPolytopeReforecast:
         ]
         assert len(covjson["coverages"]) == len(expected)
         for cov, fc_date in zip(covjson["coverages"], expected):
-            assert cov["domain"]["axes"] == grid_2x2_axes(fc_date)
+            assert cov["domain"]["axes"] == GRID_2X2_AXES
             assert cov["ranges"] == GRID_2X2_RANGES
-            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
+            assert cov["mars:metadata"] == {
+                **REFORECAST_METADATA_BASE,
+                "Forecast date": fc_date,
+            }
