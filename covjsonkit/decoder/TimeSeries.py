@@ -9,18 +9,18 @@ class TimeSeries(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
-        first_axes = self.covjson["coverages"][0]["domain"]["axes"]
-        # Backwards-compatible axis-name detection: read both spec-compliant
-        # coverages (x/y/z) and legacy coverages (longitude/latitude/levelist).
-        # Semantics are preserved: x == longitude, y == latitude.
-        self.x_name = "x" if "x" in first_axes else "longitude"
-        self.y_name = "y" if "y" in first_axes else "latitude"
-        if "z" in first_axes:
-            self.z_name = "z"
-        elif "levelist" in first_axes:
-            self.z_name = "levelist"
+        if "x" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.x_name = "x"
         else:
-            self.z_name = None
+            self.x_name = "latitude"
+        if "y" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.y_name = "y"
+        else:
+            self.y_name = "longitude"
+        if "z" in self.covjson["coverages"][0]["domain"]["axes"]:
+            self.z_name = "z"
+        else:
+            self.z_name = "levelist"
 
     def get_domains(self):
         domains = []
@@ -48,9 +48,9 @@ class TimeSeries(Decoder):
             coord_dict[param] = []
         # Get x,y,z,t coords and unpack t coords and match to x,y,z coords
         for ind, domain in enumerate(self.domains):
-            longitude = domain["axes"][self.x_name]["values"][0]
-            latitude = domain["axes"][self.y_name]["values"][0]
-            level = domain["axes"][self.z_name]["values"][0] if self.z_name else None
+            x = domain["axes"][self.x_name]["values"][0]
+            y = domain["axes"][self.y_name]["values"][0]
+            z = domain["axes"][self.z_name]["values"][0]
             fct = domain["axes"]["t"]["values"][0]
             ts = domain["axes"]["t"]["values"]
             if "number" in self.mars_metadata[ind]:
@@ -62,7 +62,7 @@ class TimeSeries(Decoder):
                 for t in ts:
                     # Have to replicate these coords for each parameter
                     # coordinates.append([x, y, z, t])
-                    coords.append([latitude, longitude, level, fct, t, num])
+                    coords.append([x, y, z, fct, t, num])
                 coord_dict[param].append(coords)
         return coord_dict
 
@@ -75,15 +75,12 @@ class TimeSeries(Decoder):
     def to_geojson(self):
         features = []
         for coverage in self.covjson["coverages"]:
-            longitude = coverage["domain"]["axes"][self.x_name]["values"][0]
-            latitude = coverage["domain"]["axes"][self.y_name]["values"][0]
+            lat = coverage["domain"]["axes"][self.x_name]["values"][0]
+            lon = coverage["domain"]["axes"][self.y_name]["values"][0]
+            z = coverage["domain"]["axes"][self.z_name]["values"][0]
             datetimes = coverage["domain"]["axes"]["t"]["values"]
             if "mars:metadata" in coverage:
                 mars_metadata = coverage["mars:metadata"]
-
-            geom_coords = [longitude, latitude]
-            if self.z_name:
-                geom_coords.append(coverage["domain"]["axes"][self.z_name]["values"][0])
 
             values = {}
             for key in coverage["ranges"]:
@@ -99,7 +96,7 @@ class TimeSeries(Decoder):
                 features.append(
                     {
                         "type": "Feature",
-                        "geometry": {"type": "Point", "coordinates": geom_coords},
+                        "geometry": {"type": "Point", "coordinates": [lon, lat, z]},
                         "properties": param_vals,
                     }
                 )
@@ -117,31 +114,29 @@ class TimeSeries(Decoder):
         if not has_forecast_date:
             return self._to_xarray_no_forecast_date()
 
-        if self.z_name:
-            dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
-        else:
-            dims = ["latitude", "longitude", "number", "datetime", "t"]
+        dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
         ds = []
 
+        # Get coordinates for all domains
         all_coords = self.get_domains()
 
-        unique_coords = set()
-        unique_domains = []
+        unique_coords = set()  # To track unique coordinate tuples
+        unique_domains = []  # To store unique domains
 
         for domain in self.domains:
-            longitude = domain["axes"][self.x_name]["values"][0]
-            latitude = domain["axes"][self.y_name]["values"][0]
-            t = tuple(domain["axes"]["t"]["values"])
+            # Extract coordinate values
+            x = domain["axes"][self.x_name]["values"][0]
+            y = domain["axes"][self.y_name]["values"][0]
+            z = domain["axes"][self.z_name]["values"][0]
+            t = tuple(domain["axes"]["t"]["values"])  # Use tuple for hashable type
 
-            if self.z_name:
-                z = domain["axes"][self.z_name]["values"][0]
-                coord_tuple = (longitude, latitude, z, t)
-            else:
-                coord_tuple = (longitude, latitude, t)
+            # Create a unique identifier for the domain
+            coord_tuple = (x, y, z, t)
 
+            # Check if this coordinate combination is already seen
             if coord_tuple not in unique_coords:
-                unique_coords.add(coord_tuple)
-                unique_domains.append(domain)
+                unique_coords.add(coord_tuple)  # Mark as seen
+                unique_domains.append(domain)  # Add to unique domains
 
         all_coords = unique_domains
 
@@ -156,36 +151,28 @@ class TimeSeries(Decoder):
         # Process each coordinate domain
         for coords in all_coords:
             dataarraydict = {}
-            longitude = coords["axes"][self.x_name]["values"]
-            latitude = coords["axes"][self.y_name]["values"]
+            x = coords["axes"][self.x_name]["values"]
+            y = coords["axes"][self.y_name]["values"]
+            z = coords["axes"][self.z_name]["values"]
             steps = coords["axes"]["t"]["values"]
             steps = [step.replace("Z", "") for step in steps]
             steps = pd.to_datetime(steps)
 
-            if self.z_name:
-                z = coords["axes"][self.z_name]["values"]
-                cov_idx_list = self._find_coverages(nums, datetime, longitude, latitude, z)
-                coord_dict = {
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "levelist": z,
-                    "number": nums,
-                    "datetime": datetime,
-                    "t": steps,
-                }
-            else:
-                cov_idx_list = self._find_coverages(nums, datetime, longitude, latitude, None)
-                coord_dict = {
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "number": nums,
-                    "datetime": datetime,
-                    "t": steps,
-                }
+            cov_idx_list = self._find_coverages(nums, datetime, x, y, z)
+
+            coords = {
+                "latitude": x,
+                "longitude": y,
+                "levelist": z,
+                "number": nums,
+                "datetime": datetime,
+                "t": steps,
+            }
 
             for parameter in self.parameters:
                 param_values = [[[] for _ in range(len(datetime))] for _ in range(len(nums))]
 
+                # Extract parameter values for the current domain
                 for i, j, cov in cov_idx_list:
                     param_values[i][j] = cov["ranges"][parameter]["values"]
 
@@ -199,13 +186,15 @@ class TimeSeries(Decoder):
                     "units": self.get_parameter_metadata(parameter)["unit"]["symbol"],
                     "long_name": long_name,
                 }
-                if self.z_name:
-                    dataarraydict[long_name] = (dims, [[[param_values]]], attrs)
-                else:
-                    dataarraydict[long_name] = (dims, [[param_values]], attrs)
+                dataarraydict[long_name] = (
+                    dims,
+                    [[[param_values]]],
+                    attrs,
+                )
 
-            ds.append(xr.Dataset(data_vars=dataarraydict, coords=coord_dict))
+            ds.append(xr.Dataset(data_vars=dataarraydict, coords=coords))
 
+        # Combine all DataArrays into a Dataset
         for mars_metadata in self.mars_metadata[0]:
             if mars_metadata != "date" and mars_metadata != "step":
                 for dss in ds:
@@ -216,37 +205,43 @@ class TimeSeries(Decoder):
 
         return ds
 
-    def _find_coverages(self, nums, datetime, longitude, latitude, z):
+    def _find_coverages(self, nums, datetime, x, y, z):
+        """Find coverages that match the given domain parameters (num, date, x, y, z)
+        and return them along with domain parameter indices."""
         result = []
         for i, num in enumerate(nums):
             for j, date in enumerate(datetime):
                 for coverage in self.covjson["coverages"]:
-                    if self._covers_domain(coverage, num, date, longitude, latitude, z):
+                    if self._covers_domain(coverage, num, date, x, y, z):
                         result.append((i, j, coverage))
         return result
 
-    def _covers_domain(self, coverage, num, date, longitude, latitude, z):
-        axes = coverage["domain"]["axes"]
-        match = (
+    def _covers_domain(self, coverage, num, date, x, y, z):
+        """check if coverage matches the given domain parameters (num, date, x, y, z)"""
+        return (
             coverage["mars:metadata"]["number"] == num
             and coverage["mars:metadata"]["Forecast date"] == date
-            and axes[self.x_name]["values"] == longitude
-            and axes[self.y_name]["values"] == latitude
+            and coverage["domain"]["axes"][self.x_name]["values"] == x
+            and coverage["domain"]["axes"][self.y_name]["values"] == y
+            and coverage["domain"]["axes"][self.z_name]["values"] == z
         )
-        if match and self.z_name and z is not None:
-            match = axes[self.z_name]["values"] == z
-        return match
 
     def _to_xarray_no_forecast_date(self):
-        """Monthly-means path: all time steps are packed into a single coverage's
-        t-axis and there is no "Forecast date" in mars:metadata.
+        """Convert monthly-means CovJSON (no 'Forecast date' in metadata) to xarray.
+
+        In this layout every coverage contains all of its time steps packed into
+        the domain's ``t`` axis (produced by ``from_polytope_month``).  Each
+        coverage corresponds to one spatial point / ensemble member combination.
+        The resulting Dataset has a ``t`` dimension whose values come directly
+        from the domain axis.
         """
         ds_list = []
 
         for coverage in self.covjson["coverages"]:
             domain = coverage["domain"]["axes"]
-            longitude = domain[self.x_name]["values"]
-            latitude = domain[self.y_name]["values"]
+            x = domain[self.x_name]["values"]
+            y = domain[self.y_name]["values"]
+            z = domain[self.z_name]["values"]
 
             steps = domain["t"]["values"]
             steps = [s.replace("Z", "") for s in steps]
@@ -271,13 +266,10 @@ class TimeSeries(Decoder):
                 dataarraydict[long_name] = dataarray
 
             coord_dict = dict(
-                latitude=(["latitude"], latitude),
-                longitude=(["longitude"], longitude),
+                latitude=(["latitude"], x),
+                longitude=(["longitude"], y),
+                levelist=(["levelist"], z),
             )
-            if self.z_name:
-                z = domain[self.z_name]["values"]
-                coord_dict["levelist"] = (["levelist"], z)
-
             dss = xr.Dataset(dataarraydict, coords=coord_dict)
 
             # Attach MARS metadata (skip keys that vary per time step)
