@@ -471,6 +471,138 @@ class Encoder(ABC):
         else:
             emit_leaf(fields["lat"], tree.values, tree.result)
 
+    def walk_tree_reforecast(self, tree, fields, coords, mars_metadata, range_dict):
+        """Walk the result tree for reforecast/reanalysis with an independent ``time`` axis.
+
+        Unlike :meth:`walk_tree` (which, for the legacy merged representation,
+        folds any ``time`` axis into the ``hdate`` time dimension), this walker
+        treats ``hdate`` as the branching time axis and captures the separate
+        ``time`` axis as a scalar time-of-day offset stored in
+        ``fields["time_offset"]``. The valid-time for each hdate is then
+        ``hdate + time_offset + step`` (computed downstream in the collapse step).
+
+        For efcl the ``date`` and ``step`` axes are single-valued and ``time`` is a
+        single timedelta, so the offset is a scalar. Backward compatibility with
+        merged trees (no separate ``time`` node) is preserved: ``time_offset``
+        simply stays absent and the timestamps reduce to ``hdate + step``.
+        """
+        date_key = "hdate"
+
+        def create_composite_key(date, level, num, para, s):
+            return (date, level, num, para, s)
+
+        def handle_non_leaf_node(child):
+            non_leaf_axes = ["latitude", "longitude", "param", date_key, "time"]
+            if child.axis.name not in non_leaf_axes:
+                val = child.values[0]
+                if isinstance(val, np.datetime64):
+                    val = str(val)
+                elif isinstance(val, timedelta):
+                    val = timedelta_to_step_string(val)
+                elif child.axis.name == "step":
+                    # Step is not a timedelta! Need to normalize it
+                    val = normalize_step_value(val)
+                mars_metadata[child.axis.name] = val
+
+        def handle_specific_axes(child):
+            if child.axis.name == "latitude":
+                return child.values[0]
+            if child.axis.name == "levelist":
+                return child.values
+            if child.axis.name == "param":
+                return child.values
+            if child.axis.name == date_key:
+                dates = [f"{date}Z" for date in child.values]
+                mars_metadata["Forecast date"] = str(child.values[0])
+                for date in dates:
+                    coords[date] = {}
+                    coords[date]["composite"] = []
+                    coords[date]["t"] = [date]
+                return dates
+            if child.axis.name == "time":
+                # Independent time-of-day axis: capture as a scalar offset rather
+                # than folding it into the hdate time dimension. efcl guarantees a
+                # single time value; take the first if a span is ever returned.
+                fields["time_offset"] = child.values[0]
+                return None
+            if child.axis.name == "number":
+                return child.values
+            if child.axis.name == "step":
+                return child.values
+            return None
+
+        def calculate_index_bounds(level_len, num_len, para_len, step_len, l, i, j, k):  # noqa: E741
+            start_index = int(l * level_len) + int(i * num_len) + int(j * para_len) + int(k * step_len)
+            end_index = start_index + int(step_len)
+            return start_index, end_index
+
+        def append_composite_coords(dates, tree_values, lat, coords):
+            for value in tree_values:
+                coords[dates]["composite"].append([lat, value])
+
+        def emit_leaf(lat, lon_values, result):
+            lon_values = [float(val) for val in lon_values]
+            if all(val is None for val in result):
+                fields["dates"] = fields["dates"][:-1]
+                for date in fields["dates"]:
+                    for level in fields["levels"]:
+                        for num in fields["number"]:
+                            for para in fields["param"]:
+                                for s in fields["step"]:
+                                    key = create_composite_key(date, level, num, para, s)
+                                    if key in range_dict:
+                                        del range_dict[key]
+            else:
+                result = [float(val) if val is not None else val for val in result]
+                level_len = len(result) / len(fields["levels"])
+                num_len = level_len / len(fields["number"])
+                para_len = num_len / len(fields["param"])
+                step_len = para_len / len(fields["step"])
+
+                append_composite_coords(fields["dates"][-1], lon_values, lat, coords)
+
+                for l, level in enumerate(fields["levels"]):  # noqa: E741
+                    for i, num in enumerate(fields["number"]):
+                        for j, para in enumerate(fields["param"]):
+                            for k, s in enumerate(fields["step"]):
+                                start_index, end_index = calculate_index_bounds(
+                                    level_len, num_len, para_len, step_len, l, i, j, k
+                                )
+                                key = create_composite_key(fields["dates"][-1], level, num, para, s)
+                                if key not in range_dict:
+                                    range_dict[key] = []
+                                range_dict[key].extend(result[start_index:end_index])
+
+        if len(tree.children) != 0:
+            for child in tree.children:
+                # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
+                if is_merged_node(child):
+                    emit_leaf(child.values[0], [child.values[1]], child.result)
+                    continue
+                handle_non_leaf_node(child)
+                result = handle_specific_axes(child)
+                if result is not None:
+                    if child.axis.name == "latitude":
+                        fields["lat"] = result
+                    elif child.axis.name == "levelist":
+                        fields["levels"] = result
+                        if "l" in fields:
+                            fields["l"].extend(result)
+                    elif child.axis.name == "param":
+                        fields["param"] = result
+                    elif child.axis.name == date_key:
+                        fields["dates"].extend(result)
+                    elif child.axis.name == "number":
+                        fields["number"] = result
+                    elif child.axis.name == "step":
+                        fields["step"] = result
+                        if "s" in fields:
+                            fields["s"].extend(result)
+
+                self.walk_tree_reforecast(child, fields, coords, mars_metadata, range_dict)
+        else:
+            emit_leaf(fields["lat"], tree.values, tree.result)
+
     def walk_tree_step(self, tree, fields, coords, mars_metadata, range_dict):
         def create_composite_key_step(date, level, num, para):
             return (date, level, num, para)

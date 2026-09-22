@@ -54,15 +54,24 @@ class TimeSeries(Encoder):
         coverage["mars:metadata"] = metadata
 
     @staticmethod
-    def _hdate_step_timestamp(date, step):
+    def _hdate_step_timestamp(date, step, time_offset=None):
         """Return the valid-time (as a datetime) for a given hdate and step.
 
         Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
         collapsed reanalysis path produces identical timestamps.
+
+        ``time_offset`` is an optional time-of-day offset (a ``timedelta``) coming
+        from an independent ``time`` axis (the separate-datetime reforecast
+        representation). When ``None`` the timestamp reduces to ``hdate + step``,
+        preserving the legacy merged-tree behaviour.
         """
         date_format = "%Y%m%dT%H%M%S"
+        if isinstance(date, str) and date.endswith("Z"):
+            date = date[:-1]
         new_date = pd.Timestamp(date).strftime(date_format)
         start_time = datetime.strptime(new_date, date_format)
+        if time_offset is not None:
+            start_time = start_time + time_offset
         if isinstance(step, timedelta):
             return start_time + step
         try:
@@ -87,11 +96,14 @@ class TimeSeries(Encoder):
         points = len(coords[fields["dates"][0]]["composite"])
         first_date = fields["dates"][0]
 
+        # Optional independent time-of-day offset (separate-datetime reforecast).
+        time_offset = fields.get("time_offset")
+
         # Ordered list of (stamp, date, step) across every hdate/step combination.
         stamp_order = []
         for date in fields["dates"]:
             for step in fields["step"]:
-                stamp = self._hdate_step_timestamp(date, step)
+                stamp = self._hdate_step_timestamp(date, step, time_offset)
                 stamp_order.append((stamp, date, step))
         # Stable sort by valid-time so ties preserve insertion order.
         stamp_order.sort(key=lambda x: x[0])
@@ -200,13 +212,16 @@ class TimeSeries(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result, date_key: str = "date") -> dict:
+    def from_polytope(self, result, date_key: str = "date", reforecast: bool = False) -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a PointSeries CoverageJSON collection.
 
         Args:
             result: The polytope ``TensorIndexTree`` containing the data to be converted.
             date_key: Tree axis name to treat as the time dimension
                 (``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast).
+            reforecast: When ``True`` the separate-datetime reforecast walker is used,
+                which keeps an independent ``time`` axis as a scalar time-of-day offset
+                instead of folding it into the ``hdate`` time dimension.
         Returns:
             dict: The CoverageJSON representation of the coverage collection.
         """
@@ -223,7 +238,10 @@ class TimeSeries(Encoder):
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
+        if reforecast:
+            self.walk_tree_reforecast(result, fields, coords, mars_metadata, range_dict)
+        else:
+            self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
@@ -340,6 +358,20 @@ class TimeSeries(Encoder):
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
 
         return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode separate-datetime reforecast/reanalysis data (``class=ce``, ``stream=efcl``).
+
+        Uses the reforecast walker, which treats ``hdate`` as the branching time
+        axis and keeps an independent ``time`` axis as a scalar time-of-day offset
+        (rather than folding it into ``hdate``). All hdates for a point are then
+        collapsed into a single PointSeries coverage whose t-axis holds the
+        chronologically-sorted ``hdate + time + step`` valid-times.
+
+        Backward compatible with the legacy merged tree (no separate ``time``
+        node), for which the timestamps reduce to ``hdate + step``.
+        """
+        return self.from_polytope(result, date_key="hdate", reforecast=True)
 
     def from_polytope_month(self, result):
         """Convert a Polytope result for monthly-mean streams (e.g. clmn) into CovJSON.
