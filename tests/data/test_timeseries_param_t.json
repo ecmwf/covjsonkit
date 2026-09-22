@@ -11,85 +11,36 @@
             "domain": {
                 "type": "Domain",
                 "axes": {
-                    "x": {
-                        "values": [
-                            8.5
-                        ]
-                    },
-                    "y": {
-                        "values": [
-                            47.5
-                        ]
-                    },
-                    "z": {
-                        "values": [
-                            74
-                        ]
-                    },
-                    "t": {
-                        "values": [
-                            "2026-05-04T18:00:00Z"
-                        ]
-                    }
+                    "latitude": {"values": [47.5]},
+                    "longitude": {"values": [8.5]},
+                    "levelist": {"values": [74]},
+                    "t": {"values": ["2026-05-04T18:00:00Z"]}
                 }
             },
             "ranges": {
                 "t": {
                     "type": "NdArray",
                     "dataType": "float",
-                    "shape": [
-                        1
-                    ],
-                    "axisNames": [
-                        "t"
-                    ],
-                    "values": [
-                        285.6
-                    ]
+                    "shape": [1],
+                    "axisNames": ["t"],
+                    "values": [285.6]
                 }
             }
         }
     ],
     "referencing": [
         {
-            "coordinates": [
-                "x",
-                "y"
-            ],
-            "system": {
-                "type": "GeographicCRS",
-                "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
-            }
-        },
-        {
-            "coordinates": [
-                "t"
-            ],
-            "system": {
-                "type": "TemporalRS",
-                "calendar": "Gregorian"
-            }
-        },
-        {
-            "coordinates": [
-                "z"
-            ],
-            "system": {
-                "type": "VerticalCRS"
-            }
+            "coordinates": ["latitude", "longitude", "levelist"],
+            "system": {"type": "GeographicCRS"}
         }
     ],
     "parameters": {
         "t": {
             "type": "Parameter",
-            "unit": {
-                "symbol": "K"
-            },
+            "unit": {"symbol": "K"},
             "observedProperty": {
                 "id": "t",
-                "label": {
-                    "en": "Temperature"
-                }
+                "label": {"en": "Temperature"}
             }
         }
     }
