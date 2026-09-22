@@ -205,3 +205,40 @@ def reforecast_tree(branches, date=np.datetime64("2024-03-01")):
     for b in branches:
         root.add_child(b)
     return tree
+
+
+def efas_tree(
+    points,
+    param="240023",
+    step=(6,),
+    date=np.datetime64("2026-01-01T00:00:00"),
+    anoffset=None,
+    cls="ce",
+    stream="efas",
+    type_="fc",
+    point_factory=make_point,
+):
+    """Build a regular-forecast tree for the efas anoffset code path.
+
+    Defaults to ``class=ce, stream=efas`` (the only combination that receives the
+    anoffset valid-time correction). Pass ``anoffset=<hours>`` to add the axis,
+    or override ``cls``/``stream`` to build a non-efas tree for gate tests.
+    """
+    axes = [
+        node("class", (cls,)),
+        node("date", (date,)),
+        node("domain", ("g",)),
+        node("expver", ("0001",)),
+        node("levtype", ("sfc",)),
+        node("param", (param,)),
+        node("step", step),
+        node("stream", (stream,)),
+        node("type", (type_,)),
+    ]
+    if anoffset is not None:
+        axes.append(node("anoffset", (anoffset,)))
+    tree = chain(TensorIndexTree(), *axes)
+    parent = tip(tree)
+    for lat, lon, result in points:
+        parent.add_child(point_factory(lat, lon, result))
+    return tree

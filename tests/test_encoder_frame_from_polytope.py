@@ -2,6 +2,7 @@ import numpy as np
 from conftest import (
     COMPOSITE_TWO_POINTS,
     REFORECAST_METADATA_BASE,
+    efas_tree,
     forecast_tree,
     reforecast_branch,
     reforecast_tree,
@@ -100,3 +101,25 @@ class TestFrameFromPolytopeReforecast:
             }
             assert cov["ranges"]["2t"]["values"] == vals
             assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
+
+
+class TestFrameEfasAnoffset:
+    """anoffset valid-time correction for class=ce, stream=efas (regular forecast)."""
+
+    def test_efas_anoffset_shifts_valid_time(self):
+        # 00:00 + step 6h - anoffset 6h = 00:00
+        tree = efas_tree([(48.0, 11.0, [12.5])], anoffset=6)
+        cov = Covjsonkit().encode("CoverageCollection", "Frame").from_polytope(tree)["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-01-01T00:00:00Z"]
+
+    def test_efas_anoffset_absent_leaves_valid_time_unchanged(self):
+        # No anoffset -> 00:00 + step 6h = 06:00
+        tree = efas_tree([(48.0, 11.0, [12.5])])
+        cov = Covjsonkit().encode("CoverageCollection", "Frame").from_polytope(tree)["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-01-01T06:00:00Z"]
+
+    def test_anoffset_ignored_for_non_efas_stream(self):
+        # anoffset present but stream != efas -> valid-time not shifted (06:00)
+        tree = efas_tree([(48.0, 11.0, [12.5])], anoffset=6, cls="od", stream="oper")
+        cov = Covjsonkit().encode("CoverageCollection", "Frame").from_polytope(tree)["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-01-01T06:00:00Z"]
