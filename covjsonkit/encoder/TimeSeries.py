@@ -444,13 +444,24 @@ class TimeSeries(Encoder):
                     time_off = pd.to_timedelta(time_off).to_pytimedelta()
                 stamp = self._hdate_step_timestamp(hdate, step, time_off)
 
-                # The hdate->single-coverage collapse is strictly gated to
-                # class=ce + stream=efcl. Other reanalysis-style hdate requests
-                # (e.g. stream=enfh) keep the legacy one-coverage-per-hdate output
-                # with a scalar "Forecast date".
-                collapse = d.get("class") == "ce" and d.get("stream") == "efcl"
+                # Stream determines the coverage grouping for class=ce:
+                #   * efcl (reforecast/reanalysis): collapse all hdates into a
+                #     single coverage whose t-axis holds the hdates.
+                #   * efas (forecast): date+time is the forecast *run* reference;
+                #     each (date, time) run is its own coverage and the steps
+                #     become that coverage's t-axis.
+                #   * anything else (e.g. enfh): legacy one-coverage-per-hdate
+                #     with a scalar "Forecast date".
+                stream = d.get("stream")
+                is_ce = d.get("class") == "ce"
+                collapse = is_ce and stream == "efcl"
+                forecast = is_ce and stream == "efas"
                 if collapse:
                     key = (lat, lon, level, number)
+                elif forecast:
+                    # Reference datetime of the forecast run = date + time.
+                    reference = self._hdate_step_timestamp(hdate, 0, time_off)
+                    key = (lat, lon, level, number, reference)
                 else:
                     key = (lat, lon, level, number, stringify(hdate))
                 if key not in coverages:
@@ -461,7 +472,9 @@ class TimeSeries(Encoder):
                         meta[name] = stringify(d[name])
                     meta["number"] = number
                     meta["levelist"] = level
-                    if not collapse:
+                    if forecast:
+                        meta["Forecast date"] = reference.isoformat() + "Z"
+                    elif not collapse:
                         meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
                     coverages[key] = {
                         "lat": lat,
