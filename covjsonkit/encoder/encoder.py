@@ -924,11 +924,207 @@ class Encoder(ABC):
     def from_polytope(self, result, date_key: str = "date") -> dict:
         pass
 
+    @staticmethod
+    def _reforecast_stringify(value):
+        """Coerce datetime/timedelta-like values to strings for mars:metadata."""
+        if isinstance(value, (np.datetime64, np.timedelta64, pd.Timestamp, timedelta)):
+            return str(value)
+        return value
+
+    @staticmethod
+    def _reforecast_timedelta(value) -> timedelta:
+        """Coerce a ``time``/offset value to a :class:`datetime.timedelta`."""
+        if value is None:
+            return timedelta(0)
+        if isinstance(value, timedelta):
+            return value
+        return pd.to_timedelta(value).to_pytimedelta()
+
+    @staticmethod
+    def _reforecast_step_timedelta(step) -> timedelta:
+        """Coerce a normalized ``step`` value to a :class:`datetime.timedelta`."""
+        if isinstance(step, timedelta):
+            return step
+        if isinstance(step, np.timedelta64):
+            return pd.to_timedelta(step).to_pytimedelta()
+        if isinstance(step, str):
+            return timedelta(hours=parse_step_string(step))
+        try:
+            return timedelta(hours=float(step))
+        except (TypeError, ValueError):
+            return timedelta(0)
+
+    @staticmethod
+    def _reforecast_reference(rec):
+        """Reference datetime for a record: ``hdate (or date) + time``, ISO ``...Z``."""
+        hdate = rec.get("hdate", rec.get("date"))
+        ref = pd.Timestamp(hdate) + Encoder._reforecast_timedelta(rec.get("time"))
+        return ref
+
+    @staticmethod
+    def _tree_has_axis(tree, axis_name) -> bool:
+        stack = [tree]
+        while stack:
+            node = stack.pop()
+            for child in getattr(node, "children", []):
+                if is_merged_node(child):
+                    continue
+                if getattr(getattr(child, "axis", None), "name", None) == axis_name:
+                    return True
+                stack.append(child)
+        return False
+
+    def _reforecast_records(self, result):
+        """Flatten a reforecast result tree into per-value records.
+
+        Every leaf value is expanded into a dict of ``{axis_name: value}`` for
+        the full root-to-leaf path (latitude/longitude included), using the same
+        ``itertools.product`` layout the compressed leaf ``result`` array follows.
+        Handles both the compacted ``MergedTensorIndexNode`` lat/lon leaves and
+        the classic nested latitude/longitude branches.
+        """
+        import itertools
+
+        records = []
+
+        def emit(full_path, flat_result):
+            axis_names = [name for name, _ in full_path]
+            axis_values = [values for _, values in full_path]
+            for idx, combo in enumerate(itertools.product(*axis_values)):
+                value = flat_result[idx]
+                if value is None:
+                    continue
+                records.append(dict(zip(axis_names, combo)))
+                records[-1]["__value__"] = value
+
+        def recurse(node, path):
+            children = node.children
+            if len(children) == 0:
+                emit(path, node.result)
+                return
+            for child in children:
+                if is_merged_node(child):
+                    lat, lon = child.values[0], child.values[1]
+                    emit(
+                        path + [("latitude", (lat,)), ("longitude", (lon,))],
+                        child.result,
+                    )
+                    continue
+                recurse(child, path + [(child.axis.name, tuple(child.values))])
+
+        recurse(result, [])
+        return records
+
     def from_polytope_reforecast(self, result) -> dict:
         """Encode reforecast/reanalysis data that uses ``"hdate"`` as the time axis.
 
-        Delegates to :meth:`from_polytope` with ``date_key="hdate"``.
-        Each hdate produces a separate coverage; steps within a single
-        hdate become that coverage's t-axis values.
+        Two representations are supported:
+
+        * **Legacy merged** trees (no independent ``time`` node): ``hdate`` is the
+          branching time axis and each hdate/step produces its own coverage. This
+          is delegated to :meth:`from_polytope` with ``date_key="hdate"``.
+        * **Separate-datetime** trees (``class=ce``) where ``date``, ``hdate`` and
+          ``time`` are independent axes: the reforecast reference datetime is
+          ``hdate + time`` and one coverage is produced per
+          ``(reference-datetime, step, number)`` combination, holding all spatial
+          points in its ``composite`` axis.
         """
-        return self.from_polytope(result, date_key="hdate")
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        # Axes that should not leak into the per-coverage mars:metadata block.
+        exclude_meta = {
+            "latitude",
+            "longitude",
+            "hdate",
+            "time",
+            "step",
+            "param",
+            "number",
+            "levelist",
+        }
+
+        def stringify(value):
+            return self._reforecast_stringify(value)
+
+        def to_timedelta(value):
+            return self._reforecast_timedelta(value)
+
+        coverages = {}
+        coverage_order = []
+        param_order = []
+
+        for rec in self._reforecast_records(result):
+            value = rec["__value__"]
+            lat = float(rec["latitude"])
+            lon = float(rec["longitude"])
+            level = rec.get("levelist", 0)
+            try:
+                level = int(level)
+            except (TypeError, ValueError):
+                pass
+            number = rec.get("number", 0)
+            try:
+                number = int(number)
+            except (TypeError, ValueError):
+                pass
+            para = rec.get("param")
+            step = normalize_step_value(rec.get("step", 0))
+            hdate = rec.get("hdate", rec.get("date"))
+            ref = pd.Timestamp(hdate) + to_timedelta(rec.get("time"))
+            ref_iso = ref.isoformat() + "Z"
+
+            key = (ref_iso, step, number)
+            if key not in coverages:
+                meta = {}
+                for name in rec:
+                    if name == "__value__" or name in exclude_meta:
+                        continue
+                    meta[name] = stringify(rec[name])
+                meta["number"] = number
+                meta["step"] = step
+                meta["Forecast date"] = ref_iso
+                coverages[key] = {
+                    "ref": ref_iso,
+                    "points": [],
+                    "point_index": {},
+                    "values": {},
+                    "meta": meta,
+                }
+                coverage_order.append(key)
+
+            cov = coverages[key]
+            point = (lat, lon, level)
+            if point not in cov["point_index"]:
+                cov["point_index"][point] = len(cov["points"])
+                cov["points"].append(point)
+            if para not in param_order:
+                param_order.append(para)
+            cov["values"].setdefault(para, {})[point] = float(value)
+
+        if not coverages:
+            raise ValueError("No data was returned.")
+
+        for para in param_order:
+            self.add_parameter(para)
+
+        for key in coverage_order:
+            cov = coverages[key]
+            composite = [[lat, lon, level] for (lat, lon, level) in cov["points"]]
+            coords = {"composite": composite, "t": [cov["ref"]]}
+            val_dict = {}
+            for para, point_vals in cov["values"].items():
+                val_dict[para] = [point_vals[pt] for pt in cov["points"]]
+            self.add_coverage(cov["meta"], coords, val_dict)
+
+        return self.covjson

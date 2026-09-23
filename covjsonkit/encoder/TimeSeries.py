@@ -462,7 +462,7 @@ class TimeSeries(Encoder):
                     meta["number"] = number
                     meta["levelist"] = level
                     if not collapse:
-                        meta["Forecast date"] = stringify(hdate)
+                        meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
                     coverages[key] = {
                         "lat": lat,
                         "lon": lon,
