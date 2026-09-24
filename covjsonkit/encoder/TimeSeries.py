@@ -408,15 +408,26 @@ class TimeSeries(Encoder):
         coverages = {}
         coverage_order = []
         param_order = []
+        # Set True as soon as a forecast (efas) coverage is created, so the final
+        # emission can be reordered date -> time -> point (see below).
+        forecast_result = False
 
         def stringify(value):
             if isinstance(value, (np.datetime64, np.timedelta64)):
+                # np.datetime64 already stringifies as ISO-8601 (e.g. 2024-03-01
+                # or 2024-03-01T00:00:00); np.timedelta64 has no ISO date form.
                 return str(value)
-            if isinstance(value, (pd.Timestamp, datetime, timedelta)):
+            if isinstance(value, (pd.Timestamp, datetime)):
+                # pandas/py datetimes render as "YYYY-MM-DD HH:MM:SS" via str();
+                # emit ISO-8601 ("YYYY-MM-DDTHH:MM:SS") so metadata dates are
+                # spec-compliant.
+                return value.isoformat()
+            if isinstance(value, timedelta):
                 return str(value)
             return value
 
         def emit(full_path, flat_result):
+            nonlocal forecast_result
             axis_names = [name for name, _ in full_path]
             axis_values = [values for _, values in full_path]
             for idx, combo in enumerate(itertools.product(*axis_values)):
@@ -487,6 +498,12 @@ class TimeSeries(Encoder):
                         "meta": meta,
                         "params": {},
                     }
+                    if forecast:
+                        forecast_result = True
+                        # Ordering key so coverages come out date -> time -> point
+                        # (reference = date + time). Insertion/tree order is
+                        # otherwise time-major for multi-date forecast requests.
+                        coverages[key]["sort_key"] = (reference, lat, lon, level, number)
                     coverage_order.append(key)
 
                 if para not in param_order:
@@ -519,6 +536,10 @@ class TimeSeries(Encoder):
 
         for para in param_order:
             self.add_parameter(para)
+
+        # Forecast (efas) coverages: emit in date -> time -> point order.
+        if forecast_result:
+            coverage_order.sort(key=lambda k: coverages[k]["sort_key"])
 
         for key in coverage_order:
             cov = coverages[key]
