@@ -473,6 +473,9 @@ class TimeSeries(Encoder):
                     meta["number"] = number
                     meta["levelist"] = level
                     if forecast:
+                        # date+time is folded into the run reference; drop the
+                        # raw date axis so it doesn't duplicate "Forecast date".
+                        meta.pop("date", None)
                         meta["Forecast date"] = reference.isoformat() + "Z"
                     elif not collapse:
                         meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
