@@ -190,7 +190,7 @@ class TestEncoder:
         encoder.add_parameter(167)
         encoder.add_reference(
             {
-                "coordinates": ["x", "y", "z"],
+                "coordinates": ["x", "y"],
                 "system": {
                     "type": "GeographicCRS",
                     "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
@@ -198,8 +198,8 @@ class TestEncoder:
             }
         )
         encoder.add_reference({"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}})
+        encoder.add_reference({"coordinates": ["z"], "system": {"type": "VerticalCRS"}})
 
-        # metadatas = []
         coords = []
         values = []
         for number in range(0, 10):
@@ -225,10 +225,14 @@ class TestEncoder:
             coords.append(coord)
             value = {"2t": {0: [random.uniform(230, 270) for _ in range(0, len(timestamps))]}}
             values.append(value)
-            encoder.add_coverage(metadata, coord, value)
+            encoder.add_coverage(metadata, coord, value, include_z=True)
 
         json_string = encoder.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         assert CoverageCollection.model_validate_json(json_string)
+
+        cov = encoder.covjson["coverages"][0]
+        assert set(cov["domain"]["axes"].keys()) == {"x", "y", "z", "t"}
+        assert cov["ranges"]["2t"]["axisNames"] == ["t"]
 
         print(json_string)
 
