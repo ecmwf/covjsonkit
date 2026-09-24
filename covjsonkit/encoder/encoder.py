@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import numpy as np
@@ -927,7 +927,10 @@ class Encoder(ABC):
     @staticmethod
     def _reforecast_stringify(value):
         """Coerce datetime/timedelta-like values to strings for mars:metadata."""
-        if isinstance(value, (np.datetime64, np.timedelta64, pd.Timestamp, timedelta)):
+        if isinstance(value, (pd.Timestamp, datetime)):
+            # str() renders "YYYY-MM-DD HH:MM:SS"; emit ISO-8601 instead.
+            return value.isoformat()
+        if isinstance(value, (np.datetime64, np.timedelta64, timedelta)):
             return str(value)
         return value
 
@@ -1082,9 +1085,11 @@ class Encoder(ABC):
             step = normalize_step_value(rec.get("step", 0))
             hdate = rec.get("hdate", rec.get("date"))
             ref = pd.Timestamp(hdate) + to_timedelta(rec.get("time"))
-            ref_iso = ref.isoformat() + "Z"
+            valid = ref + self._reforecast_step_timedelta(step)
 
-            key = (ref_iso, step, number)
+            # One coverage per (reference, step, number); reference is
+            # hdate + time for efcl and date + time (the run) for efas.
+            key = (ref, step, number)
             if key not in coverages:
                 meta = {}
                 for name in rec:
@@ -1093,9 +1098,18 @@ class Encoder(ABC):
                     meta[name] = stringify(rec[name])
                 meta["number"] = number
                 meta["step"] = step
-                meta["Forecast date"] = ref_iso
+                is_ce = rec.get("class") == "ce"
+                if is_ce and rec.get("stream") == "efas":
+                    # date + time is the run reference; drop the raw date so it
+                    # doesn't duplicate "Forecast date".
+                    meta.pop("date", None)
+                    meta["Forecast date"] = ref.isoformat() + "Z"
+                elif not (is_ce and rec.get("stream") == "efcl"):
+                    # efcl coverages are delineated by their valid time, which
+                    # the t-axis already carries, so they get no "Forecast date".
+                    meta["Forecast date"] = ref.isoformat() + "Z"
                 coverages[key] = {
-                    "ref": ref_iso,
+                    "valid": valid.isoformat() + "Z",
                     "points": [],
                     "point_index": {},
                     "values": {},
@@ -1118,10 +1132,13 @@ class Encoder(ABC):
         for para in param_order:
             self.add_parameter(para)
 
+        # Emit date -> time -> step -> number regardless of tree axis order.
+        coverage_order.sort(key=lambda k: (k[0], self._reforecast_step_timedelta(k[1]), k[2]))
+
         for key in coverage_order:
             cov = coverages[key]
             composite = [[lat, lon, level] for (lat, lon, level) in cov["points"]]
-            coords = {"composite": composite, "t": [cov["ref"]]}
+            coords = {"composite": composite, "t": [cov["valid"]]}
             val_dict = {}
             for para, point_vals in cov["values"].items():
                 val_dict[para] = [point_vals[pt] for pt in cov["points"]]
