@@ -79,7 +79,7 @@ def make_merged_point(lat, lon, result):
     """
     if MergedTensorIndexNode is None:
         raise RuntimeError(
-            "MergedTensorIndexNode is not available in this polytope build; " "merged-node tests should be skipped."
+            "MergedTensorIndexNode is not available in this polytope build; merged-node tests should be skipped."
         )
     lat_ax = IntDatacubeAxis()
     lat_ax.name = "latitude"
@@ -176,4 +176,142 @@ def reforecast_tree(branches, date=np.datetime64("2024-03-01")):
     root = tip(tree)
     for b in branches:
         root.add_child(b)
+    return tree
+
+
+def reforecast_separate_datetime_tree(
+    points,
+    hdates,
+    times,
+    date=np.datetime64("2024-03-01"),
+    step=(0,),
+    param="167",
+    point_factory=make_point,
+):
+    """Build a separate-datetime reforecast tree (class=ce).
+
+    ``date``, ``hdate`` and ``time`` are all present as independent axes, mirroring
+    the EFAS layout where the reforecast reference datetime is ``hdate + time``.
+
+    Args:
+        points: list of (lat, lon, result_list) tuples. Each ``result_list`` must
+            be laid out as the flattened product over (hdate, step, time) in that
+            order (hdate-major), matching the compressed leaf ordering.
+        hdates: tuple of ``np.datetime64`` hdate values.
+        times: tuple of ``np.timedelta64``/``timedelta`` time-of-day offsets.
+        step: tuple of step values.
+    """
+    branch = chain(
+        node("hdate", hdates),
+        node("domain", ("g",)),
+        node("expver", ("4321",)),
+        node("levtype", ("sfc",)),
+        node("param", (param,)),
+        node("step", step),
+        node("stream", ("efcl",)),
+        node("time", times),
+        node("type", ("sfo",)),
+    )
+    parent = tip(branch)
+    for lat, lon, result in points:
+        parent.add_child(point_factory(lat, lon, result))
+
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("ce",)),
+        node("date", (date,)),
+    )
+    tip(tree).add_child(branch)
+    return tree
+
+
+def forecast_separate_datetime_tree(
+    points,
+    times,
+    date=np.datetime64("2026-05-01"),
+    step=(6, 24),
+    param="240023",
+    point_factory=make_point,
+):
+    """Build a separate-datetime *forecast* tree (class=ce, stream=efas).
+
+    Unlike :func:`reforecast_separate_datetime_tree` there is **no** ``hdate``
+    axis: ``date`` + ``time`` is the forecast *run* reference and ``step`` is the
+    lead time. Each ``(date, time)`` run should become its own coverage with the
+    steps forming its ``t``-axis.
+
+    Args:
+        points: list of (lat, lon, result_list) tuples. Each ``result_list`` must
+            be laid out as the flattened product over (date, step, time) in that
+            order, matching the compressed leaf ordering (date is single-valued
+            here, so effectively (step, time)).
+        times: tuple of ``np.timedelta64``/``timedelta`` time-of-day offsets.
+        step: tuple of step values.
+    """
+    branch = chain(
+        node("date", (date,)),
+        node("domain", ("g",)),
+        node("expver", ("8888",)),
+        node("levtype", ("sfc",)),
+        node("model", ("lisflood",)),
+        node("origin", ("ecmf",)),
+        node("param", (param,)),
+        node("step", step),
+        node("stream", ("efas",)),
+        node("time", times),
+        node("type", ("cf",)),
+    )
+    parent = tip(branch)
+    for lat, lon, result in points:
+        parent.add_child(point_factory(lat, lon, result))
+
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("ce",)),
+    )
+    tip(tree).add_child(branch)
+    return tree
+
+
+def reforecast_separate_datetime_vertical_tree(
+    points,
+    hdates,
+    times,
+    levels,
+    date=np.datetime64("2024-03-01"),
+    step=(0,),
+    param="130",
+    point_factory=make_point,
+):
+    """Build a separate-datetime reforecast tree (class=ce) with a ``levelist`` axis.
+
+    Mirrors :func:`reforecast_separate_datetime_tree` but inserts a multi-valued
+    ``levelist`` axis, for exercising the VerticalProfile reforecast path.
+
+    Each ``result_list`` must be laid out as the flattened product over
+    (hdate, levelist, step, time) in that order, matching the compressed leaf
+    ordering (top-down axis order in the tree).
+    """
+    branch = chain(
+        node("hdate", hdates),
+        node("domain", ("g",)),
+        node("expver", ("4321",)),
+        node("levtype", ("pl",)),
+        node("param", (param,)),
+        node("levelist", levels),
+        node("step", step),
+        node("stream", ("efcl",)),
+        node("time", times),
+        node("type", ("sfo",)),
+    )
+    parent = tip(branch)
+    for lat, lon, result in points:
+        parent.add_child(point_factory(lat, lon, result))
+
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("ce",)),
+        node("date", (date,)),
+    )
+    tip(tree).add_child(branch)
     return tree
