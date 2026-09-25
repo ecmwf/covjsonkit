@@ -523,4 +523,39 @@ class TestTimeseriesFromPolytopeReforecast:
         assert len(covjson["coverages"]) == 2
         for cov in covjson["coverages"]:
             assert "Forecast date" in cov["mars:metadata"]
+            # Forecast date must be ISO-8601 with a trailing Z (e.g. 2025-07-14T06:00:00Z),
+            # not the pandas str() form "2025-07-14 06:00:00".
+            fd = cov["mars:metadata"]["Forecast date"]
+            assert "T" in fd and fd.endswith("Z")
             assert len(cov["domain"]["axes"]["t"]["values"]) == 1
+
+    def test_metadata_date_is_iso_compliant(self):
+        """A pd.Timestamp ``date`` axis (as climatology data yields) must render
+        in metadata as ISO-8601 (2023-01-01T00:00:00), not "2023-01-01 00:00:00"."""
+        import pandas as pd
+
+        suffix = [
+            ("domain", ("g",)),
+            ("expver", ("8888",)),
+            ("levtype", ("sfc",)),
+            ("model", ("lisflood",)),
+            ("origin", ("ecmf",)),
+            ("param", ("240023",)),
+            ("step", (6,)),
+            ("stream", ("efcl",)),
+            ("type", ("sfo",)),
+        ]
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (pd.Timestamp("2023-01-01"),)),
+            node("hdate", (np.datetime64("2025-07-14T06:00:00"),)),
+            *[node(n, v) for n, v in suffix],
+            make_point(51.5, 6.5, [42.17]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope_reforecast(tree)
+
+        date_meta = covjson["coverages"][0]["mars:metadata"]["date"]
+        assert date_meta == "2023-01-01T00:00:00"
+        assert " " not in date_meta
