@@ -1,6 +1,35 @@
 import numpy as np
+from covjson_pydantic.coverage import Coverage, CoverageCollection  # noqa: E402
 from polytope_feature.datacube.datacube_axis import IntDatacubeAxis
 from polytope_feature.datacube.tensor_index_tree import TensorIndexTree
+
+# -- Test-only spec-compliance validation --------------------------------------
+# CoverageJSON output is NOT validated at runtime (encoders build plain dicts for
+# performance). Instead, tests use assert_valid_covjson() below to assert that
+# encoder output validates against the OGC CoverageJSON pydantic model. Keep this
+# strictly in the test path -- never wire it into the library's runtime output.
+
+
+def assert_valid_covjson(covjson):
+    """Validate a covjsonkit output dict against covjson-pydantic.
+
+    Accepts either a CoverageCollection (has "coverages") or a single Coverage.
+    Raises pydantic.ValidationError if the structure is not spec-compliant.
+    Returns the parsed pydantic model so callers may make further assertions.
+
+    Validation goes through JSON (model_validate_json) rather than a Python dict
+    so that string enum values (e.g. domainType "PointSeries") are coerced to
+    their DomainType members, matching how consumers parse serialised CoverageJSON.
+    """
+    import orjson
+
+    if hasattr(covjson, "to_dict"):
+        covjson = covjson.to_dict()
+    payload = orjson.dumps(covjson)
+    if isinstance(covjson, dict) and ("coverages" in covjson or covjson.get("type") == "CoverageCollection"):
+        return CoverageCollection.model_validate_json(payload)
+    return Coverage.model_validate_json(payload)
+
 
 try:
     # Only available on polytope versions that support compacted unstructured
