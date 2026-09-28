@@ -159,7 +159,7 @@ class TimeSeries(Encoder):
                         "levelist": [level],
                         "t": t_values,
                     }
-                    self.add_coverage(mm, coord_entry, val_dict)
+                    self.add_coverage(mm, coord_entry, val_dict, fields.get("has_level_axis", False))
 
         return self.covjson
 
@@ -380,16 +380,8 @@ class TimeSeries(Encoder):
 
         from .encoder import is_merged_node
 
-        # Spatial reference system (temporal RS is implied by the t-axis).
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
 
         # Axes that must not leak into the per-coverage mars:metadata block.
         exclude_meta = {
@@ -555,7 +547,7 @@ class TimeSeries(Encoder):
                 "levelist": [cov["level"]],
                 "t": t_values,
             }
-            self.add_coverage(cov["meta"], coord_entry, val_dict)
+            self.add_coverage(cov["meta"], coord_entry, val_dict, include_z)
 
         return self.covjson
 
