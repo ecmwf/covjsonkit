@@ -177,3 +177,92 @@ def reforecast_tree(branches, date=np.datetime64("2024-03-01")):
     for b in branches:
         root.add_child(b)
     return tree
+
+
+try:
+    # Only available on polytope versions that return array-backed bulk lat/lon leaves.
+    from polytope_feature.datacube.tensor_index_tree import (
+        BulkGridTensorIndexNode,
+        BulkMergedTensorIndexNode,
+    )
+except ImportError:
+    BulkGridTensorIndexNode = None
+    BulkMergedTensorIndexNode = None
+
+
+def _latlon_axes():
+    lat_ax = IntDatacubeAxis()
+    lat_ax.name = "latitude"
+    lon_ax = IntDatacubeAxis()
+    lon_ax.name = "longitude"
+    return lat_ax, lon_ax
+
+
+def _set_bulk_result(bulk, point_results):
+    """Store per-point result lists as one array of all points per combination, as polytope does."""
+    n_combos = len(point_results[0])
+    bulk.result = [np.array([res[c] for res in point_results], dtype=np.float64) for c in range(n_combos)]
+
+
+def bulkify(tree):
+    """Replace, under every node, the compacted ``MergedTensorIndexNode`` children by one bulk leaf.
+
+    Turns a tree built with :func:`make_merged_point` into the layout polytope returns
+    for unstructured grids.
+    """
+    children = list(tree.children)
+    if children and all(isinstance(c, MergedTensorIndexNode) for c in children):
+        coordinates = [c.values for c in children]
+        bulk = BulkMergedTensorIndexNode(_latlon_axes(), coordinates, list(range(len(children))))
+        _set_bulk_result(bulk, [list(c.result) for c in children])
+        for c in children:
+            tree.children.remove(c)
+        tree.add_child(bulk)
+        return tree
+    for c in children:
+        bulkify(c)
+    return tree
+
+
+def gridify(tree):
+    """Replace, under every node, the ``latitude -> longitude`` leaf layers by one bulk grid leaf.
+
+    Turns a legacy tree (eg. built with :func:`make_point` or :func:`make_row`) into the
+    layout polytope returns for structured grids with ``bulk_grid_leaves``.
+    """
+    children = list(tree.children)
+    if children and all(getattr(c, "axis", None) is not None and c.axis.name == "latitude" for c in children):
+        lat_values, lon_rows, point_results = [], [], []
+        for lat_node in children:
+            row = []
+            for lon_leaf in lat_node.children:
+                n = len(lon_leaf.values)
+                n_combos = len(lon_leaf.result) // n
+                for j, lon in enumerate(lon_leaf.values):
+                    row.append(lon)
+                    point_results.append([lon_leaf.result[c * n + j] for c in range(n_combos)])
+            lat_values.append(lat_node.values[0])
+            lon_rows.append(row)
+        grid = BulkGridTensorIndexNode(_latlon_axes(), lat_values, lon_rows)
+        _set_bulk_result(grid, point_results)
+        for c in children:
+            tree.children.remove(c)
+        tree.add_child(grid)
+        return tree
+    for c in children:
+        gridify(c)
+    return tree
+
+
+def make_row(lat, lons, point_results):
+    """Create a legacy latitude->longitude(leaf) subtree holding several compressed longitudes.
+
+    ``point_results[j]`` holds the per-combination values of longitude ``j``; the leaf's
+    result is laid out combination-major, as polytope assigns it.
+    """
+    lat_n = node("latitude", (lat,))
+    leaf = node("longitude", tuple(lons))
+    n_combos = len(point_results[0])
+    leaf.result = [np.float64(point_results[j][c]) for c in range(n_combos) for j in range(len(lons))]
+    lat_n.add_child(leaf)
+    return lat_n

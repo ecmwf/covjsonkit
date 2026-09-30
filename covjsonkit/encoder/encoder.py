@@ -19,17 +19,61 @@ try:
 except ImportError:  # older polytope without merged nodes
     MergedTensorIndexNode = None
 
+try:
+    # Polytope compacts all the lat/lon points under one path into a single
+    # BulkMergedTensorIndexNode (unstructured grids), or its BulkGridTensorIndexNode
+    # subclass (structured grids), holding ``coordinates`` (N, 2) and one result array
+    # of N values per combination of the compressed axes above it.
+    from polytope_feature.datacube.tensor_index_tree import BulkMergedTensorIndexNode
+except ImportError:  # older polytope without bulk nodes
+    BulkMergedTensorIndexNode = None
+
+
+def is_bulk_node(node) -> bool:
+    """True if ``node`` is a polytope ``BulkMergedTensorIndexNode`` (an array-backed lat/lon leaf).
+
+    Falls back to duck-typing (``.coordinates`` and ``.point_count`` present) if the
+    polytope import was unavailable.
+    """
+    if BulkMergedTensorIndexNode is not None:
+        return isinstance(node, BulkMergedTensorIndexNode)
+    return hasattr(node, "coordinates") and hasattr(node, "point_count")
+
 
 def is_merged_node(node) -> bool:
     """True if ``node`` is a polytope ``MergedTensorIndexNode`` (a compacted lat/lon leaf).
 
     Such nodes carry ``axes=(lat_axis, lon_axis)`` and ``values=(lat, lon)`` for a single
-    spatial point, and are always leaves. Falls back to duck-typing (``.axes`` present)
+    spatial point, and are always leaves. Bulk nodes, although a subclass, are not
+    single points and are excluded. Falls back to duck-typing (``.axes`` present)
     if the polytope import was unavailable.
     """
+    if is_bulk_node(node):
+        return False
     if MergedTensorIndexNode is not None:
         return isinstance(node, MergedTensorIndexNode)
     return hasattr(node, "axes") and getattr(node, "axes", None) is not None
+
+
+def bulk_flat_result(node) -> list:
+    """Flatten a bulk node's result into the layout of a legacy leaf holding all its points.
+
+    The legacy layout is combination-major: one block per combination of the compressed
+    axes, each block holding the values of all the points.
+    """
+    if len(node.result) == 0:
+        return [None] * node.point_count
+    return np.concatenate([np.asarray(values, dtype=object).reshape(-1) for values in node.result]).tolist()
+
+
+def bulk_point_results(node):
+    """Yield ``(lat, lon, result)`` per point of a bulk node, as if it were a single-point leaf."""
+    if len(node.result) == 0:
+        values = np.full((1, node.point_count), None, dtype=object)
+    else:
+        values = np.stack([np.asarray(r, dtype=object).reshape(-1) for r in node.result])
+    for i, (lat, lon) in enumerate(node.coordinates.tolist()):
+        yield lat, lon, values[:, i].tolist()
 
 
 def timedelta_to_step_string(td: timedelta) -> str:
@@ -397,19 +441,20 @@ class Encoder(ABC):
             end_index = start_index + int(step_len)
             return start_index, end_index
 
-        def append_composite_coords(dates, tree_values, lat, coords):
+        def append_composite_coords(dates, points, coords):
             # for date in dates:
-            for value in tree_values:
-                coords[dates]["composite"].append([lat, value])
+            for lat, lon in points:
+                coords[dates]["composite"].append([lat, lon])
 
-        def emit_leaf(lat, lon_values, result):
+        def emit_leaf(points, result):
             """Emit one spatial leaf: append [lat, lon] composite coords and slice results.
 
-            Shared by the legacy longitude-leaf path (``lat`` from the parent latitude
-            node, ``lon_values`` = the leaf's list of longitudes) and the compacted
-            ``MergedTensorIndexNode`` path (single point: ``lon_values`` = [lon]).
+            Shared by the legacy longitude-leaf path (``points`` pairs the parent latitude
+            with each of the leaf's longitudes), the compacted ``MergedTensorIndexNode``
+            path (a single point) and the ``BulkMergedTensorIndexNode`` path (all its
+            points, with ``result`` flattened by :func:`bulk_flat_result`).
             """
-            lon_values = [float(val) for val in lon_values]
+            points = [(lat, float(lon)) for lat, lon in points]
             if all(val is None for val in result):
                 fields["dates"] = fields["dates"][:-1]
                 for date in fields["dates"]:
@@ -427,7 +472,7 @@ class Encoder(ABC):
                 para_len = num_len / len(fields["param"])
                 step_len = para_len / len(fields["step"])
 
-                append_composite_coords(fields["dates"][-1], lon_values, lat, coords)
+                append_composite_coords(fields["dates"][-1], points, coords)
 
                 for l, level in enumerate(fields["levels"]):  # noqa: E741
                     for i, num in enumerate(fields["number"]):
@@ -443,9 +488,13 @@ class Encoder(ABC):
 
         if len(tree.children) != 0:
             for child in tree.children:
+                # Bulk leaf: all points under this path at once.
+                if is_bulk_node(child):
+                    emit_leaf(child.coordinates.tolist(), bulk_flat_result(child))
+                    continue
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
-                    emit_leaf(child.values[0], [child.values[1]], child.result)
+                    emit_leaf([(child.values[0], child.values[1])], child.result)
                     continue
                 handle_non_leaf_node(child)
                 result = handle_specific_axes(child)
@@ -469,7 +518,7 @@ class Encoder(ABC):
 
                 self.walk_tree(child, fields, coords, mars_metadata, range_dict, date_key=date_key)
         else:
-            emit_leaf(fields["lat"], tree.values, tree.result)
+            emit_leaf([(fields["lat"], lon) for lon in tree.values], tree.result)
 
     def walk_tree_step(self, tree, fields, coords, mars_metadata, range_dict):
         def create_composite_key_step(date, level, num, para):
@@ -567,6 +616,11 @@ class Encoder(ABC):
 
         if len(tree.children) != 0:
             for child in tree.children:
+                # Bulk leaf: emit each point as a compacted single-point leaf.
+                if is_bulk_node(child):
+                    for lat, lon, result in bulk_point_results(child):
+                        emit_leaf_step(lat, [lon], result)
+                    continue
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
                     emit_leaf_step(child.values[0], [child.values[1]], child.result)
@@ -723,6 +777,11 @@ class Encoder(ABC):
 
         if len(tree.children) != 0:
             for child in tree.children:
+                # Bulk leaf: emit each point as a compacted single-point leaf.
+                if is_bulk_node(child):
+                    for lat, lon, result in bulk_point_results(child):
+                        emit_leaf_month(lat, [lon], result)
+                    continue
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
                     emit_leaf_month(child.values[0], [child.values[1]], child.result)
