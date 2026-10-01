@@ -71,6 +71,29 @@ P1 = (48.0, 11.0, [1.0, 2.0])
 P2 = (50.0, 12.0, [3.0, 4.0])
 
 
+def two_date_tree(factory):
+    """Two forecast dates, each with points P1 and P2."""
+    dates = (np.datetime64("2025-01-01T00:00:00"), np.datetime64("2025-01-02T00:00:00"))
+    tree = chain(TensorIndexTree(), node("class", ("od",)))
+    root = tip(tree)
+    for date in dates:
+        branch = chain(
+            node("date", (date,)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("param", ("167",)),
+            node("step", (0, 6)),
+            node("stream", ("oper",)),
+            node("type", ("fc",)),
+        )
+        parent = tip(branch)
+        parent.add_child(factory(*P1))
+        parent.add_child(factory(*P2))
+        root.add_child(branch)
+    return tree
+
+
 # -- Helpers --
 
 
@@ -175,25 +198,7 @@ class TestTimeSeriesLabels:
         assert points_of(covjson) == [(48.0, 11.0), (48.0, 12.0)]
 
     def test_multiple_dates(self):
-        dates = (np.datetime64("2025-01-01T00:00:00"), np.datetime64("2025-01-02T00:00:00"))
-        tree = chain(TensorIndexTree(), node("class", ("od",)))
-        root = tip(tree)
-        factory = tagged(make_point, {P1[:2]: [(1, "B")], P2[:2]: [(0, "A")]})
-        for date in dates:
-            branch = chain(
-                node("date", (date,)),
-                node("domain", ("g",)),
-                node("expver", ("0001",)),
-                node("levtype", ("sfc",)),
-                node("param", ("167",)),
-                node("step", (0, 6)),
-                node("stream", ("oper",)),
-                node("type", ("fc",)),
-            )
-            parent = tip(branch)
-            parent.add_child(factory(*P1))
-            parent.add_child(factory(*P2))
-            root.add_child(branch)
+        tree = two_date_tree(tagged(make_point, {P1[:2]: [(1, "B")], P2[:2]: [(0, "A")]}))
 
         covjson = encode("pointseries", tree)
         # Point-major in request order, then date
@@ -359,3 +364,118 @@ class TestVerticalProfileLabels:
         covjson = encode("verticalprofile", tree, "from_polytope_reforecast")
         assert labels(covjson) == ["A", "B"]
         assert values_of(covjson) == [[1.0, 2.0], [1.0, 2.0]]
+
+
+# -- Decoding (to_xarray) --
+
+
+def decoded(covjson):
+    ds = Covjsonkit().decode(covjson).to_xarray()
+    return ds if isinstance(ds, list) else [ds]
+
+
+def summary(datasets):
+    out = []
+    for ds in datasets:
+        var = list(ds.data_vars)[0]
+        out.append(
+            (
+                float(ds["latitude"].values[0]),
+                float(ds["longitude"].values[0]),
+                ds.attrs.get("label"),
+                np.asarray(ds[var].values).ravel().tolist(),
+            )
+        )
+    return out
+
+
+def numbered_tree(factory, numbers=(1, 2)):
+    """Forecast tree with several ensemble members; results are [step, number] flattened per point."""
+    tree = chain(
+        TensorIndexTree(),
+        node("class", ("od",)),
+        node("date", (np.datetime64("2025-01-01T00:00:00"),)),
+        node("domain", ("g",)),
+        node("expver", ("0001",)),
+        node("levtype", ("sfc",)),
+        node("number", numbers),
+        node("param", ("167",)),
+        node("step", (0, 6)),
+        node("stream", ("enfo",)),
+        node("type", ("pf",)),
+    )
+    parent = tip(tree)
+    parent.add_child(factory(48.0, 11.0, [1.0, 2.0, 10.0, 20.0]))
+    parent.add_child(factory(50.0, 12.0, [3.0, 4.0, 30.0, 40.0]))
+    return tree
+
+
+@pytest.mark.parametrize("kind", ["pointseries", "position"])
+class TestPointDecodersWithLabels:
+    def test_one_dataset_per_label(self, kind):
+        tree = forecast_tree(
+            [P1, P2], step=(0, 6), point_factory=tagged(make_point, {P1[:2]: [(1, "B")], P2[:2]: [(0, "A")]})
+        )
+        assert summary(decoded(encode(kind, tree))) == [
+            (50.0, 12.0, "A", [3.0, 4.0]),
+            (48.0, 11.0, "B", [1.0, 2.0]),
+        ]
+
+    def test_merged_points_kept_apart(self, kind):
+        tags = {P1[:2]: [(1, "B"), (2, "C")], P2[:2]: [(0, "A")]}
+        tree = forecast_tree([P1, P2], step=(0, 6), point_factory=tagged(make_point, tags))
+        assert summary(decoded(encode(kind, tree))) == [
+            (50.0, 12.0, "A", [3.0, 4.0]),
+            (48.0, 11.0, "B", [1.0, 2.0]),
+            (48.0, 11.0, "C", [1.0, 2.0]),
+        ]
+
+    def test_merged_unlabelled_kept_apart_with_numbers(self, kind):
+        tags = {(48.0, 11.0): [(1, None), (2, None)], (50.0, 12.0): [(0, None)]}
+        datasets = decoded(encode(kind, numbered_tree(tagged(make_point, tags))))
+        assert len(datasets) == 3
+        assert [(lat, lon, label) for lat, lon, label, _ in summary(datasets)] == [
+            (50.0, 12.0, None),
+            (48.0, 11.0, None),
+            (48.0, 11.0, None),
+        ]
+        # Each dataset holds both ensemble members
+        assert all(ds.sizes["number"] == 2 for ds in datasets)
+        assert datasets[1].identical(datasets[2])
+
+    def test_untagged_unchanged(self, kind):
+        datasets = decoded(encode(kind, numbered_tree(make_point)))
+        assert [(lat, lon, label) for lat, lon, label, _ in summary(datasets)] == [
+            (48.0, 11.0, None),
+            (50.0, 12.0, None),
+        ]
+        assert all("label" not in ds.attrs for ds in datasets)
+
+
+class TestVerticalProfileDecoderWithLabels:
+    def test_merged_points_kept_apart(self):
+        tree = vp_tree(
+            [(48.0, 11.0, [290.0, 280.0]), (50.0, 12.0, [291.0, 281.0])],
+            tagged(make_point, {(48.0, 11.0): [(1, "B"), (2, "C")], (50.0, 12.0): [(0, "A")]}),
+        )
+        assert summary(decoded(encode("verticalprofile", tree))) == [
+            (50.0, 12.0, "A", [291.0, 281.0]),
+            (48.0, 11.0, "B", [290.0, 280.0]),
+            (48.0, 11.0, "C", [290.0, 280.0]),
+        ]
+
+    def test_untagged_unchanged(self):
+        tree = vp_tree([(48.0, 11.0, [290.0, 280.0]), (50.0, 12.0, [291.0, 281.0])], make_point)
+        assert summary(decoded(encode("verticalprofile", tree))) == [
+            (48.0, 11.0, None, [290.0, 280.0]),
+            (50.0, 12.0, None, [291.0, 281.0]),
+        ]
+
+
+@pytest.mark.parametrize("kind", ["pointseries", "position"])
+def test_decode_multiple_dates_with_merged_labels(kind):
+    tags = {P1[:2]: [(1, "B"), (2, "C")], P2[:2]: [(0, "A")]}
+    datasets = decoded(encode(kind, two_date_tree(tagged(make_point, tags))))
+    # As before: one dataset per point per distinct time axis, each holding both dates
+    assert [ds.attrs.get("label") for ds in datasets] == ["A", "A", "B", "B", "C", "C"]
+    assert all(ds.sizes["datetime"] == 2 for ds in datasets)

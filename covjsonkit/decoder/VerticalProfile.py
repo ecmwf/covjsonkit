@@ -112,34 +112,29 @@ class VerticalProfile(Decoder):
         ]
         ds = []
 
-        # Get coordinates for all domains
-        all_coords = self.get_domains()
+        # One dataset per requested point: coverages are grouped by domain and label,
+        # and points that snapped to the same grid point are kept apart.
+        def domain_key(coverage):
+            axes = coverage["domain"]["axes"]
+            return (
+                axes[self.x_name]["values"][0],
+                axes[self.y_name]["values"][0],
+                axes[self.z_name]["values"][0],
+            )
 
-        unique_coords = set()  # To track unique coordinate tuples
-        unique_domains = []  # To store unique domains
+        def slot_key(coverage):
+            meta = coverage["mars:metadata"]
+            return (meta["number"], meta["Forecast date"], meta["step"])
 
-        for domain in self.domains:
-            # Extract coordinate values
-            x = domain["axes"][self.x_name]["values"][0]
-            y = domain["axes"][self.y_name]["values"][0]
-            z = domain["axes"][self.z_name]["values"][0]
-
-            # Create a unique identifier for the domain
-            coord_tuple = (x, y, z)
-
-            # Check if this coordinate combination is already seen
-            if coord_tuple not in unique_coords:
-                unique_coords.add(coord_tuple)  # Mark as seen
-                unique_domains.append(domain)  # Add to unique domains
-
-        all_coords = unique_domains
+        groups = self._point_groups(domain_key, slot_key)
         param_values = {}
 
         # Initialize parameter values for all parameters
         for parameter in self.parameters:
             param_values[parameter] = []
 
-        for domain_idx, coords in enumerate(all_coords):
+        for domain_idx, group in enumerate(groups):
+            coords = group[0]["domain"]
             dataarraydict = {}
 
             # Get coordinates
@@ -175,7 +170,7 @@ class VerticalProfile(Decoder):
                         for k, step in enumerate(steps):
                             if len(param_values[parameter][domain_idx][i][j]) <= k:
                                 param_values[parameter][domain_idx][i][j].append([])
-                            for coverage in self.covjson["coverages"]:
+                            for coverage in group:
                                 new_step = (
                                     dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=parse_step_string(step))
                                 ).isoformat() + "Z"
@@ -211,12 +206,9 @@ class VerticalProfile(Decoder):
                 dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
                 dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
-            ds.append(xr.Dataset(dataarraydict))
-
-        for mars_metadata in self.mars_metadata[0]:
-            for dss in ds:
-                if mars_metadata != "date" and mars_metadata != "step":
-                    dss.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+            dss = xr.Dataset(dataarraydict)
+            dss.attrs.update(self._point_dataset_attrs(group))
+            ds.append(dss)
 
         if len(ds) == 1:
             return ds[0]
