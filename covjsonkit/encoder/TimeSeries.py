@@ -53,6 +53,95 @@ class TimeSeries(Encoder):
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
+    @staticmethod
+    def _hdate_step_timestamp(date, step, time_offset=None):
+        """Return the valid-time (as a datetime) for a given hdate and step.
+
+        Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
+        collapsed reanalysis path produces identical timestamps.
+
+        ``time_offset`` is an optional time-of-day offset (a ``timedelta``) coming
+        from an independent ``time`` axis (the separate-datetime reforecast
+        representation). When ``None`` the timestamp reduces to ``hdate + step``,
+        preserving the legacy merged-tree behaviour.
+        """
+        date_format = "%Y%m%dT%H%M%S"
+        if isinstance(date, str) and date.endswith("Z"):
+            date = date[:-1]
+        new_date = pd.Timestamp(date).strftime(date_format)
+        start_time = datetime.strptime(new_date, date_format)
+        if time_offset is not None:
+            start_time = start_time + time_offset
+        if isinstance(step, timedelta):
+            return start_time + step
+        try:
+            int(step)
+        except ValueError:
+            step = step[0]
+        return start_time + timedelta(hours=int(step))
+
+    def _collapse_reanalysis(self, fields, coords, mars_metadata, range_dict):
+        """Collapse all hdates for each point into a single PointSeries coverage.
+
+        Used only for the reanalysis code path (``class=ce``, ``stream=efcl``,
+        ``date_key="hdate"``). Instead of one coverage per hdate, each spatial
+        point (per level/number) yields a single coverage whose ``t``-axis is the
+        chronologically-sorted list of ``hdate + step`` valid-times, with the
+        parameter values concatenated in the same order.
+
+        The scalar ``"Forecast date"`` metadata is intentionally omitted (it no
+        longer represents a single timestep); the decoder handles this via its
+        ``has_forecast_date is False`` fast-path.
+        """
+        points = len(coords[fields["dates"][0]]["composite"])
+        first_date = fields["dates"][0]
+
+        # Optional independent time-of-day offset (separate-datetime reforecast).
+        time_offset = fields.get("time_offset")
+
+        # Ordered list of (stamp, date, step) across every hdate/step combination.
+        stamp_order = []
+        for date in fields["dates"]:
+            for step in fields["step"]:
+                stamp = self._hdate_step_timestamp(date, step, time_offset)
+                stamp_order.append((stamp, date, step))
+        # Stable sort by valid-time so ties preserve insertion order.
+        stamp_order.sort(key=lambda x: x[0])
+
+        t_values = [stamp.isoformat() + "Z" for stamp, _, _ in stamp_order]
+
+        for i in range(points):
+            lat = coords[first_date]["composite"][i][0]
+            lon = coords[first_date]["composite"][i][1]
+            for level in fields["levels"]:
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        val_dict[para] = []
+                        for _stamp, date, step in stamp_order:
+                            key = (date, level, num, para, step)
+                            try:
+                                val_dict[para].append(range_dict[key][i])
+                            except (KeyError, IndexError):
+                                raise IndexError(
+                                    f"Key {key} not found in range_dict. "
+                                    f"Please ensure all axes are compressed in config"
+                                )
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["levelist"] = level
+                    mm.pop("step", None)
+                    mm.pop("Forecast date", None)
+                    coord_entry = {
+                        "latitude": [lat],
+                        "longitude": [lon],
+                        "levelist": [level],
+                        "t": t_values,
+                    }
+                    self.add_coverage(mm, coord_entry, val_dict)
+
+        return self.covjson
+
     def from_xarray(self, datasets):
         """
         Converts an xarray dataset or a list of xarray datasets into an OGC CoverageJSON
@@ -98,7 +187,6 @@ class TimeSeries(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 dv_dict = {}
@@ -123,13 +211,16 @@ class TimeSeries(Encoder):
 
         return self.covjson
 
-    def from_polytope(self, result, date_key: str = "date") -> dict:
+    def from_polytope(self, result, date_key: str = "date", reforecast: bool = False) -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a PointSeries CoverageJSON collection.
 
         Args:
             result: The polytope ``TensorIndexTree`` containing the data to be converted.
             date_key: Tree axis name to treat as the time dimension
                 (``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast).
+            reforecast: When ``True`` the separate-datetime reforecast walker is used,
+                which keeps an independent ``time`` axis as a scalar time-of-day offset
+                instead of folding it into the ``hdate`` time dimension.
         Returns:
             dict: The CoverageJSON representation of the coverage collection.
         """
@@ -143,11 +234,13 @@ class TimeSeries(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
-        fields["identifiers"] = []
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
-        self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
+        if reforecast:
+            self.walk_tree_reforecast(result, fields, coords, mars_metadata, range_dict)
+        else:
+            self.walk_tree(result, fields, coords, mars_metadata, range_dict, date_key=date_key)
         end = time.time()
         delta = end - start
         logging.debug("Tree walking ends at: %s", end)  # noqa: E501
@@ -175,6 +268,12 @@ class TimeSeries(Encoder):
             self.add_parameter(para)
 
         logging.debug("The parameters added were: %s", self.parameters)  # noqa: E501
+
+        # Reanalysis code path: collapse all hdates for a point into a single
+        # coverage. Strictly limited to class=ce, stream=efcl over the hdate axis
+        # so all other requests keep their existing per-date output.
+        if date_key == "hdate" and mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efcl":
+            return self._collapse_reanalysis(fields, coords, mars_metadata, range_dict)
 
         points = len(coords[fields["dates"][0]]["composite"])
 
@@ -244,27 +343,220 @@ class TimeSeries(Encoder):
                                         f"Key {key} not found in range_dict. "
                                         f"Please ensure all axes are compressed in config"
                                     )
-                        # Determine identifiers for this point
-                        point_identifiers = [None]
-                        if fields["identifiers"] and i < len(fields["identifiers"]):
-                            point_identifiers = fields["identifiers"][i]
-
-                        # Emit one coverage per identifier (duplicates coverage for merged points)
-                        for identifier in point_identifiers:
-                            mm = mars_metadata.copy()
-                            mm["number"] = num
-                            mm["Forecast date"] = date
-                            mm["levelist"] = level
-                            if identifier is not None:
-                                mm["label"] = identifier
-                            coordinates[date][i]["levelist"] = [level]
-                            del mm["step"]
-                            self.add_coverage(mm, coordinates[date][i], val_dict)
+                        mm = mars_metadata.copy()
+                        mm["number"] = num
+                        mm["Forecast date"] = date
+                        mm["levelist"] = level
+                        coordinates[date][i]["levelist"] = [level]
+                        del mm["step"]
+                        self.add_coverage(mm, coordinates[date][i], val_dict)
 
         end = time.time()
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode separate-datetime reforecast/reanalysis data (``class=ce``).
+
+        Handles a result tree in which ``date``, ``hdate`` and ``time`` are
+        **independent axes** (rather than a single merged datetime). ``hdate`` is
+        the reforecast time dimension and ``time`` an independent time-of-day
+        axis; both may be multi-valued and compressed into a single tree node.
+
+        Every ``(hdate, time, step)`` combination for a spatial point yields a
+        valid-time ``hdate + time + step``; all such valid-times for a point are
+        collapsed into a single PointSeries coverage whose ``t``-axis holds them
+        chronologically sorted, with the parameter values in matching order.
+
+        Backward compatible with the legacy tree where ``time`` was pre-merged
+        into ``hdate`` (no separate ``time`` node) and ``hdate`` was branched:
+        the timestamps then reduce to ``hdate + step``.
+        """
+        import itertools
+
+        import numpy as np
+
+        from .encoder import is_merged_node
+
+        # Spatial reference system (temporal RS is implied by the t-axis).
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        # Axes that must not leak into the per-coverage mars:metadata block.
+        exclude_meta = {
+            "latitude",
+            "longitude",
+            "hdate",
+            "time",
+            "step",
+            "param",
+            "number",
+            "levelist",
+        }
+
+        # coverage_key -> accumulated coverage state.
+        coverages = {}
+        coverage_order = []
+        param_order = []
+        # Set True as soon as a forecast (efas) coverage is created, so the final
+        # emission can be reordered date -> time -> point (see below).
+        forecast_result = False
+
+        def stringify(value):
+            if isinstance(value, (np.datetime64, np.timedelta64)):
+                # np.datetime64 already stringifies as ISO-8601 (e.g. 2024-03-01
+                # or 2024-03-01T00:00:00); np.timedelta64 has no ISO date form.
+                return str(value)
+            if isinstance(value, (pd.Timestamp, datetime)):
+                # pandas/py datetimes render as "YYYY-MM-DD HH:MM:SS" via str();
+                # emit ISO-8601 ("YYYY-MM-DDTHH:MM:SS") so metadata dates are
+                # spec-compliant.
+                return value.isoformat()
+            if isinstance(value, timedelta):
+                return str(value)
+            return value
+
+        def emit(full_path, flat_result):
+            nonlocal forecast_result
+            axis_names = [name for name, _ in full_path]
+            axis_values = [values for _, values in full_path]
+            for idx, combo in enumerate(itertools.product(*axis_values)):
+                value = flat_result[idx]
+                if value is None:
+                    continue
+                d = dict(zip(axis_names, combo))
+                lat = float(d["latitude"])
+                lon = float(d["longitude"])
+                level = d.get("levelist", 0)
+                try:
+                    level = int(level)
+                except (TypeError, ValueError):
+                    pass
+                number = d.get("number", 0)
+                try:
+                    number = int(number)
+                except (TypeError, ValueError):
+                    pass
+                para = d.get("param")
+                step = d.get("step", 0)
+                hdate = d.get("hdate", d.get("date"))
+                time_off = d.get("time")
+                if isinstance(time_off, np.timedelta64):
+                    time_off = pd.to_timedelta(time_off).to_pytimedelta()
+                stamp = self._hdate_step_timestamp(hdate, step, time_off)
+
+                # Stream determines the coverage grouping for class=ce:
+                #   * efcl (reforecast/reanalysis): collapse all hdates into a
+                #     single coverage whose t-axis holds the hdates.
+                #   * efas (forecast): date+time is the forecast *run* reference;
+                #     each (date, time) run is its own coverage and the steps
+                #     become that coverage's t-axis.
+                #   * anything else (e.g. enfh): legacy one-coverage-per-hdate
+                #     with a scalar "Forecast date".
+                stream = d.get("stream")
+                is_ce = d.get("class") == "ce"
+                collapse = is_ce and stream == "efcl"
+                forecast = is_ce and stream == "efas"
+                if collapse:
+                    key = (lat, lon, level, number)
+                elif forecast:
+                    # Reference datetime of the forecast run = date + time.
+                    reference = self._hdate_step_timestamp(hdate, 0, time_off)
+                    key = (lat, lon, level, number, reference)
+                else:
+                    key = (lat, lon, level, number, stringify(hdate))
+                if key not in coverages:
+                    meta = {}
+                    for name in axis_names:
+                        if name in exclude_meta:
+                            continue
+                        meta[name] = stringify(d[name])
+                    meta["number"] = number
+                    meta["levelist"] = level
+                    if forecast:
+                        # date+time is folded into the run reference; drop the
+                        # raw date axis so it doesn't duplicate "Forecast date".
+                        meta.pop("date", None)
+                        meta["Forecast date"] = reference.isoformat() + "Z"
+                    elif not collapse:
+                        meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
+                    coverages[key] = {
+                        "lat": lat,
+                        "lon": lon,
+                        "level": level,
+                        "number": number,
+                        "meta": meta,
+                        "params": {},
+                    }
+                    if forecast:
+                        forecast_result = True
+                        # Ordering key so coverages come out date -> time -> point
+                        # (reference = date + time). Insertion/tree order is
+                        # otherwise time-major for multi-date forecast requests.
+                        coverages[key]["sort_key"] = (reference, lat, lon, level, number)
+                    coverage_order.append(key)
+
+                if para not in param_order:
+                    param_order.append(para)
+                params = coverages[key]["params"]
+                params.setdefault(para, []).append((stamp, float(value)))
+
+        def recurse(node, path):
+            children = node.children
+            if len(children) == 0:
+                # Leaf longitude node: ``path`` already carries latitude/longitude.
+                emit(path, node.result)
+                return
+            for child in children:
+                if is_merged_node(child):
+                    # Compacted lat/lon leaf: carries its own (lat, lon) + result.
+                    lat, lon = child.values[0], child.values[1]
+                    merged_path = path + [
+                        ("latitude", (lat,)),
+                        ("longitude", (lon,)),
+                    ]
+                    emit(merged_path, child.result)
+                    continue
+                recurse(child, path + [(child.axis.name, tuple(child.values))])
+
+        recurse(result, [])
+
+        if not coverages:
+            raise ValueError("No data was returned.")
+
+        for para in param_order:
+            self.add_parameter(para)
+
+        # Forecast (efas) coverages: emit in date -> time -> point order.
+        if forecast_result:
+            coverage_order.sort(key=lambda k: coverages[k]["sort_key"])
+
+        for key in coverage_order:
+            cov = coverages[key]
+            params = cov["params"]
+            paras = list(params.keys())
+            reference = params[paras[0]]
+            # Stable sort by valid-time; ties preserve insertion order.
+            order = sorted(range(len(reference)), key=lambda i: reference[i][0])
+            t_values = [reference[i][0].isoformat() + "Z" for i in order]
+            val_dict = {para: [params[para][i][1] for i in order] for para in paras}
+            coord_entry = {
+                "latitude": [cov["lat"]],
+                "longitude": [cov["lon"]],
+                "levelist": [cov["level"]],
+                "t": t_values,
+            }
+            self.add_coverage(cov["meta"], coord_entry, val_dict)
 
         return self.covjson
 
