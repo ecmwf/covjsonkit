@@ -4,7 +4,14 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder
+from .encoder import (
+    Encoder,
+    add_label,
+    expand_points_by_tags,
+    expand_tags,
+    node_tags,
+    tag_sort_key,
+)
 
 
 class TimeSeries(Encoder):
@@ -110,7 +117,9 @@ class TimeSeries(Encoder):
 
         t_values = [stamp.isoformat() + "Z" for stamp, _, _ in stamp_order]
 
-        for i in range(points):
+        entries = expand_points_by_tags(coords[first_date].get("tags"), points)
+
+        for i, label in entries:
             lat = coords[first_date]["composite"][i][0]
             lon = coords[first_date]["composite"][i][1]
             for level in fields["levels"]:
@@ -132,6 +141,7 @@ class TimeSeries(Encoder):
                     mm["levelist"] = level
                     mm.pop("step", None)
                     mm.pop("Forecast date", None)
+                    add_label(mm, label)
                     coord_entry = {
                         "latitude": [lat],
                         "longitude": [lon],
@@ -323,7 +333,9 @@ class TimeSeries(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for date in fields["dates"]:
                 for level in fields["levels"]:
                     for num in fields["number"]:
@@ -349,6 +361,7 @@ class TimeSeries(Encoder):
                         mm["levelist"] = level
                         coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
+                        add_label(mm, label)
                         self.add_coverage(mm, coordinates[date][i], val_dict)
 
         end = time.time()
@@ -426,7 +439,7 @@ class TimeSeries(Encoder):
                 return str(value)
             return value
 
-        def emit(full_path, flat_result):
+        def emit(full_path, flat_result, tags):
             nonlocal forecast_result
             axis_names = [name for name, _ in full_path]
             axis_values = [values for _, values in full_path]
@@ -467,55 +480,69 @@ class TimeSeries(Encoder):
                 is_ce = d.get("class") == "ce"
                 collapse = is_ce and stream == "efcl"
                 forecast = is_ce and stream == "efas"
-                if collapse:
-                    key = (lat, lon, level, number)
-                elif forecast:
+                if forecast:
                     # Reference datetime of the forecast run = date + time.
                     reference = self._hdate_step_timestamp(hdate, 0, time_off)
-                    key = (lat, lon, level, number, reference)
-                else:
-                    key = (lat, lon, level, number, stringify(hdate))
-                if key not in coverages:
-                    meta = {}
-                    for name in axis_names:
-                        if name in exclude_meta:
-                            continue
-                        meta[name] = stringify(d[name])
-                    meta["number"] = number
-                    meta["levelist"] = level
-                    if forecast:
-                        # date+time is folded into the run reference; drop the
-                        # raw date axis so it doesn't duplicate "Forecast date".
-                        meta.pop("date", None)
-                        meta["Forecast date"] = reference.isoformat() + "Z"
-                    elif not collapse:
-                        meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
-                    coverages[key] = {
-                        "lat": lat,
-                        "lon": lon,
-                        "level": level,
-                        "number": number,
-                        "meta": meta,
-                        "params": {},
-                    }
-                    if forecast:
-                        forecast_result = True
-                        # Ordering key so coverages come out date -> time -> point
-                        # (reference = date + time). Insertion/tree order is
-                        # otherwise time-major for multi-date forecast requests.
-                        coverages[key]["sort_key"] = (reference, lat, lon, level, number)
-                    coverage_order.append(key)
 
-                if para not in param_order:
-                    param_order.append(para)
-                params = coverages[key]["params"]
-                params.setdefault(para, []).append((stamp, float(value)))
+                # One coverage per requested point: a grid point carrying several
+                # (index, label) tags is emitted once per tag.
+                for tag_index, label in expand_tags(tags):
+                    if collapse:
+                        key = (lat, lon, level, number, tag_index)
+                    elif forecast:
+                        key = (lat, lon, level, number, reference, tag_index)
+                    else:
+                        key = (lat, lon, level, number, stringify(hdate), tag_index)
+                    if key not in coverages:
+                        meta = {}
+                        for name in axis_names:
+                            if name in exclude_meta:
+                                continue
+                            meta[name] = stringify(d[name])
+                        meta["number"] = number
+                        meta["levelist"] = level
+                        if forecast:
+                            # date+time is folded into the run reference; drop the
+                            # raw date axis so it doesn't duplicate "Forecast date".
+                            meta.pop("date", None)
+                            meta["Forecast date"] = reference.isoformat() + "Z"
+                        elif not collapse:
+                            meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
+                        add_label(meta, label)
+                        coverages[key] = {
+                            "lat": lat,
+                            "lon": lon,
+                            "level": level,
+                            "number": number,
+                            "meta": meta,
+                            "params": {},
+                            "tag_index": tag_index,
+                        }
+                        if forecast:
+                            forecast_result = True
+                            # Ordering key so coverages come out date -> time -> point
+                            # (reference = date + time). Insertion/tree order is
+                            # otherwise time-major for multi-date forecast requests.
+                            coverages[key]["sort_key"] = (
+                                reference,
+                                tag_sort_key(tag_index),
+                                lat,
+                                lon,
+                                level,
+                                number,
+                            )
+                        coverage_order.append(key)
+
+                    if para not in param_order:
+                        param_order.append(para)
+                    params = coverages[key]["params"]
+                    params.setdefault(para, []).append((stamp, float(value)))
 
         def recurse(node, path):
             children = node.children
             if len(children) == 0:
                 # Leaf longitude node: ``path`` already carries latitude/longitude.
-                emit(path, node.result)
+                emit(path, node.result, node_tags(node))
                 return
             for child in children:
                 if is_merged_node(child):
@@ -525,7 +552,7 @@ class TimeSeries(Encoder):
                         ("latitude", (lat,)),
                         ("longitude", (lon,)),
                     ]
-                    emit(merged_path, child.result)
+                    emit(merged_path, child.result, node_tags(child))
                     continue
                 recurse(child, path + [(child.axis.name, tuple(child.values))])
 
@@ -540,6 +567,9 @@ class TimeSeries(Encoder):
         # Forecast (efas) coverages: emit in date -> time -> point order.
         if forecast_result:
             coverage_order.sort(key=lambda k: coverages[k]["sort_key"])
+        elif any(coverages[k]["tag_index"] is not None for k in coverage_order):
+            # Tagged points: emit in request order (stable, so tree order is kept per point).
+            coverage_order.sort(key=lambda k: tag_sort_key(coverages[k]["tag_index"]))
 
         for key in coverage_order:
             cov = coverages[key]
@@ -638,7 +668,9 @@ class TimeSeries(Encoder):
         logging.debug("The fields retrieved were: %s", fields)
         logging.debug("The range_dict created was: %s", range_dict)
 
-        for i in range(points):
+        entries = expand_points_by_tags(coords[first_date].get("tags"), points)
+
+        for i, label in entries:
             for j, level in enumerate(fields["levels"]):
                 for num in fields["number"]:
                     val_dict = {}
@@ -659,6 +691,7 @@ class TimeSeries(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["levelist"] = level
+                    add_label(mm, label)
                     # Use all date keys as the time series for this coverage.
                     coord_entry = coordinates[first_date][i].copy()
                     coord_entry["levelist"] = [level]
@@ -752,7 +785,9 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for j, level in enumerate(fields["levels"]):
                 for num in fields["number"]:
                     val_dict = {}
@@ -767,6 +802,7 @@ class TimeSeries(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
+                    add_label(mm, label)
                     self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
 
         end = time.time()

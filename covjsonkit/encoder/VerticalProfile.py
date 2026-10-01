@@ -4,7 +4,14 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import (
+    Encoder,
+    add_label,
+    expand_points_by_tags,
+    expand_tags,
+    normalize_step_value,
+    tag_sort_key,
+)
 
 
 class VerticalProfile(Encoder):
@@ -204,7 +211,9 @@ class VerticalProfile(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for date in fields["dates"]:
                 for num in fields["number"]:
                     val_dict = {}
@@ -230,6 +239,7 @@ class VerticalProfile(Encoder):
                         mm["Forecast date"] = date
                         mm["step"] = normalize_step_value(step)
                         # del mm["step"]
+                        add_label(mm, label)
                         self.add_coverage(mm, coordinates[date][i][s], val_dict[step])
 
         end = time.time()
@@ -277,7 +287,11 @@ class VerticalProfile(Encoder):
         coverage_order = []
         param_order = []
 
-        for rec in self._reforecast_records(result):
+        for rec, tag_index, label in (
+            (rec, tag_index, label)
+            for rec in self._reforecast_records(result)
+            for tag_index, label in expand_tags(rec["__tags__"])
+        ):
             value = float(rec["__value__"])
             lat = float(rec["latitude"])
             lon = float(rec["longitude"])
@@ -297,16 +311,17 @@ class VerticalProfile(Encoder):
             valid = ref + self._reforecast_step_timedelta(step)
             valid_iso = valid.isoformat() + "Z"
 
-            key = (lat, lon, number, ref.isoformat(), str(step))
+            key = (lat, lon, number, ref.isoformat(), str(step), tag_index)
             if key not in coverages:
                 meta = {}
                 for name in rec:
-                    if name == "__value__" or name in exclude_meta:
+                    if name in ("__value__", "__tags__") or name in exclude_meta:
                         continue
                     meta[name] = self._reforecast_stringify(rec[name])
                 meta["number"] = number
                 meta["step"] = step
                 meta["Forecast date"] = ref.isoformat() + "Z"
+                add_label(meta, label)
                 coverages[key] = {
                     "lat": lat,
                     "lon": lon,
@@ -330,6 +345,9 @@ class VerticalProfile(Encoder):
 
         for para in param_order:
             self.add_parameter(para)
+
+        # Tagged points: emit in request order (stable, so tree order is kept per point).
+        coverage_order.sort(key=lambda k: tag_sort_key(k[-1]))
 
         for key in coverage_order:
             cov = coverages[key]
@@ -417,7 +435,9 @@ class VerticalProfile(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i in range(points):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for date in fields["dates"]:
                 for num in fields["number"]:
                     val_dict = {}
@@ -438,6 +458,7 @@ class VerticalProfile(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
+                    add_label(mm, label)
                     self.add_coverage(mm, coordinates[date][i], val_dict)
 
         end = time.time()

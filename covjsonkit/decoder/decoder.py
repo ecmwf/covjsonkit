@@ -91,6 +91,39 @@ class Decoder(ABC):
                 mars_metadata.append(coverage["mars:metadata"])
         return mars_metadata
 
+    def _point_groups(self, domain_key, slot_key):
+        """Group coverages into one group per requested point, in first-seen order.
+
+        Coverages with the same ``domain_key`` (spatial/time domain) and ``label``
+        belong to the same point. When several requested points snapped to the same
+        grid point, their coverages repeat for each ``slot_key`` (e.g. number and
+        forecast date), so the n-th coverage for a given domain, label and slot
+        belongs to the n-th such point.
+        """
+        groups = {}
+        order = []
+        seen = {}
+        for coverage in self.covjson["coverages"]:
+            label = coverage.get("mars:metadata", {}).get("label")
+            domain = domain_key(coverage)
+            slot = (domain, label, slot_key(coverage))
+            occurrence = seen.get(slot, 0)
+            seen[slot] = occurrence + 1
+            key = (domain, label, occurrence)
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append(coverage)
+        return [groups[key] for key in order]
+
+    def _point_dataset_attrs(self, group):
+        """Dataset attributes for one point: shared MARS metadata plus the point's own label."""
+        attrs = {key: val for key, val in self.mars_metadata[0].items() if key not in ("date", "step", "label")}
+        label = group[0].get("mars:metadata", {}).get("label")
+        if label is not None:
+            attrs["label"] = label
+        return attrs
+
     @abstractmethod
     def get_ranges(self):
         pass

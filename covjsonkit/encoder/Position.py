@@ -4,7 +4,14 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder, normalize_step_value
+from .encoder import (
+    Encoder,
+    add_label,
+    expand_points_by_tags,
+    expand_tags,
+    normalize_step_value,
+    tag_sort_key,
+)
 
 
 class Position(Encoder):
@@ -222,7 +229,9 @@ class Position(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for date in fields["dates"]:
                 for level in fields["levels"]:
                     for num in fields["number"]:
@@ -246,6 +255,7 @@ class Position(Encoder):
                         mm["number"] = num
                         mm["Forecast date"] = date
                         del mm["step"]
+                        add_label(mm, label)
                         self.add_coverage(mm, coordinates[date][i], val_dict)
 
         end = time.time()
@@ -293,7 +303,11 @@ class Position(Encoder):
         coverage_order = []
         param_order = []
 
-        for rec in self._reforecast_records(result):
+        for rec, tag_index, label in (
+            (rec, tag_index, label)
+            for rec in self._reforecast_records(result)
+            for tag_index, label in expand_tags(rec["__tags__"])
+        ):
             value = float(rec["__value__"])
             lat = float(rec["latitude"])
             lon = float(rec["longitude"])
@@ -313,15 +327,16 @@ class Position(Encoder):
             valid = ref + self._reforecast_step_timedelta(step)
             valid_iso = valid.isoformat() + "Z"
 
-            key = (lat, lon, level, number, ref.isoformat())
+            key = (lat, lon, level, number, ref.isoformat(), tag_index)
             if key not in coverages:
                 meta = {}
                 for name in rec:
-                    if name == "__value__" or name in exclude_meta:
+                    if name in ("__value__", "__tags__") or name in exclude_meta:
                         continue
                     meta[name] = self._reforecast_stringify(rec[name])
                 meta["number"] = number
                 meta["Forecast date"] = ref.isoformat() + "Z"
+                add_label(meta, label)
                 coverages[key] = {
                     "lat": lat,
                     "lon": lon,
@@ -343,6 +358,9 @@ class Position(Encoder):
 
         for para in param_order:
             self.add_parameter(para)
+
+        # Tagged points: emit in request order (stable, so tree order is kept per point).
+        coverage_order.sort(key=lambda k: tag_sort_key(k[-1]))
 
         for key in coverage_order:
             cov = coverages[key]
@@ -406,8 +424,10 @@ class Position(Encoder):
         points = len(coords[fields["dates"][0]]["composite"])
 
         # Build one coordinate entry per point per level; the t axis is all months.
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
         coordinates = []
-        for i in range(points):
+        for i, label in entries:
             for level in fields["levels"]:
                 coord_entry = {
                     "latitude": [coords[fields["dates"][0]]["composite"][i][0]],
@@ -415,7 +435,7 @@ class Position(Encoder):
                     "levelist": [level],
                     "t": [f"{date}-01T00:00:00Z" for date in fields["dates"]],
                 }
-                coordinates.append((i, level, coord_entry))
+                coordinates.append((i, label, level, coord_entry))
 
         end = time.time()
         logging.debug("Coords creation: %s", end)  # noqa: E501
@@ -428,7 +448,7 @@ class Position(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i, level, coord_entry in coordinates:
+        for i, label, level, coord_entry in coordinates:
             for num in fields["number"]:
                 val_dict = {}
                 for para in fields["param"]:
@@ -448,6 +468,7 @@ class Position(Encoder):
                 mm = mars_metadata.copy()
                 mm["number"] = num
                 mm["levelist"] = level
+                add_label(mm, label)
                 self.add_coverage(mm, coord_entry, val_dict)
 
         end = time.time()
@@ -537,7 +558,9 @@ class Position(Encoder):
         start = time.time()
         logging.debug("Coverage creation: %s", start)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for j, level in enumerate(fields["levels"]):
                 for num in fields["number"]:
                     val_dict = {}
@@ -552,6 +575,7 @@ class Position(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
+                    add_label(mm, label)
                     self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
 
         end = time.time()
