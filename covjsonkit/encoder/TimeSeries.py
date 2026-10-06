@@ -42,8 +42,14 @@ class TimeSeries(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["t"]
+            # A single-valued t axis is emitted as a 0D array: the spec allows
+            # single-valued axes to be omitted and covjson-validator rejects ["t"].
+            if len(values[parameter]) == 1:
+                coverage["ranges"][param]["shape"] = []
+                coverage["ranges"][param]["axisNames"] = []
+            else:
+                coverage["ranges"][param]["shape"] = [len(values[parameter])]
+                coverage["ranges"][param]["axisNames"] = ["t"]
             coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]

@@ -34,8 +34,10 @@ def _assert_references_match_axes(covjson, include_z):
         assert set(axes) == expected
         assert axes["x"]["values"] == [LON]
         assert axes["y"]["values"] == [LAT]
+        # Single-valued t is emitted as a 0D range (axisNames/shape omitted).
+        expected_names = ["t"] if len(axes["t"]["values"]) > 1 else []
         for rng in cov["ranges"].values():
-            assert rng["axisNames"] == ["t"]
+            assert rng["axisNames"] == expected_names
     assert_valid_covjson(covjson)
 
 

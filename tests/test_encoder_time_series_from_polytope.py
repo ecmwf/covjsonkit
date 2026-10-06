@@ -197,8 +197,8 @@ class TestTimeseriesFromPolytope:
             "t": {"values": ["2025-01-01T00:00:00Z"]},
         }
         assert cov["ranges"] == {
-            "2t": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [264.9]},
-            "2d": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [250.1]},
+            "2t": {"type": "NdArray", "dataType": "float", "shape": [], "axisNames": [], "values": [264.9]},
+            "2d": {"type": "NdArray", "dataType": "float", "shape": [], "axisNames": [], "values": [250.1]},
         }
         assert cov["mars:metadata"] == {
             "class": "od",
@@ -243,7 +243,8 @@ class TestTimeseriesFromPolytope:
             "coordinates": ["z"],
             "system": {"type": "VerticalCRS"},
         }
-        assert cov["ranges"]["2t"]["axisNames"] == ["t"]
+        assert cov["ranges"]["2t"]["axisNames"] == []
+        assert cov["ranges"]["2t"]["shape"] == []
         assert cov["mars:metadata"]["levelist"] == 850
 
 
@@ -274,8 +275,8 @@ class TestTimeseriesFromPolytopeReforecast:
             "dis06": {
                 "type": "NdArray",
                 "dataType": "float",
-                "shape": [1],
-                "axisNames": ["t"],
+                "shape": [],
+                "axisNames": [],
                 "values": [42.17],
             }
         }
@@ -448,8 +449,8 @@ class TestTimeseriesFromPolytopeReforecast:
             "t": {"values": ["2025-07-14T12:00:00Z"]},
         }
         assert cov["ranges"] == {
-            "dis06": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [42.17]},
-            "rowe": {"type": "NdArray", "dataType": "float", "shape": [1], "axisNames": ["t"], "values": [99.5]},
+            "dis06": {"type": "NdArray", "dataType": "float", "shape": [], "axisNames": [], "values": [42.17]},
+            "rowe": {"type": "NdArray", "dataType": "float", "shape": [], "axisNames": [], "values": [99.5]},
         }
         assert cov["mars:metadata"] == EXPECTED_HDATE_METADATA
 
