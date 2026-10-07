@@ -1,10 +1,21 @@
 """Streaming CoverageJSON encoder over a block stream.
 
 ``CovjsonStreamEncoder`` consumes the block IR produced by polytope-mars (``polytope_mars.blocks``) and
-returns the CoverageJSON document in pieces: ``begin(header)`` -> collection opening, ``encode(block)``
-per block, ``end()`` -> collection closing.  Concatenating the pieces gives exactly the bytes the legacy
-path produced with ``json.dumps(encoder.from_polytope*(tree)).encode()``, except that missing values
-(NaN) are written as ``null``.
+returns the CoverageJSON document in pieces: ``begin(header)`` -> collection opening,
+``encode_iter(block)`` -> the fragments of one block, ``end()`` -> collection closing.  Concatenating the
+pieces gives exactly the bytes the legacy path produced with
+``json.dumps(encoder.from_polytope*(tree)).encode()``, except that missing values (NaN) are written as
+``null``.
+
+``encode_iter`` yields one fragment per slice of the block's arrays, each at most
+``max_fragment_bytes`` (constructor argument, default :data:`DEFAULT_MAX_FRAGMENT_BYTES` = 8 MiB), so
+neither the encoder nor its consumer ever holds the text of a whole block: a whole-world O2560
+coordinates block is ~800 MB of JSON but is handed over 8 MiB at a time.  The fragments of a block must
+be consumed completely and in order before the next block is encoded (the encoder's state advances as
+they are produced).  ``encode(block)`` is the buffered equivalent, ``b"".join(encode_iter(block))``, kept
+for callers that want one ``bytes`` per block.  The structural fragments (a coverage's metadata and ``t``
+axis, the collection's ``referencing`` and ``parameters``) are written whole: they are a few hundred
+bytes, and only point-feature collections, which are small by construction, are buffered to ``end()``.
 
 Blocks are read structurally (attributes only), so this module imports neither polytope-feature nor
 polytope-mars:
@@ -26,11 +37,26 @@ from __future__ import annotations
 
 import json
 import math
+from typing import Iterator
 
 import numpy as np
 import orjson
 
-__all__ = ["CovjsonStreamEncoder", "legacy_referencing", "pointseries_coverages"]
+__all__ = [
+    "CovjsonStreamEncoder",
+    "DEFAULT_MAX_FRAGMENT_BYTES",
+    "legacy_referencing",
+    "pointseries_coverages",
+]
+
+#: Default upper bound on the size of one fragment of :meth:`CovjsonStreamEncoder.encode_iter`.
+DEFAULT_MAX_FRAGMENT_BYTES = 8 * 1024 * 1024
+
+#: Longest text one float64 can take (``-1.2345678901234567e-308``), used to size array slices.
+_FLOAT_CHARS = 24
+
+#: Text built in one serialiser call; a fragment is assembled from pieces of this size.
+_WORK_BYTES = 256 * 1024
 
 _CRS = {"type": "GeographicCRS", "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}
 _LATLON = ["latitude", "longitude", "levelist"]
@@ -48,6 +74,33 @@ def _needs_repr(arr: np.ndarray) -> np.ndarray:
         return (np.abs(arr) < 1e-4) & (arr != 0)
 
 
+def _fragment_limit(value) -> int:
+    """``value`` as a positive fragment size in bytes."""
+    try:
+        limit = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"max_fragment_bytes must be an integer number of bytes, got {value!r}") from None
+    if limit <= 0:
+        raise ValueError(f"max_fragment_bytes must be positive, got {limit}")
+    return limit
+
+
+def _fragment_slices(n: int, item_bytes: int, max_fragment_bytes: int) -> Iterator[list]:
+    """Per fragment, the ``(start, stop)`` point ranges to serialise and join into it.
+
+    ``item_bytes`` is an upper bound on the text of one point (its floats at their longest plus
+    separators), so a fragment stays within ``max_fragment_bytes``.  A fragment always holds at least one
+    point: with a limit smaller than one point's text, the fragment is one point long and exceeds it.
+    A fragment is assembled from :data:`_WORK_BYTES`-sized ranges, which keeps the serialiser's
+    temporary buffers small whatever the fragment size.
+    """
+    per_fragment = max(1, max_fragment_bytes // max(1, item_bytes))
+    per_piece = min(per_fragment, max(1, _WORK_BYTES // max(1, item_bytes)))
+    for start in range(0, n, per_fragment):
+        stop = min(start + per_fragment, n)
+        yield [(a, min(a + per_piece, stop)) for a in range(start, stop, per_piece)]
+
+
 def format_floats(values) -> list:
     """Each value as ``json.dumps`` writes a Python float, with NaN/inf as ``null``.
 
@@ -60,7 +113,7 @@ def format_floats(values) -> list:
         return []
     parts = orjson.dumps(arr, option=orjson.OPT_SERIALIZE_NUMPY)[1:-1].split(b",")
     for i in np.flatnonzero(_needs_repr(arr)):
-        parts[i] = repr(float(arr[i])).encode("ascii")
+        parts[i] = repr(arr[i].item()).encode("ascii")
     return parts
 
 
@@ -165,7 +218,7 @@ def pointseries_coverages(groups, header, shortname) -> list:
             vals = []
             for g in series:
                 arr = g["values"].get((p.id, level))
-                vals.append(float(arr[i]) if arr is not None else None)
+                vals.append(arr[i].item() if arr is not None else None)
             ranges[shortname[p.id]] = _range(shortname[p.id], _py_values(vals))
         return {
             "mars:metadata": first["meta"],
@@ -173,8 +226,8 @@ def pointseries_coverages(groups, header, shortname) -> list:
             "domain": {
                 "type": "Domain",
                 "axes": {
-                    "latitude": {"values": [float(first["lat"][i])]},
-                    "longitude": {"values": [float(first["lon"][i])]},
+                    "latitude": {"values": [first["lat"][i].item()]},
+                    "longitude": {"values": [first["lon"][i].item()]},
                     "levelist": {"values": levelist},
                     "t": {"values": t},
                 },
@@ -209,7 +262,7 @@ def verticalprofile_coverages(groups, header, shortname) -> list:
             for p in header.parameters:
                 if p.id not in g["values_params"]:
                     continue
-                vals = [float(g["values"][(p.id, k)][i]) for k in keys]
+                vals = [g["values"][(p.id, k)][i].item() for k in keys]
                 ranges[shortname[p.id]] = {
                     "type": "NdArray",
                     "dataType": "float",
@@ -224,8 +277,8 @@ def verticalprofile_coverages(groups, header, shortname) -> list:
                     "domain": {
                         "type": "Domain",
                         "axes": {
-                            "latitude": {"values": [float(g["lat"][i])]},
-                            "longitude": {"values": [float(g["lon"][i])]},
+                            "latitude": {"values": [g["lat"][i].item()]},
+                            "longitude": {"values": [g["lon"][i].item()]},
                             "levelist": {"values": levels},
                             "t": {"values": list(g["t"])},
                         },
@@ -247,7 +300,7 @@ def trajectory_coverages(groups, header, shortname, coordinates) -> list:
             keys = list(g["levels"]) if g["levels"] else [None]
             for k in keys:
                 level = 0 if k is None else k
-                composite.extend([t, float(la), float(lo), level] for la, lo in zip(g["lat"], g["lon"]))
+                composite.extend([t, la.item(), lo.item(), level] for la, lo in zip(g["lat"], g["lon"]))
                 for p in header.parameters:
                     arr = g["values"].get((p.id, k))
                     values[p.id].extend(arr.tolist() if arr is not None else [None] * len(g["lat"]))
@@ -291,8 +344,10 @@ class CovjsonStreamEncoder:
     content_type = "application/prs.coverage+json"
     file_extension = "covjson"
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, max_fragment_bytes: int = DEFAULT_MAX_FRAGMENT_BYTES):
         self.config = dict(config or {})
+        #: upper bound on one fragment of :meth:`encode_iter` (``config["max_fragment_bytes"]`` wins)
+        self.max_fragment_bytes = _fragment_limit(self.config.get("max_fragment_bytes") or max_fragment_bytes)
         self._header = None
         self.n_coverages = 0
         self._streaming = True
@@ -327,6 +382,15 @@ class CovjsonStreamEncoder:
         return b'{"type": "CoverageCollection", "domainType": ' + _dumps(domain) + b', "coverages": ['
 
     def encode(self, block) -> bytes:
+        """The whole block as one ``bytes`` (``b"".join(self.encode_iter(block))``)."""
+        return b"".join(self.encode_iter(block))
+
+    def encode_iter(self, block) -> Iterator[bytes]:
+        """The block as fragments of at most ``max_fragment_bytes``, each from a slice of its arrays.
+
+        The fragments of a block must be consumed completely, in order, before the next block is
+        encoded: the encoder's state (separators, open ranges) advances as they are produced.
+        """
         if hasattr(block, "lat"):
             return self._coords(block)
         if hasattr(block, "values") and hasattr(block, "param"):
@@ -348,31 +412,36 @@ class CovjsonStreamEncoder:
 
     # -- MultiPoint: stream -------------------------------------------------------------------------------
 
-    def _coords(self, block) -> bytes:
+    def _coords(self, block) -> Iterator[bytes]:
         g = block.group
         if not self._streaming:
             cur = self._buffer_group(g)
             cur["lat"].append(np.asarray(block.lat, dtype=np.float64))
             cur["lon"].append(np.asarray(block.lon, dtype=np.float64))
-            return b""
-        out = []
+            return
         if self._current is None or self._current.group is not g:
-            out.append(self._open_coverage(g))
+            yield self._open_coverage(g)
         cur = self._open()
         levels = list(g.levels) if g.levels else [0]
-        out.append(self._tuples(cur, block.lat, block.lon, levels[0]))
+        yield from self._tuples(cur, block.lat, block.lon, levels[0])
         if len(levels) > 1:
             cur.coords.append((np.array(block.lat, dtype=np.float64), np.array(block.lon, dtype=np.float64)))
-        return b"".join(out)
 
-    @staticmethod
-    def _tuples(cur: _OpenCoverage, lat, lon, level) -> bytes:
-        body = composite_tuples(lat, lon, level)
-        if not body:
-            return b""
-        sep = b", " if cur.n_tuples else b""
-        cur.n_tuples += len(lat)
-        return sep + body
+    def _tuples(self, cur: _OpenCoverage, lat, lon, level) -> Iterator[bytes]:
+        """The composite tuples of one band at one level, sliced into fragments.
+
+        The ``(n, 3)`` tuples are built per slice, so the text of a whole band never exists at once.
+        """
+        lat = np.asarray(lat)
+        lon = np.asarray(lon)
+        item = 2 * _FLOAT_CHARS + 8 + len(_dumps(level))  # "[lat, lon, level], "
+        for ranges in _fragment_slices(lat.size, item, self.max_fragment_bytes):
+            body = b", ".join(composite_tuples(lat[a:b], lon[a:b], level) for a, b in ranges)
+            if not body:
+                continue
+            sep = b", " if cur.n_tuples else b""
+            cur.n_tuples += ranges[-1][1] - ranges[0][0]
+            yield sep + body
 
     def _open_coverage(self, g) -> bytes:
         self._current = _OpenCoverage(g)
@@ -384,43 +453,45 @@ class CovjsonStreamEncoder:
         self.n_coverages += 1
         return head
 
-    def _close_composite(self) -> bytes:
+    def _close_composite(self) -> Iterator[bytes]:
         cur = self._open()
         if cur.composite_closed:
-            return b""
+            return
         cur.composite_closed = True
-        out = []
         levels = list(cur.group.levels)
         for level in levels[1:]:
             for lat, lon in cur.coords:
-                out.append(self._tuples(cur, lat, lon, level))
+                yield from self._tuples(cur, lat, lon, level)
         cur.coords = []
-        out.append(b']}}}, "ranges": {')
-        return b"".join(out)
+        yield b']}}}, "ranges": {'
 
-    def _values(self, block) -> bytes:
+    def _values(self, block) -> Iterator[bytes]:
         g = block.group
         if not self._streaming:
             cur = self._buffer_group(g)
             cur["values"].setdefault((block.param, block.level), []).append(np.asarray(block.values, dtype=np.float64))
-            return b""
+            return
         cur = self._open()
-        out = [self._close_composite()]
+        yield from self._close_composite()
         if cur.param != block.param:
             name = self._shortname.get(block.param, block.param)
             n = g.n_points * max(1, len(g.levels))
-            out.append(b"]}, " if cur.param is not None else b"")
-            out.append(_dumps(name) + b': {"type": "NdArray", "dataType": "float", "shape": [' + str(n).encode())
-            out.append(b'], "axisNames": [' + _dumps(str(name)) + b'], "values": [')
+            head = b"]}, " if cur.param is not None else b""
+            head += _dumps(name) + b': {"type": "NdArray", "dataType": "float", "shape": [' + str(n).encode()
+            head += b'], "axisNames": [' + _dumps(str(name)) + b'], "values": ['
             cur.param = block.param
             cur.n_values = 0
-        body = float_list_bytes(block.values)
-        if body:
-            out.append((b", " if cur.n_values else b"") + body)
-            cur.n_values += len(block.values)
-        return b"".join(out)
+            yield head
+        values = np.asarray(block.values)
+        for ranges in _fragment_slices(values.size, _FLOAT_CHARS + 2, self.max_fragment_bytes):
+            body = b", ".join(float_list_bytes(values[a:b]) for a, b in ranges)
+            if not body:
+                continue
+            sep = b", " if cur.n_values else b""
+            cur.n_values += ranges[-1][1] - ranges[0][0]
+            yield sep + body
 
-    def _group_end(self, block) -> bytes:
+    def _group_end(self, block) -> Iterator[bytes]:
         if not self._streaming:
             cur = self._buffered[-1] if self._buffered else None
             if cur is not None and cur["group"] is block.group:
@@ -428,14 +499,13 @@ class CovjsonStreamEncoder:
                 cur["lon"] = np.concatenate(cur["lon"]) if cur["lon"] else np.empty(0)
                 cur["values"] = {k: np.concatenate(v) for k, v in cur["values"].items()}
                 cur["done"] = True
-            return b""
+            return
         cur = self._current
         if cur is None or cur.group is not block.group:
-            return b""
-        out = [self._close_composite()]
-        out.append(b"]}}}" if cur.param is not None else b"}}")
+            return
+        yield from self._close_composite()
+        yield b"]}}}" if cur.param is not None else b"}}"
         self._current = None
-        return b"".join(out)
 
     # -- buffered domains ---------------------------------------------------------------------------------
 

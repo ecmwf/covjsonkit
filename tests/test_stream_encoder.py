@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 
 from covjsonkit.stream import (
+    DEFAULT_MAX_FRAGMENT_BYTES,
     CovjsonStreamEncoder,
     composite_tuples,
     float_list_bytes,
@@ -121,6 +122,16 @@ def encode(header, blocks) -> bytes:
     return b"".join(out)
 
 
+def fragments(header, blocks, max_fragment_bytes) -> list:
+    """Every fragment of the document, block by block, with ``encode_iter``."""
+    enc = CovjsonStreamEncoder({"param_db": "ecmwf"}, max_fragment_bytes=max_fragment_bytes)
+    out = [enc.begin(header)]
+    for block in blocks:
+        out += list(enc.encode_iter(block))
+    out.append(enc.end())
+    return out
+
+
 def legacy_multipoint(header, groups):
     """What BoundingBox.from_polytope + json.dumps produced for the same data."""
     coords = legacy_referencing(header)
@@ -193,6 +204,58 @@ def test_band_size_invariance(n_bands):
     group = (fields, lat, lon, levels, {"class": "od", "number": 0}, ("2024-01-01T00:00:00Z",))
     expected = legacy_multipoint(BBOX, [group])
     assert ref == expected
+
+
+def _mixed_fields(n, levels, seed=11):
+    """Values covering both float paths: a NaN, a ``1e-5``-style number, ``-0.0`` and plain floats."""
+    rng = np.random.default_rng(seed)
+    fields = {(p, lev): np.round(rng.normal(size=n) * 1e3, 9) for p in ("165", "167") for lev in levels or (None,)}
+    first = fields[("165", levels[0] if levels else None)]
+    first[0], first[1], first[2] = np.nan, 1.5e-5, -0.0
+    return fields
+
+
+@pytest.mark.parametrize("max_fragment_bytes", [64, 1024, DEFAULT_MAX_FRAGMENT_BYTES], ids=["64B", "1KiB", "8MiB"])
+def test_fragments_join_to_the_single_fragment_bytes(max_fragment_bytes):
+    levels = ("500", "850")
+    lat, lon = _data(500, 8)
+    lon[4] = 3e-5  # forces the per-value path for the composite tuples as well
+    fields = _mixed_fields(500, levels)
+    blocks = multipoint_blocks(fields, lat, lon, levels=levels, n_bands=3)
+    joined = b"".join(fragments(BBOX, blocks, max_fragment_bytes))
+    assert joined == encode(BBOX, blocks)
+    group = (fields, lat, lon, levels, {"class": "od", "number": 0}, ("2024-01-01T00:00:00Z",))
+    assert joined == legacy_multipoint(BBOX, [group])
+
+
+@pytest.mark.parametrize("max_fragment_bytes", [1024, DEFAULT_MAX_FRAGMENT_BYTES], ids=["1KiB", "8MiB"])
+def test_no_fragment_exceeds_the_limit(max_fragment_bytes):
+    lat, lon = _data(5000, 9)
+    fields = {("167", None): np.linspace(200.0, 320.0, 5000)}
+    frags = fragments(BBOX, multipoint_blocks(fields, lat, lon, n_bands=2), max_fragment_bytes)
+    assert max(len(f) for f in frags) <= max_fragment_bytes
+    assert all(f for f in frags)  # no empty fragment is handed out
+    assert len(frags) > 5  # the arrays really were sliced
+
+
+def test_small_magnitude_values_are_formatted_per_value_in_every_slice():
+    vals = np.array([1e-5, 2e-5, 0.00002, 9.99e-5, 3.0, np.nan])
+    lat, lon = _data(6, 10)
+    blocks = multipoint_blocks({("167", None): vals}, lat, lon, n_bands=2)
+    out = b"".join(fragments(BBOX, blocks, 64))
+    assert out == encode(BBOX, blocks)
+    assert b"1e-05" in out and b"2e-05" in out and b"1e-5" not in out
+    assert json.loads(out)["coverages"][0]["ranges"]["2t"]["values"] == [1e-5, 2e-5, 2e-5, 9.99e-5, 3.0, None]
+
+
+def test_fragment_limit_is_configurable_and_validated():
+    assert CovjsonStreamEncoder().max_fragment_bytes == DEFAULT_MAX_FRAGMENT_BYTES
+    assert CovjsonStreamEncoder({"max_fragment_bytes": 4096}).max_fragment_bytes == 4096
+    assert CovjsonStreamEncoder(max_fragment_bytes=4096).max_fragment_bytes == 4096
+    with pytest.raises(ValueError):
+        CovjsonStreamEncoder(max_fragment_bytes=-1)
+    with pytest.raises(ValueError):
+        CovjsonStreamEncoder({"max_fragment_bytes": "many"})
 
 
 def test_nan_is_null_and_missing_param_is_omitted():
@@ -290,6 +353,17 @@ def test_pointseries_layout_is_point_major_over_consecutive_groups():
     assert second["ranges"]["2t"]["values"] == [10.0, 11.0, 12.0]
     assert second["domain"]["axes"]["latitude"]["values"] == [-33.9]
     assert doc["referencing"][0]["coordinates"] == ["latitude", "longitude", "levelist"]
+
+
+def test_buffered_domains_produce_their_coverages_from_end():
+    """Point features are buffered: their blocks yield no fragment, ``end()`` writes the coverages."""
+    header = Header("timeseries", "PointSeries", "date", (T2,))
+    meta = {"class": "od", "number": 0, "levelist": 0}
+    blocks = _point_group(0, ("2024-01-01T00:00:00Z",), meta, {("167", None): [1, 2]})
+    enc = CovjsonStreamEncoder(max_fragment_bytes=64)
+    begin = enc.begin(header)
+    assert [f for block in blocks for f in enc.encode_iter(block)] == []
+    assert begin + enc.end() == encode(header, blocks)
 
 
 def test_verticalprofile_layout():
