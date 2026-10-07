@@ -454,6 +454,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
@@ -523,7 +525,7 @@ class Encoder(ABC):
                 # Independent time-of-day axis: capture as a scalar offset rather
                 # than folding it into the hdate time dimension. efcl guarantees a
                 # single time value; take the first if a span is ever returned.
-                fields["time_offset"] = child.values[0]
+                fields["time_offset"] = self._reforecast_timedelta(child.values[0])
                 return None
             if child.axis.name == "number":
                 return child.values
@@ -586,6 +588,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
@@ -710,6 +714,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
@@ -870,6 +876,8 @@ class Encoder(ABC):
                         fields["lat"] = result
                     elif child.axis.name == "levelist":
                         fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
                         if "l" in fields:
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
