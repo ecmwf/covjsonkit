@@ -42,6 +42,12 @@ def _dumps(obj) -> bytes:
     return json.dumps(obj).encode("utf-8")
 
 
+def _needs_repr(arr: np.ndarray) -> np.ndarray:
+    """Mask of the values orjson prints differently from ``json.dumps`` (0 < |x| < 1e-4)."""
+    with np.errstate(invalid="ignore"):
+        return (np.abs(arr) < 1e-4) & (arr != 0)
+
+
 def format_floats(values) -> list:
     """Each value as ``json.dumps`` writes a Python float, with NaN/inf as ``null``.
 
@@ -53,16 +59,31 @@ def format_floats(values) -> list:
     if arr.size == 0:
         return []
     parts = orjson.dumps(arr, option=orjson.OPT_SERIALIZE_NUMPY)[1:-1].split(b",")
-    with np.errstate(invalid="ignore"):
-        small = np.flatnonzero((np.abs(arr) < 1e-4) & (arr != 0))
-    for i in small:
+    for i in np.flatnonzero(_needs_repr(arr)):
         parts[i] = repr(float(arr[i])).encode("ascii")
     return parts
 
 
 def float_list_bytes(values) -> bytes:
     """``a, b, c`` (no brackets), as ``json.dumps`` separates list items."""
-    return b", ".join(format_floats(values))
+    arr = np.ascontiguousarray(values, dtype=np.float64)
+    if not _needs_repr(arr).any():
+        # fast path without one Python object per value
+        return orjson.dumps(arr, option=orjson.OPT_SERIALIZE_NUMPY)[1:-1].replace(b",", b", ")
+    return b", ".join(format_floats(arr))
+
+
+def composite_tuples(lat, lon, level) -> bytes:
+    """``[lat, lon, level], ...`` (no outer brackets) as ``json.dumps`` writes the composite values."""
+    lat = np.ascontiguousarray(lat, dtype=np.float64)
+    lon = np.ascontiguousarray(lon, dtype=np.float64)
+    if lat.size == 0:
+        return b""
+    suffix = b", " + _dumps(level) + b"]"
+    if not (_needs_repr(lat).any() or _needs_repr(lon).any()):
+        pairs = orjson.dumps(np.column_stack((lat, lon)), option=orjson.OPT_SERIALIZE_NUMPY)[1:-1]
+        return pairs.replace(b",", b", ").replace(b"]", suffix)
+    return b", ".join([b"[" + a + b", " + o + suffix for a, o in zip(format_floats(lat), format_floats(lon))])
 
 
 def _py_values(values) -> list:
@@ -257,7 +278,7 @@ class _OpenCoverage:
     def __init__(self, group):
         self.group = group
         self.n_tuples = 0
-        #: formatted (lat, lon) of every band, kept only when the coverage has more than one level
+        #: (lat, lon) arrays of every band, kept only when the coverage has more than one level
         self.coords: list = []
         self.composite_closed = False
         self.param = None
@@ -339,18 +360,16 @@ class CovjsonStreamEncoder:
             out.append(self._open_coverage(g))
         cur = self._open()
         levels = list(g.levels) if g.levels else [0]
-        lat = format_floats(block.lat)
-        lon = format_floats(block.lon)
-        suffix = b", " + _dumps(levels[0]) + b"]"
-        if lat:
-            out.append(self._tuples(cur, lat, lon, suffix))
+        out.append(self._tuples(cur, block.lat, block.lon, levels[0]))
         if len(levels) > 1:
-            cur.coords.append((lat, lon))
+            cur.coords.append((np.array(block.lat, dtype=np.float64), np.array(block.lon, dtype=np.float64)))
         return b"".join(out)
 
     @staticmethod
-    def _tuples(cur: _OpenCoverage, lat: list, lon: list, suffix: bytes) -> bytes:
-        body = b", ".join([b"[" + a + b", " + o + suffix for a, o in zip(lat, lon)])
+    def _tuples(cur: _OpenCoverage, lat, lon, level) -> bytes:
+        body = composite_tuples(lat, lon, level)
+        if not body:
+            return b""
         sep = b", " if cur.n_tuples else b""
         cur.n_tuples += len(lat)
         return sep + body
@@ -373,10 +392,8 @@ class CovjsonStreamEncoder:
         out = []
         levels = list(cur.group.levels)
         for level in levels[1:]:
-            suffix = b", " + _dumps(level) + b"]"
             for lat, lon in cur.coords:
-                if lat:
-                    out.append(self._tuples(cur, lat, lon, suffix))
+                out.append(self._tuples(cur, lat, lon, level))
         cur.coords = []
         out.append(b']}}}, "ranges": {')
         return b"".join(out)

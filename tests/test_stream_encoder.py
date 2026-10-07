@@ -13,7 +13,13 @@ from typing import Any
 import numpy as np
 import pytest
 
-from covjsonkit.stream import CovjsonStreamEncoder, format_floats, legacy_referencing
+from covjsonkit.stream import (
+    CovjsonStreamEncoder,
+    composite_tuples,
+    float_list_bytes,
+    format_floats,
+    legacy_referencing,
+)
 
 
 @dataclass(frozen=True)
@@ -224,6 +230,21 @@ def test_float_formatting_matches_json_dumps():
     )
     assert b", ".join(format_floats(vals)) == json.dumps(vals.tolist()).encode()[1:-1]
     assert format_floats(np.array([np.nan, np.inf])) == [b"null", b"null"]
+
+
+@pytest.mark.parametrize("small", [False, True], ids=["fast-path", "repr-fallback"])
+@pytest.mark.parametrize("level", [0, "500", 850])
+def test_composite_and_value_bytes_match_json_dumps(small, level):
+    lat, lon = _data(2000, 6)
+    lon[3] = -0.0
+    if small:
+        lon[7] = 3e-5  # forces the per-value path
+    pairs = [[a, o, level] for a, o in zip(lat.tolist(), lon.tolist())]
+    assert composite_tuples(lat, lon, level) == json.dumps(pairs).encode()[1:-1]
+    values = np.concatenate([lat * 1e9, [np.nan, 2e-7 if small else 2.0]])
+    expected = json.dumps([None if v != v else v for v in values.tolist()]).encode()[1:-1]
+    assert float_list_bytes(values) == expected
+    assert composite_tuples(np.empty(0), np.empty(0), level) == b""
 
 
 @pytest.mark.parametrize(
