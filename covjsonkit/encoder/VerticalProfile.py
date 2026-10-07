@@ -250,15 +250,7 @@ class VerticalProfile(Encoder):
         if not self._tree_has_axis(result, "time"):
             return self.from_polytope(result, date_key="hdate")
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        self._set_references()
 
         exclude_meta = {
             "latitude",
@@ -303,8 +295,10 @@ class VerticalProfile(Encoder):
                         continue
                     meta[name] = self._reforecast_stringify(rec[name])
                 meta["number"] = number
-                meta["step"] = step
-                meta["Forecast date"] = ref.isoformat() + "Z"
+                if not is_reanalysis(meta, "hdate"):
+                    # Reanalysis (class=ce, stream=efcl) exposes only the valid-time.
+                    meta["step"] = step
+                    meta["Forecast date"] = ref.isoformat() + "Z"
                 coverages[key] = {
                     "lat": lat,
                     "lon": lon,

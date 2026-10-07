@@ -215,6 +215,7 @@ def reforecast_separate_datetime_tree(
     step=(0,),
     param="167",
     point_factory=make_point,
+    stream="efcl",
 ):
     """Build a separate-datetime reforecast tree (class=ce).
 
@@ -236,7 +237,7 @@ def reforecast_separate_datetime_tree(
         node("levtype", ("sfc",)),
         node("param", (param,)),
         node("step", step),
-        node("stream", ("efcl",)),
+        node("stream", (stream,)),
         node("time", times),
         node("type", ("sfo",)),
     )
@@ -310,6 +311,7 @@ def reforecast_separate_datetime_vertical_tree(
     step=(0,),
     param="130",
     point_factory=make_point,
+    stream="efcl",
 ):
     """Build a separate-datetime reforecast tree (class=ce) with a ``levelist`` axis.
 
@@ -328,7 +330,7 @@ def reforecast_separate_datetime_vertical_tree(
         node("param", (param,)),
         node("levelist", levels),
         node("step", step),
-        node("stream", ("efcl",)),
+        node("stream", (stream,)),
         node("time", times),
         node("type", ("sfo",)),
     )

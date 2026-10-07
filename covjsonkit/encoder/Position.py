@@ -274,15 +274,8 @@ class Position(Encoder):
         if not self._tree_has_axis(result, "time"):
             return self.from_polytope(result, date_key="hdate")
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
 
         exclude_meta = {
             "latitude",
@@ -327,7 +320,9 @@ class Position(Encoder):
                         continue
                     meta[name] = self._reforecast_stringify(rec[name])
                 meta["number"] = number
-                meta["Forecast date"] = ref.isoformat() + "Z"
+                if not is_reanalysis(meta, "hdate"):
+                    # Reanalysis (class=ce, stream=efcl) exposes only the valid-time.
+                    meta["Forecast date"] = ref.isoformat() + "Z"
                 coverages[key] = {
                     "lat": lat,
                     "lon": lon,
@@ -362,7 +357,7 @@ class Position(Encoder):
             val_dict = {}
             for para, time_vals in cov["values"].items():
                 val_dict[para] = [time_vals[t] for t in times]
-            self.add_coverage(cov["meta"], coords, val_dict)
+            self.add_coverage(cov["meta"], coords, val_dict, include_z)
 
         return self.covjson
 
