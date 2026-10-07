@@ -6,16 +6,24 @@ Per-branch note for the PR description. The legacy encoder API (`Covjsonkit().en
 ## New: `covjsonkit.stream.CovjsonStreamEncoder`
 
 A CoverageJSON encoder over the block stream polytope-mars emits (`polytope_mars.blocks`, DESIGN §3):
-`begin(header) -> bytes`, `encode(block) -> bytes`, `end() -> bytes`, `content_type =
-"application/prs.coverage+json"`, `file_extension = "covjson"`. polytope-mars selects it for `format: covjson`
-(lazy import, `polytope_mars.encoders`).
+`begin(header) -> bytes`, `encode_iter(block) -> Iterator[bytes]`, `encode(block) -> bytes`,
+`end() -> bytes`, `content_type = "application/prs.coverage+json"`, `file_extension = "covjson"`.
+polytope-mars selects it for `format: covjson` (lazy import, `polytope_mars.encoders`).
 
 - Blocks are read by attribute only; the module imports neither polytope-feature, polytope-mars nor
   covjson-pydantic (tested). Parameter metadata comes resolved in the header (`ParamInfo`), so the encoder does
   no `param_db` lookups.
+- **Fragments:** `encode_iter(block)` yields the block one slice of its arrays at a time, each fragment at most
+  `max_fragment_bytes` (constructor argument or `encoders.covjson.max_fragment_bytes`, default 8 MiB), so the
+  text of a whole block never exists at once: a whole-world O2560 coverage is ~800 MB of coordinates and
+  ~470 MB of values, and encoding a 5M-point block costs ~40 MB of peak RSS whatever its size
+  (`tests/stream_memory_probe.py`).  The fragments of a block must be consumed completely and in order before
+  the next block is encoded.  `encode(block)` returns `b"".join(encode_iter(block))` for buffered callers;
+  both give the same bytes.  Structural fragments (a coverage's `mars:metadata` and `t`, the collection's
+  `referencing` and `parameters`) are written whole - they are a few hundred bytes.
 - **MultiPoint** coverages are written as blocks arrive: coverage opening + `mars:metadata` + `t` on the first
   coordinates block, `[lat, lon, level]` tuples (levels outer, points inner), each range opened on its first
-  values block and streamed band by band, closed on `GroupEnd`. Memory per coverage: one block, plus the
+  values block and streamed band by band, closed on `GroupEnd`. Memory per coverage: one fragment, plus the
   coordinates when the coverage has several levels (they are written once per level).
 - **PointSeries, VerticalProfile, Trajectory** collections are buffered and written by `end()` (point features
   are small and the legacy layout is point-major across field groups). The PointSeries layout is the single
@@ -24,9 +32,9 @@ A CoverageJSON encoder over the block stream polytope-mars emits (`polytope_mars
 - `referencing` and the composite `coordinates` reproduce what each legacy encoder method wrote
   (`legacy_referencing`: `latitude/longitude/levelist`, `x/y/z` or `t/x/y/z` by feature and time-axis role).
 - **Bytes:** identical to `json.dumps(legacy_covjson).encode()` (separators `", "`/`": "`, ASCII escapes,
-  key order `type, domainType, coverages, referencing, parameters`). Fragments with strings (metadata,
-  parameters, referencing) use `json.dumps`; numeric arrays use `orjson` with `OPT_SERIALIZE_NUMPY` over the
-  whole array, adjusted to `json.dumps` separators with `bytes.replace`. orjson and CPython agree on the
+  key order `type, domainType, coverages, referencing, parameters`). Text with strings in it (metadata,
+  parameters, referencing) uses `json.dumps`; numeric arrays use `orjson` with `OPT_SERIALIZE_NUMPY` per
+  slice, adjusted to `json.dumps` separators with `bytes.replace`. orjson and CPython agree on the
   shortest round-trip digits; they differ only in how numbers with 0 < |x| < 1e-4 are spelled
   (`1e-5` vs `1e-05`, `0.00002` vs `2e-05`), and arrays containing such values are formatted per value with
   `repr`. `-0.0`, integer-valued floats and `1e+16`-style exponents already match (tested on 5,000 random
@@ -44,7 +52,13 @@ A CoverageJSON encoder over the block stream polytope-mars emits (`polytope_mars
 
 ## Tests
 
-`tests/test_stream_encoder.py` (24 tests, synthetic blocks, no polytope): legacy-identical MultiPoint bytes,
-band-size invariance (1, 2, 3 and 13 bands, with levels), `null` for NaN and omitted ranges, float and
-composite formatting against `json.dumps` (fast and per-value paths), referencing quirks, PointSeries,
-VerticalProfile and Trajectory layouts, no polytope imports.
+`tests/test_stream_encoder.py` (32 tests, synthetic blocks, no polytope): legacy-identical MultiPoint bytes,
+band-size invariance (1, 2, 3 and 13 bands, with levels), fragment joins equal to the single-fragment and
+legacy bytes at 64 B / 1 KiB / 8 MiB fragment limits, the fragment limit itself, `null` for NaN and omitted
+ranges, float and composite formatting against `json.dumps` (fast and per-value paths), referencing quirks,
+PointSeries, VerticalProfile and Trajectory layouts, no polytope imports.
+
+`tests/test_stream_memory.py` runs `tests/stream_memory_probe.py` in a subprocess: a 5M-point
+`CoordsBlock` + `ValuesBlock` produce 318 MB of CoverageJSON in 54 fragments of at most 8 MiB for ~41 MB of
+peak RSS above the blocks (1M points: ~30 MB; 20M points: ~49 MB), asserted below 100 MB and against any
+growth with the block size.
