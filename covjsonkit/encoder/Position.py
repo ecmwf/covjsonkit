@@ -1,10 +1,7 @@
 import logging
 import time
-from datetime import datetime, timedelta
 
-import pandas as pd
-
-from .encoder import Encoder, is_reanalysis, normalize_step_value
+from .encoder import Encoder, is_reanalysis, range_shape, valid_time
 
 
 class Position(Encoder):
@@ -42,8 +39,9 @@ class Position(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["t"]
+            shape, axis_names = range_shape(values[parameter], "t")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]
@@ -190,19 +188,7 @@ class Position(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                date_format = "%Y%m%dT%H%M%S"
-                                new_date = pd.Timestamp(date).strftime(date_format)
-                                start_time = datetime.strptime(new_date, date_format)
-                                # add current date to list by converting it to iso format
-                                if isinstance(step, timedelta):
-                                    stamp = start_time + step
-                                else:
-                                    try:
-                                        int(step)
-                                    except ValueError:
-                                        step = step[0]
-                                    stamp = start_time + timedelta(hours=int(step))
-                                coordinates[date][i]["t"].append(stamp.isoformat() + "Z")
+                                coordinates[date][i]["t"].append(valid_time(date, step))
                             break
                         break
                     break
@@ -277,87 +263,19 @@ class Position(Encoder):
         include_z = self._tree_has_axis(result, "levelist")
         self._set_references(include_z)
 
-        exclude_meta = {
-            "latitude",
-            "longitude",
-            "hdate",
-            "time",
-            "step",
-            "param",
-            "number",
-            "levelist",
-        }
-
-        coverages = {}
-        coverage_order = []
-        param_order = []
-
-        for rec in self._reforecast_records(result):
-            value = float(rec["__value__"])
-            lat = float(rec["latitude"])
-            lon = float(rec["longitude"])
-            level = rec.get("levelist", 0)
-            try:
-                level = int(level)
-            except (TypeError, ValueError):
-                pass
-            number = rec.get("number", 0)
-            try:
-                number = int(number)
-            except (TypeError, ValueError):
-                pass
-            para = rec.get("param")
-            step = normalize_step_value(rec.get("step", 0))
-            ref = self._reforecast_reference(rec)
-            valid = ref + self._reforecast_step_timedelta(step)
-            valid_iso = valid.isoformat() + "Z"
-
-            key = (lat, lon, level, number, ref.isoformat())
-            if key not in coverages:
-                meta = {}
-                for name in rec:
-                    if name == "__value__" or name in exclude_meta:
-                        continue
-                    meta[name] = self._reforecast_stringify(rec[name])
-                meta["number"] = number
-                if not is_reanalysis(meta, "hdate"):
-                    # Reanalysis (class=ce, stream=efcl) exposes only the valid-time.
-                    meta["Forecast date"] = ref.isoformat() + "Z"
-                coverages[key] = {
-                    "lat": lat,
-                    "lon": lon,
-                    "level": level,
-                    "meta": meta,
-                    "values": {},
-                    "times": {},
-                }
-                coverage_order.append(key)
-
-            if para not in param_order:
-                param_order.append(para)
-            cov = coverages[key]
-            cov["times"][valid_iso] = None
-            cov["values"].setdefault(para, {})[valid_iso] = value
-
-        if not coverages:
-            raise ValueError("No data was returned.")
-
+        coverages, param_order = self._reforecast_coverages(result, by_step=False)
         for para in param_order:
             self.add_parameter(para)
 
-        for key in coverage_order:
-            cov = coverages[key]
-            times = sorted(cov["times"].keys())
-            coords = {
-                "latitude": [cov["lat"]],
-                "longitude": [cov["lon"]],
-                "levelist": [cov["level"]],
-                "t": times,
-            }
-            val_dict = {}
-            for para, time_vals in cov["values"].items():
-                val_dict[para] = [time_vals[t] for t in times]
-            self.add_coverage(cov["meta"], coords, val_dict, include_z)
+        for cov in coverages:
+            series_by_point = {}
+            for (valid, lat, lon, level), values in cov["entries"].items():
+                series_by_point.setdefault((lat, lon, level), {})[valid] = values
+            for (lat, lon, level), series in series_by_point.items():
+                times = sorted(series)
+                coords = {"latitude": [lat], "longitude": [lon], "levelist": [level], "t": times}
+                val_dict = {para: [series[t].get(para) for t in times] for para in param_order}
+                self.add_coverage(dict(cov["meta"]), coords, val_dict, include_z)
 
         return self.covjson
 
@@ -506,9 +424,8 @@ class Position(Encoder):
                         for para in fields["param"]:
                             for date in fields["dates"]:
                                 for times in fields["times"]:
-                                    datetime = pd.Timestamp(date) + times
                                     coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"].append(
-                                        str(datetime).split("+")[0] + "Z"
+                                        self._step_path_valid_time(date, times, fields)
                                     )
                             break
                         break

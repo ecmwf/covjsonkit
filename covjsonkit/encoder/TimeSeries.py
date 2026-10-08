@@ -4,7 +4,15 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder
+from .encoder import (
+    Encoder,
+    iso_utc,
+    range_shape,
+    reference_datetime,
+    set_forecast_date,
+    valid_datetime,
+    valid_time,
+)
 
 
 class TimeSeries(Encoder):
@@ -42,14 +50,9 @@ class TimeSeries(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            # A single-valued t axis is emitted as a 0D array: the spec allows
-            # single-valued axes to be omitted and covjson-validator rejects ["t"].
-            if len(values[parameter]) == 1:
-                coverage["ranges"][param]["shape"] = []
-                coverage["ranges"][param]["axisNames"] = []
-            else:
-                coverage["ranges"][param]["shape"] = [len(values[parameter])]
-                coverage["ranges"][param]["axisNames"] = ["t"]
+            shape, axis_names = range_shape(values[parameter], "t")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]
@@ -80,33 +83,6 @@ class TimeSeries(Encoder):
             )
         self.covjson["referencing"] = refs
 
-    @staticmethod
-    def _hdate_step_timestamp(date, step, time_offset=None):
-        """Return the valid-time (as a datetime) for a given hdate and step.
-
-        Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
-        collapsed reanalysis path produces identical timestamps.
-
-        ``time_offset`` is an optional time-of-day offset (a ``timedelta``) coming
-        from an independent ``time`` axis (the separate-datetime reforecast
-        representation). When ``None`` the timestamp reduces to ``hdate + step``,
-        preserving the legacy merged-tree behaviour.
-        """
-        date_format = "%Y%m%dT%H%M%S"
-        if isinstance(date, str) and date.endswith("Z"):
-            date = date[:-1]
-        new_date = pd.Timestamp(date).strftime(date_format)
-        start_time = datetime.strptime(new_date, date_format)
-        if time_offset is not None:
-            start_time = start_time + time_offset
-        if isinstance(step, timedelta):
-            return start_time + step
-        try:
-            int(step)
-        except ValueError:
-            step = step[0]
-        return start_time + timedelta(hours=int(step))
-
     def _collapse_reanalysis(self, fields, coords, mars_metadata, range_dict):
         """Collapse all hdates for each point into a single PointSeries coverage.
 
@@ -130,12 +106,12 @@ class TimeSeries(Encoder):
         stamp_order = []
         for date in fields["dates"]:
             for step in fields["step"]:
-                stamp = self._hdate_step_timestamp(date, step, time_offset)
+                stamp = valid_datetime(date, step, time_offset)
                 stamp_order.append((stamp, date, step))
         # Stable sort by valid-time so ties preserve insertion order.
         stamp_order.sort(key=lambda x: x[0])
 
-        t_values = [stamp.isoformat() + "Z" for stamp, _, _ in stamp_order]
+        t_values = [iso_utc(stamp) for stamp, _, _ in stamp_order]
 
         for i in range(points):
             lat = coords[first_date]["composite"][i][0]
@@ -297,19 +273,7 @@ class TimeSeries(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                date_format = "%Y%m%dT%H%M%S"
-                                new_date = pd.Timestamp(date).strftime(date_format)
-                                start_time = datetime.strptime(new_date, date_format)
-                                # add current date to list by converting it to iso format
-                                if isinstance(step, timedelta):
-                                    stamp = start_time + step
-                                else:
-                                    try:
-                                        int(step)
-                                    except ValueError:
-                                        step = step[0]
-                                    stamp = start_time + timedelta(hours=int(step))
-                                coordinates[date][i]["t"].append(stamp.isoformat() + "Z")
+                                coordinates[date][i]["t"].append(valid_time(date, step))
                             break
                         break
                     break
@@ -448,9 +412,7 @@ class TimeSeries(Encoder):
                 step = d.get("step", 0)
                 hdate = d.get("hdate", d.get("date"))
                 time_off = d.get("time")
-                if isinstance(time_off, np.timedelta64):
-                    time_off = pd.to_timedelta(time_off).to_pytimedelta()
-                stamp = self._hdate_step_timestamp(hdate, step, time_off)
+                stamp = valid_datetime(hdate, step, time_off)
 
                 # Stream determines the coverage grouping for class=ce:
                 #   * efcl (reforecast/reanalysis): collapse all hdates into a
@@ -468,7 +430,7 @@ class TimeSeries(Encoder):
                     key = (lat, lon, level, number)
                 elif forecast:
                     # Reference datetime of the forecast run = date + time.
-                    reference = self._hdate_step_timestamp(hdate, 0, time_off)
+                    reference = reference_datetime(hdate, time_off)
                     key = (lat, lon, level, number, reference)
                 else:
                     key = (lat, lon, level, number, stringify(hdate))
@@ -480,13 +442,9 @@ class TimeSeries(Encoder):
                         meta[name] = stringify(d[name])
                     meta["number"] = number
                     meta["levelist"] = level
-                    if forecast:
-                        # date+time is folded into the run reference; drop the
-                        # raw date axis so it doesn't duplicate "Forecast date".
-                        meta.pop("date", None)
-                        meta["Forecast date"] = reference.isoformat() + "Z"
-                    elif not collapse:
-                        meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
+                    # efas: Forecast date is the run (date + time); efcl: none;
+                    # otherwise one coverage per hdate.
+                    set_forecast_date(meta, reference if forecast else hdate)
                     coverages[key] = {
                         "lat": lat,
                         "lon": lon,
@@ -545,7 +503,7 @@ class TimeSeries(Encoder):
             reference = params[paras[0]]
             # Stable sort by valid-time; ties preserve insertion order.
             order = sorted(range(len(reference)), key=lambda i: reference[i][0])
-            t_values = [reference[i][0].isoformat() + "Z" for i in order]
+            t_values = [iso_utc(reference[i][0]) for i in order]
             val_dict = {para: [params[para][i][1] for i in order] for para in paras}
             coord_entry = {
                 "latitude": [cov["lat"]],
@@ -717,14 +675,8 @@ class TimeSeries(Encoder):
                         for para in fields["param"]:
                             for date in fields["dates"]:
                                 for times in fields["times"]:
-                                    # date_format = "%Y%m%dT%H%M%S"
-                                    # new_date = pd.Timestamp(date).strftime(date_format)
-                                    # start_time = datetime.strptime(new_date, date_format)
-                                    # add current date to list by converting it to iso format
-                                    # stamp = start_time + timedelta(hours=int(step))
-                                    datetime = pd.Timestamp(date) + times
                                     coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"].append(
-                                        str(datetime).split("+")[0] + "Z"
+                                        self._step_path_valid_time(date, times, fields)
                                     )
                             break
                         break

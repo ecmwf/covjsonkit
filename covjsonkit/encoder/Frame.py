@@ -1,6 +1,12 @@
 import logging
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    is_reanalysis,
+    normalize_step_value,
+    range_shape,
+    valid_time,
+)
 
 
 class Frame(Encoder):
@@ -36,8 +42,9 @@ class Frame(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["composite"]
+            shape, axis_names = range_shape(values[parameter], "composite")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -109,7 +116,9 @@ class Frame(Encoder):
                     for dv in dataset.data_vars:
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
-                    self.add_coverage(mars_metadata, coords, dv_dict, include_z)
+                    cov_coords = dict(coords)
+                    cov_coords["t"] = [valid_time(datetime, step)]
+                    self.add_coverage(mars_metadata, cov_coords, dv_dict, include_z)
 
         return self.covjson
 

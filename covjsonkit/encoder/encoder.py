@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any
@@ -30,6 +31,17 @@ def is_merged_node(node) -> bool:
     if MergedTensorIndexNode is not None:
         return isinstance(node, MergedTensorIndexNode)
     return hasattr(node, "axes") and getattr(node, "axes", None) is not None
+
+
+def range_shape(values, axis_name):
+    """Return ``(shape, axisNames)`` for a one-dimensional NdArray range.
+
+    A single value is emitted as a 0D array (``[]``, ``[]``): the spec allows
+    single-valued axes to be omitted and covjson-validator rejects them.
+    """
+    if len(values) == 1:
+        return [], []
+    return [len(values)], [axis_name]
 
 
 def timedelta_to_step_string(td: timedelta) -> str:
@@ -64,38 +76,110 @@ def timedelta_to_step_string(td: timedelta) -> str:
 
 def parse_step_string(step_str: str) -> float:
     """
-    Parse a step string in format 'XhYm' and return total hours as float.
+    Parse a step value and return total hours as float.
 
-    Args:
-        step_str: Step string in format 'Xh', 'Ym', or 'XhYm'
-
-    Returns:
-        Total hours as a float value
+    Accepts every format understood by :func:`step_to_timedelta`.
 
     Examples:
         parse_step_string("13h") -> 13.0
         parse_step_string("13h30m") -> 13.5
         parse_step_string("30m") -> 0.5
-        parse_step_string("0h") -> 0.0
+        parse_step_string("6") -> 6.0
+        parse_step_string("0-6") -> 6.0
     """
-    if isinstance(step_str, (int, float)):
-        return float(step_str)
+    return step_to_timedelta(step_str).total_seconds() / 3600.0
 
-    step_str = str(step_str)
-    hours = 0.0
-    minutes = 0.0
 
-    # Parse hours
-    if "h" in step_str:
-        parts = step_str.split("h")
-        hours = float(parts[0])
-        step_str = parts[1] if len(parts) > 1 else ""
+_STEP_UNITS_RE = re.compile(r"(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?")
 
-    # Parse minutes
-    if "m" in step_str and step_str:
-        minutes = float(step_str.replace("m", ""))
 
-    return hours + (minutes / 60.0)
+def step_to_timedelta(step) -> timedelta:
+    """Convert a MARS/polytope ``step`` value to a :class:`datetime.timedelta`.
+
+    Accepts timedelta-likes, hour counts (int, float or numeric string), unit
+    strings (``"6h"``, ``"30m"``, ``"13h30m"``) and single-element sequences.
+    A step range ``"a-b"`` (accumulations, means) is valid at the end of its
+    period, so ``b`` is used.
+    """
+    if step is None:
+        return timedelta(0)
+    if isinstance(step, (list, tuple, np.ndarray)):
+        if len(step) != 1:
+            raise ValueError(f"Expected a single step value, got {step!r}")
+        return step_to_timedelta(step[0])
+    if isinstance(step, (timedelta, pd.Timedelta, np.timedelta64)):
+        return pd.Timedelta(step).to_pytimedelta()
+    if isinstance(step, (int, float, np.integer, np.floating)):
+        return timedelta(hours=float(step))
+
+    text = str(step).strip()
+    if "-" in text.lstrip("-"):
+        text = text.rsplit("-", 1)[1]
+    try:
+        return timedelta(hours=float(text))
+    except ValueError:
+        pass
+    match = _STEP_UNITS_RE.fullmatch(text)
+    if not match or not any(match.groups()):
+        raise ValueError(f"Unrecognised step value: {step!r}")
+    hours, minutes = match.groups()
+    return timedelta(hours=float(hours or 0), minutes=float(minutes or 0))
+
+
+def time_to_timedelta(value) -> timedelta:
+    """Convert a MARS ``time`` (time-of-day) value to a :class:`datetime.timedelta`.
+
+    Accepts timedelta-likes, ``"HH:MM[:SS]"`` strings and ``HHMM`` numbers or
+    strings (``600``, ``"0600"``, ``"1200"``). Numbers below 100 are hours.
+    """
+    if value is None:
+        return timedelta(0)
+    if isinstance(value, (list, tuple, np.ndarray)):
+        if len(value) != 1:
+            raise ValueError(f"Expected a single time value, got {value!r}")
+        return time_to_timedelta(value[0])
+    if isinstance(value, (timedelta, pd.Timedelta, np.timedelta64)):
+        return pd.Timedelta(value).to_pytimedelta()
+    if isinstance(value, str) and ":" in value:
+        return pd.to_timedelta(value).to_pytimedelta()
+    try:
+        number = int(float(str(value)))
+    except ValueError:
+        return pd.to_timedelta(value).to_pytimedelta()
+    if number < 100:
+        return timedelta(hours=number)
+    return timedelta(hours=number // 100, minutes=number % 100)
+
+
+def to_naive_utc(value) -> pd.Timestamp:
+    """Return ``value`` as a timezone-naive UTC :class:`pandas.Timestamp`.
+
+    Accepts anything ``pandas.Timestamp`` does, including ISO strings with a
+    trailing ``"Z"`` and timezone-aware values (converted to UTC).
+    """
+    if isinstance(value, str):
+        value = value.strip()
+        if value.endswith("Z"):
+            value = value[:-1]
+    stamp = pd.Timestamp(value)
+    if stamp.tzinfo is not None:
+        stamp = stamp.tz_convert("UTC").tz_localize(None)
+    return stamp
+
+
+def iso_utc(value) -> str:
+    """Format a datetime-like as an ISO-8601 UTC string with a trailing ``"Z"``."""
+    return to_naive_utc(value).isoformat() + "Z"
+
+
+def reference_datetime(date, time=None) -> pd.Timestamp:
+    """Reference datetime of a forecast/reforecast: ``date`` (or ``hdate``) + ``time``."""
+    return to_naive_utc(date) + time_to_timedelta(time)
+
+
+def valid_datetime(date, step=0, time=None) -> pd.Timestamp:
+    """Valid datetime: ``date + time + step`` (see :func:`step_to_timedelta`)."""
+    return reference_datetime(date, time) + step_to_timedelta(step)
 
 
 def sort_step_values(steps: list) -> list:
@@ -196,31 +280,14 @@ def normalize_step_value(step):
     return str(step)
 
 
-def valid_time(date, step):
-    """Return the ISO-8601 valid-time string for a forecast ``date`` and ``step``.
+def valid_time(date, step=0, time=None) -> str:
+    """Return the ISO-8601 valid-time string ``date + time + step`` with a trailing ``"Z"``.
 
-    The valid time is ``date + step``. ``date`` may be any value accepted by
-    ``pandas.Timestamp`` (e.g. a MARS ``"YYYYMMDDTHHMMSS"`` string, optionally
-    suffixed with ``"Z"``). ``step`` may be a ``timedelta``/``numpy.timedelta64``
-    or an hour count (int, float, numeric string, or a single-element list).
-
-    The result is an ISO-8601 string with a trailing ``"Z"``, matching the
-    valid-time strings produced by the PointSeries encoders.
+    ``date`` may be any value accepted by :func:`to_naive_utc`, ``time`` any
+    value accepted by :func:`time_to_timedelta` and ``step`` any value accepted
+    by :func:`step_to_timedelta`.
     """
-    date_format = "%Y%m%dT%H%M%S"
-    new_date = pd.Timestamp(str(date).rstrip("Z")).strftime(date_format)
-    start_time = pd.Timestamp(new_date).to_pydatetime()
-    if isinstance(step, (timedelta, pd.Timedelta, np.timedelta64)):
-        stamp = start_time + pd.Timedelta(step).to_pytimedelta()
-    else:
-        if isinstance(step, (list, tuple)):
-            step = step[0]
-        try:
-            hours = int(step)
-        except (TypeError, ValueError):
-            hours = int(str(step).split("h")[0])
-        stamp = start_time + timedelta(hours=hours)
-    return stamp.isoformat() + "Z"
+    return iso_utc(valid_datetime(date, step, time))
 
 
 def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:
@@ -231,6 +298,25 @@ def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:
     valid-time on the ``t`` axis, mirroring the PointSeries behaviour.
     """
     return date_key == "hdate" and mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efcl"
+
+
+def set_forecast_date(meta: dict, reference) -> dict:
+    """Apply the ``"Forecast date"`` rules to ``meta`` in place and return it.
+
+    * ``class=ce, stream=efcl`` (reanalysis): no forecast date; ``t`` carries
+      the valid time.
+    * ``class=ce, stream=efas`` (forecast): ``date + time`` is the run
+      reference, so the raw ``date`` is dropped in favour of ``"Forecast date"``.
+    * otherwise ``"Forecast date"`` is ``reference``.
+    """
+    is_ce = meta.get("class") == "ce"
+    if is_ce and meta.get("stream") == "efcl":
+        meta.pop("Forecast date", None)
+        return meta
+    if is_ce and meta.get("stream") == "efas":
+        meta.pop("date", None)
+    meta["Forecast date"] = iso_utc(reference)
+    return meta
 
 
 class Encoder(ABC):
@@ -415,7 +501,7 @@ class Encoder(ABC):
                 return child.values
             if child.axis.name == "param":
                 return child.values
-            if child.axis.name in [date_key, "time"]:
+            if child.axis.name == date_key:
                 dates = [f"{date}Z" for date in child.values]
                 mars_metadata["Forecast date"] = str(child.values[0])
                 for date in dates:
@@ -423,11 +509,39 @@ class Encoder(ABC):
                     coords[date]["composite"] = []
                     coords[date]["t"] = [date]
                 return dates
+            if child.axis.name == "time":
+                fold_time_into_date(child.values)
+                return None
             if child.axis.name == "number":
                 return child.values
             if child.axis.name == "step":
                 return child.values
             return None
+
+        def fold_time_into_date(times):
+            """Shift the current date key by a single time-of-day offset.
+
+            Independent ``date``/``time`` axes with several times are encoded by
+            ``from_polytope_step``/``from_polytope_reforecast``; here only a
+            single time can be folded into the date dimension.
+            """
+            if len(times) != 1:
+                raise ValueError(
+                    "A multi-valued 'time' axis is not supported by from_polytope; "
+                    "use from_polytope_step or from_polytope_reforecast."
+                )
+            base_dates = fields.setdefault("_base_dates", {})
+            current = fields["dates"][-1]
+            base = base_dates.get(current, current)
+            shifted = iso_utc(reference_datetime(base, times[0]))
+            if shifted == current:
+                return
+            base_dates[shifted] = base
+            entry = coords.pop(current)
+            entry["t"] = [shifted]
+            coords.setdefault(shifted, entry)
+            fields["dates"][-1] = shifted
+            mars_metadata["Forecast date"] = shifted
 
         def calculate_index_bounds(level_len, num_len, para_len, step_len, l, i, j, k):  # noqa: E741
             start_index = int(l * level_len) + int(i * num_len) + int(j * para_len) + int(k * step_len)
@@ -497,7 +611,7 @@ class Encoder(ABC):
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
                         fields["param"] = result
-                    elif child.axis.name in [date_key, "time"]:
+                    elif child.axis.name == date_key:
                         fields["dates"].extend(result)
                     elif child.axis.name == "number":
                         fields["number"] = result
@@ -562,7 +676,7 @@ class Encoder(ABC):
                 # Independent time-of-day axis: capture as a scalar offset rather
                 # than folding it into the hdate time dimension. efcl guarantees a
                 # single time value; take the first if a span is ever returned.
-                fields["time_offset"] = self._reforecast_timedelta(child.values[0])
+                fields["time_offset"] = time_to_timedelta(child.values[0])
                 return None
             if child.axis.name == "number":
                 return child.values
@@ -684,10 +798,7 @@ class Encoder(ABC):
                 for date in fields["dates"]:
                     coords[date] = {}
                     coords[date]["composite"] = []
-                    coords[date]["t"] = []
-                    for time in child.values:
-                        datetime = pd.Timestamp(date) + time
-                        coords[date]["t"].append(str(datetime).split("+")[0] + "Z")
+                    coords[date]["t"] = [self._step_path_valid_time(date, time, fields) for time in child.values]
                 return child.values
             return None
 
@@ -979,35 +1090,16 @@ class Encoder(ABC):
             return str(value)
         return value
 
-    @staticmethod
-    def _reforecast_timedelta(value) -> timedelta:
-        """Coerce a ``time``/offset value to a :class:`datetime.timedelta`."""
-        if value is None:
-            return timedelta(0)
-        if isinstance(value, timedelta):
-            return value
-        return pd.to_timedelta(value).to_pytimedelta()
+    def _step_path_valid_time(self, date, time, fields) -> str:
+        """Valid time for the date/time ``*_step`` paths: ``date + time + step``.
 
-    @staticmethod
-    def _reforecast_step_timedelta(step) -> timedelta:
-        """Coerce a normalized ``step`` value to a :class:`datetime.timedelta`."""
-        if isinstance(step, timedelta):
-            return step
-        if isinstance(step, np.timedelta64):
-            return pd.to_timedelta(step).to_pytimedelta()
-        if isinstance(step, str):
-            return timedelta(hours=parse_step_string(step))
-        try:
-            return timedelta(hours=float(step))
-        except (TypeError, ValueError):
-            return timedelta(0)
-
-    @staticmethod
-    def _reforecast_reference(rec):
-        """Reference datetime for a record: ``hdate (or date) + time``, ISO ``...Z``."""
-        hdate = rec.get("hdate", rec.get("date"))
-        ref = pd.Timestamp(hdate) + Encoder._reforecast_timedelta(rec.get("time"))
-        return ref
+        Their values are indexed by date and time only, so a step is applied
+        when it is single-valued.
+        """
+        steps = fields.get("step")
+        if isinstance(steps, (list, tuple, np.ndarray)) and len(steps) == 1:
+            return valid_time(date, steps[0], time)
+        return valid_time(date, 0, time)
 
     @staticmethod
     def _tree_has_axis(tree, axis_name) -> bool:
@@ -1063,59 +1155,24 @@ class Encoder(ABC):
         recurse(result, [])
         return records
 
-    def from_polytope_reforecast(self, result) -> dict:
-        """Encode reforecast/reanalysis data that uses ``"hdate"`` as the time axis.
+    def _reforecast_coverages(self, result, by_step=True):
+        """Group separate-datetime (``class=ce``) records into coverages.
 
-        Two representations are supported:
+        Coverages are keyed by ``(reference, number)`` -- plus ``step`` when
+        ``by_step`` -- where the reference datetime is ``hdate`` (or ``date``)
+        ``+ time``. Each coverage maps ``(valid, lat, lon, level)`` entries, in
+        record order, to ``{param: value}``. Coverages are returned in
+        reference -> step -> number order with ``"Forecast date"`` applied by
+        :func:`set_forecast_date`.
 
-        * **Legacy merged** trees (no independent ``time`` node): ``hdate`` is the
-          branching time axis and each hdate/step produces its own coverage. This
-          is delegated to :meth:`from_polytope` with ``date_key="hdate"``.
-        * **Separate-datetime** trees (``class=ce``) where ``date``, ``hdate`` and
-          ``time`` are independent axes: the reforecast reference datetime is
-          ``hdate + time`` and one coverage is produced per
-          ``(reference-datetime, step, number)`` combination, holding all spatial
-          points in its ``composite`` axis.
+        Returns ``(coverages, param_order)``.
         """
-        if not self._tree_has_axis(result, "time"):
-            return self.from_polytope(result, date_key="hdate")
-
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
-
-        # Axes that should not leak into the per-coverage mars:metadata block.
-        exclude_meta = {
-            "latitude",
-            "longitude",
-            "hdate",
-            "time",
-            "step",
-            "param",
-            "number",
-            "levelist",
-        }
-
-        def stringify(value):
-            return self._reforecast_stringify(value)
-
-        def to_timedelta(value):
-            return self._reforecast_timedelta(value)
+        exclude_meta = {"latitude", "longitude", "hdate", "time", "step", "param", "number", "levelist"}
 
         coverages = {}
-        coverage_order = []
         param_order = []
 
         for rec in self._reforecast_records(result):
-            value = rec["__value__"]
-            lat = float(rec["latitude"])
-            lon = float(rec["longitude"])
             level = rec.get("levelist", 0)
             try:
                 level = int(level)
@@ -1128,65 +1185,70 @@ class Encoder(ABC):
                 pass
             para = rec.get("param")
             step = normalize_step_value(rec.get("step", 0))
-            hdate = rec.get("hdate", rec.get("date"))
-            ref = pd.Timestamp(hdate) + to_timedelta(rec.get("time"))
-            valid = ref + self._reforecast_step_timedelta(step)
+            ref = reference_datetime(rec.get("hdate", rec.get("date")), rec.get("time"))
+            valid = iso_utc(ref + step_to_timedelta(step))
 
-            # One coverage per (reference, step, number); reference is
-            # hdate + time for efcl and date + time (the run) for efas.
-            key = (ref, step, number)
+            key = (ref, step_to_timedelta(step), number) if by_step else (ref, number)
             if key not in coverages:
                 meta = {}
                 for name in rec:
                     if name == "__value__" or name in exclude_meta:
                         continue
-                    meta[name] = stringify(rec[name])
+                    meta[name] = self._reforecast_stringify(rec[name])
                 meta["number"] = number
-                meta["step"] = step
-                is_ce = rec.get("class") == "ce"
-                if is_ce and rec.get("stream") == "efas":
-                    # date + time is the run reference; drop the raw date so it
-                    # doesn't duplicate "Forecast date".
-                    meta.pop("date", None)
-                    meta["Forecast date"] = ref.isoformat() + "Z"
-                elif not (is_ce and rec.get("stream") == "efcl"):
-                    # efcl coverages are delineated by their valid time, which
-                    # the t-axis already carries, so they get no "Forecast date".
-                    meta["Forecast date"] = ref.isoformat() + "Z"
-                coverages[key] = {
-                    "valid": valid.isoformat() + "Z",
-                    "points": [],
-                    "point_index": {},
-                    "values": {},
-                    "meta": meta,
-                }
-                coverage_order.append(key)
+                if by_step:
+                    meta["step"] = step
+                set_forecast_date(meta, ref)
+                if "Forecast date" not in meta:
+                    # Reanalysis (efcl): the valid time on ``t`` replaces date and step.
+                    meta.pop("step", None)
+                coverages[key] = {"meta": meta, "entries": {}}
 
-            cov = coverages[key]
-            point = (lat, lon, level)
-            if point not in cov["point_index"]:
-                cov["point_index"][point] = len(cov["points"])
-                cov["points"].append(point)
             if para not in param_order:
                 param_order.append(para)
-            cov["values"].setdefault(para, {})[point] = float(value)
+            entry = (valid, float(rec["latitude"]), float(rec["longitude"]), level)
+            coverages[key]["entries"].setdefault(entry, {})[para] = float(rec["__value__"])
 
         if not coverages:
             raise ValueError("No data was returned.")
 
+        ordered = [coverages[key] for key in sorted(coverages, key=lambda k: k)]
+        return ordered, param_order
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data that uses ``"hdate"`` as the time axis.
+
+        Two representations are supported:
+
+        * **Legacy merged** trees (no independent ``time`` node): ``hdate`` is the
+          branching time axis and each hdate/step produces its own coverage. This
+          is delegated to :meth:`from_polytope` with ``date_key="hdate"``.
+        * **Separate-datetime** trees (``class=ce``) where ``date``, ``hdate`` and
+          ``time`` are independent axes: the reforecast reference datetime is
+          ``hdate + time`` and one MultiPoint coverage is produced per
+          ``(reference-datetime, step, number)`` combination, holding all spatial
+          points in its ``composite`` axis and the valid time on ``t``.
+
+        Encoders whose domain is not MultiPoint (Grid, Path, PointSeries,
+        VerticalProfile) override this method.
+        """
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
+
+        coverages, param_order = self._reforecast_coverages(result, by_step=True)
         for para in param_order:
             self.add_parameter(para)
 
-        # Emit date -> time -> step -> number regardless of tree axis order.
-        coverage_order.sort(key=lambda k: (k[0], self._reforecast_step_timedelta(k[1]), k[2]))
-
-        for key in coverage_order:
-            cov = coverages[key]
-            composite = [[lat, lon, level] for (lat, lon, level) in cov["points"]]
-            coords = {"composite": composite, "t": [cov["valid"]]}
-            val_dict = {}
-            for para, point_vals in cov["values"].items():
-                val_dict[para] = [point_vals[pt] for pt in cov["points"]]
-            self.add_coverage(cov["meta"], coords, val_dict)
+        for cov in coverages:
+            entries = cov["entries"]
+            valid = next(iter(entries))[0]
+            composite = []
+            for _valid, lat, lon, level in entries:
+                composite.append([lon, lat, level] if include_z else [lon, lat])
+            val_dict = {para: [values.get(para) for values in entries.values()] for para in param_order}
+            self.add_coverage(cov["meta"], {"composite": composite, "t": [valid]}, val_dict, include_z)
 
         return self.covjson

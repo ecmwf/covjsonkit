@@ -2,9 +2,13 @@ import gc
 import logging
 import time
 
-import pandas as pd
-
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    is_reanalysis,
+    normalize_step_value,
+    range_shape,
+    valid_time,
+)
 
 
 class Wkt(Encoder):
@@ -40,8 +44,9 @@ class Wkt(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["composite"]
+            shape, axis_names = range_shape(values[parameter], "composite")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -113,7 +118,9 @@ class Wkt(Encoder):
                     for dv in dataset.data_vars:
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
-                    self.add_coverage(mars_metadata, coords, dv_dict, include_z)
+                    cov_coords = dict(coords)
+                    cov_coords["t"] = [valid_time(datetime, step)]
+                    self.add_coverage(mars_metadata, cov_coords, dv_dict, include_z)
 
         return self.covjson
 
@@ -278,9 +285,8 @@ class Wkt(Encoder):
                             val_dict[para].extend(vals)
                     mm = mars_metadata.copy()
                     mm["number"] = num
-                    # mm["Forecast date"] = date
-                    datetime = pd.Timestamp(date) + t
-                    self.add_coverage(mm, coordinates[str(datetime).split("+")[0] + "Z"], val_dict, include_z)
+                    valid = self._step_path_valid_time(date, t, fields)
+                    self.add_coverage(mm, coordinates[valid], val_dict, include_z)
 
         end = time.time()
         delta = end - start
