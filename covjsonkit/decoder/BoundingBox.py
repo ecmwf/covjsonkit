@@ -183,21 +183,16 @@ class BoundingBox(Decoder):
             if "step" not in coverage["mars:metadata"]:
                 coverage["mars:metadata"]["step"] = 0
             steps.append(coverage["mars:metadata"]["step"])
-            datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
+            # ``t`` is the valid time (date + step); the datetimes dimension is
+            # the forecast reference so that datetimes x steps stays dense.
+            datetime = self.forecast_reference(coverage)
+            datetimes.append(datetime)
+            number = coverage["mars:metadata"]["number"]
+            step = coverage["mars:metadata"]["step"]
             for parameter in self.parameters:
-                # values[parameter].append(coverage["ranges"][parameter]["values"])
-                if coverage["domain"]["axes"]["t"]["values"][0] not in values[parameter]:
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]] = {}
-                if (
-                    coverage["mars:metadata"]["number"]
-                    not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]
-                ):
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][
-                        coverage["mars:metadata"]["number"]
-                    ] = {}
-                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][
-                    coverage["mars:metadata"]["step"]
-                ] = coverage["ranges"][parameter]["values"]
+                values[parameter].setdefault(datetime, {}).setdefault(number, {})[step] = coverage["ranges"][parameter][
+                    "values"
+                ]
 
         datetimes = sorted(list(set(datetimes)))
         numbers = sorted(list(set(numbers)))
@@ -211,7 +206,10 @@ class BoundingBox(Decoder):
                 for j, number in enumerate(numbers):
                     new_values[parameter][i].append([])
                     for k, step in enumerate(steps):
-                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
+                        cell = values[parameter].get(datetime, {}).get(number, {}).get(step)
+                        if cell is None:
+                            cell = [None] * len(longitude)
+                        new_values[parameter][i][j].append(cell)
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)

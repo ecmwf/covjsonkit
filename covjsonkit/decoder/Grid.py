@@ -174,7 +174,7 @@ class Grid(Decoder):
         if "mars:metadata" not in self.covjson["coverages"][0]:
             times = [0]
         else:
-            times = sorted({cov["mars:metadata"]["Forecast date"] for cov in self.covjson["coverages"]})
+            times = sorted({self.forecast_reference(cov) for cov in self.covjson["coverages"]})
         if "mars:metadata" not in self.covjson["coverages"][0]:
             numbers = [0]
         else:
@@ -213,11 +213,10 @@ class Grid(Decoder):
         # Fill arrays
         for coverage in self.covjson["coverages"]:
             if "mars:metadata" not in coverage:
-                md = {"Forecast date": 0, "number": 0}
+                t_idx, n_idx = 0, 0
             else:
-                md = coverage["mars:metadata"]
-            t_idx = times.index(md["Forecast date"])
-            n_idx = numbers.index(md.get("number", 0))
+                t_idx = times.index(self.forecast_reference(coverage))
+                n_idx = numbers.index(coverage["mars:metadata"].get("number", 0))
 
             for pname, prange in coverage["ranges"].items():
                 arr = np.array(prange["values"]).reshape(prange["shape"])
