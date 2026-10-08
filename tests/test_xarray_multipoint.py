@@ -32,10 +32,15 @@ class TestMultipointXarray:
 
         assert covjson_result["type"] == self.test_covjson["type"]
         assert len(covjson_result["coverages"]) == len(self.test_covjson["coverages"])
-        assert (
-            covjson_result["coverages"][0]["domain"]["axes"]["composite"]["values"]
-            == self.test_covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
-        )
+        # Encoder now emits spec-compliant composite: coordinates ["x","y","z"] with
+        # values ordered [lon, lat, level]. The legacy fixture uses
+        # ["latitude","longitude","levelist"] with [lat, lon, level]; the decoder
+        # reads it back-compatibly, so the round-trip swaps lat/lon into spec order.
+        composite = covjson_result["coverages"][0]["domain"]["axes"]["composite"]
+        assert composite["coordinates"] == ["x", "y", "z"]
+        legacy_values = self.test_covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
+        expected_values = [[lat_lon_lvl[1], lat_lon_lvl[0], lat_lon_lvl[2]] for lat_lon_lvl in legacy_values]
+        assert composite["values"] == expected_values
         assert (
             covjson_result["coverages"][0]["mars:metadata"]["number"]
             == self.test_covjson["coverages"][0]["mars:metadata"]["number"]

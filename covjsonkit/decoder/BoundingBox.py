@@ -17,6 +17,25 @@ class BoundingBox(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
+        # Backwards-compatible composite ordering: derive the position of the
+        # longitude (x), latitude (y) and optional vertical (z) components from
+        # the ``composite`` axis's ``coordinates`` labels. This reads both
+        # spec-compliant coverages (labels x/y[/z], values [lon, lat[, level]])
+        # and legacy coverages (labels latitude/longitude/levelist, values
+        # [lat, lon[, level]]).
+        labels = self.domains[0]["axes"]["composite"]["coordinates"]
+        self.x_idx = self._label_index(labels, ("x", "longitude"))
+        self.y_idx = self._label_index(labels, ("y", "latitude"))
+        self.z_idx = self._label_index(labels, ("z", "levelist"), required=False)
+
+    @staticmethod
+    def _label_index(labels, names, required=True):
+        for name in names:
+            if name in labels:
+                return labels.index(name)
+        if required:
+            raise ValueError(f"None of {names} found in composite coordinates {labels}")
+        return None
 
     def get_domains(self):
         domains = []
@@ -51,9 +70,9 @@ class BoundingBox(Decoder):
         if rasterio is None:
             raise ImportError("Please install 'rasterio' to use this feature: pip install covjsonkit[geo]")
         coords = self.covjson["coverages"][0]["domain"]["axes"]["composite"]["values"]
-        x = [c[1] for c in coords]  # longitude
-        y = [c[0] for c in coords]  # latitude
-        # z = [c[2] for c in coords]  # height/time/etc (not used yet)
+        x = [c[self.x_idx] for c in coords]  # longitude
+        y = [c[self.y_idx] for c in coords]  # latitude
+        # z = [c[self.z_idx] for c in coords]  # height/time/etc (not used yet)
 
         # Define grid
         x_min, x_max = min(x), max(x)
@@ -119,10 +138,13 @@ class BoundingBox(Decoder):
                 param_vals["datetime"] = datetime
                 if "mars:metadata" in coverage:
                     param_vals["mars:metadata"] = mars_metadata
+                geom_coords = [lonlat[self.x_idx], lonlat[self.y_idx]]
+                if self.z_idx is not None:
+                    geom_coords.append(lonlat[self.z_idx])
                 features.append(
                     {
                         "type": "Feature",
-                        "geometry": {"type": "Point", "coordinates": [lonlat[1], lonlat[0], lonlat[2]]},
+                        "geometry": {"type": "Point", "coordinates": geom_coords},
                         "properties": param_vals,
                     }
                 )
@@ -135,14 +157,15 @@ class BoundingBox(Decoder):
         dataarraydict = {}
 
         # Get coordinates
-        x = []
-        y = []
-        z = []
+        longitude = []
+        latitude = []
+        levelist = []
         datetimes = []
         for coord in self.get_coordinates()["composite"]["values"]:
-            x.append(float(coord[0]))
-            y.append(float(coord[1]))
-            z.append(float(coord[2]))
+            longitude.append(float(coord[self.x_idx]))
+            latitude.append(float(coord[self.y_idx]))
+            if self.z_idx is not None:
+                levelist.append(float(coord[self.z_idx]))
         for datetime in self.get_coordinates()["t"]["values"]:
             datetimes.append(datetime)
 
@@ -160,21 +183,16 @@ class BoundingBox(Decoder):
             if "step" not in coverage["mars:metadata"]:
                 coverage["mars:metadata"]["step"] = 0
             steps.append(coverage["mars:metadata"]["step"])
-            datetimes.append(coverage["domain"]["axes"]["t"]["values"][0])
+            # ``t`` is the valid time (date + step); the datetimes dimension is
+            # the forecast reference so that datetimes x steps stays dense.
+            datetime = self.forecast_reference(coverage)
+            datetimes.append(datetime)
+            number = coverage["mars:metadata"]["number"]
+            step = coverage["mars:metadata"]["step"]
             for parameter in self.parameters:
-                # values[parameter].append(coverage["ranges"][parameter]["values"])
-                if coverage["domain"]["axes"]["t"]["values"][0] not in values[parameter]:
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]] = {}
-                if (
-                    coverage["mars:metadata"]["number"]
-                    not in values[parameter][coverage["domain"]["axes"]["t"]["values"][0]]
-                ):
-                    values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][
-                        coverage["mars:metadata"]["number"]
-                    ] = {}
-                values[parameter][coverage["domain"]["axes"]["t"]["values"][0]][coverage["mars:metadata"]["number"]][
-                    coverage["mars:metadata"]["step"]
-                ] = coverage["ranges"][parameter]["values"]
+                values[parameter].setdefault(datetime, {}).setdefault(number, {})[step] = coverage["ranges"][parameter][
+                    "values"
+                ]
 
         datetimes = sorted(list(set(datetimes)))
         numbers = sorted(list(set(numbers)))
@@ -188,7 +206,10 @@ class BoundingBox(Decoder):
                 for j, number in enumerate(numbers):
                     new_values[parameter][i].append([])
                     for k, step in enumerate(steps):
-                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
+                        cell = values[parameter].get(datetime, {}).get(number, {}).get(step)
+                        if cell is None:
+                            cell = [None] * len(longitude)
+                        new_values[parameter][i][j].append(cell)
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)
@@ -197,17 +218,20 @@ class BoundingBox(Decoder):
             dataarray.attrs["long_name"] = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
             dataarraydict[dataarray.attrs["long_name"]] = dataarray
 
+        coords_dict = dict(
+            datetimes=(["datetimes"], datetimes),
+            number=(["number"], numbers),
+            steps=(["steps"], steps),
+            points=(["points"], list(range(0, len(longitude)))),
+            latitude=(["points"], latitude),
+            longitude=(["points"], longitude),
+        )
+        if self.z_idx is not None:
+            coords_dict["levelist"] = (["points"], levelist)
+
         ds = xr.Dataset(
             dataarraydict,
-            coords=dict(
-                datetimes=(["datetimes"], datetimes),
-                number=(["number"], numbers),
-                steps=(["steps"], steps),
-                points=(["points"], list(range(0, len(x)))),
-                latitude=(["points"], x),
-                longitude=(["points"], y),
-                levelist=(["points"], z),
-            ),
+            coords=coords_dict,
         )
         for mars_metadata in self.mars_metadata[0]:
             ds.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
