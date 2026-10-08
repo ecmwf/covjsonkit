@@ -1,11 +1,11 @@
 # Changes on `feat/streaming-encoder`
 
-Per-branch note for the PR description. The legacy encoder API (`Covjsonkit().encode(...)`,
-`from_polytope*`, decoders, `param_db`) is unchanged; all existing tests pass.
+The legacy encoder API (`Covjsonkit().encode(...)`, `from_polytope*`, decoders, `param_db`) is
+unchanged; all existing tests pass.
 
 ## New: `covjsonkit.stream.CovjsonStreamEncoder`
 
-A CoverageJSON encoder over the block stream polytope-mars emits (`polytope_mars.blocks`, DESIGN §3):
+A CoverageJSON encoder over the block stream polytope-mars emits (`polytope_mars.blocks`):
 `begin(header) -> bytes`, `encode_iter(block) -> Iterator[bytes]`, `encode(block) -> bytes`,
 `end() -> bytes`, `content_type = "application/prs.coverage+json"`, `file_extension = "covjson"`.
 polytope-mars selects it for `format: covjson` (lazy import, `polytope_mars.encoders`).
@@ -44,7 +44,7 @@ polytope-mars selects it for `format: covjson` (lazy import, `polytope_mars.enco
 
 - `NaN`/`inf` values are written as `null` (legacy `json.dumps` wrote the invalid JSON token `NaN`).
 - A param absent from a field group (gribjump had no message) has no range in that coverage; a group with no
-  param at all produces no coverage (decided by polytope-mars, DESIGN §2.5). The collection's `parameters`
+  param at all produces no coverage, as polytope-mars reports it. The collection's `parameters`
   always lists every parameter of the header.
 - Everything else (including the legacy quirks: space-separated datetimes on the `_step` path, the
   `referencing` variants, int `realization`, efcl without `Forecast date`) is byte-identical; see the
