@@ -125,8 +125,8 @@ class TestPositionFromPolytope:
             "2t": {
                 "type": "NdArray",
                 "dataType": "float",
-                "shape": [1],
-                "axisNames": ["t"],
+                "shape": [],
+                "axisNames": [],
                 "values": [264.9],
             }
         }
