@@ -52,8 +52,8 @@ polytope-mars selects it for `format: covjson` (lazy import, `polytope_mars.enco
 
 ## Tests
 
-`tests/test_stream_encoder.py` (32 tests, synthetic blocks, no polytope): legacy-identical MultiPoint bytes,
-band-size invariance (1, 2, 3 and 13 bands, with levels), fragment joins equal to the single-fragment and
+`tests/test_stream_encoder.py` (29 tests, synthetic blocks, no polytope): legacy-identical MultiPoint bytes,
+the same bytes for a group split over several blocks, fragment joins equal to the single-fragment and
 legacy bytes at 64 B / 1 KiB / 8 MiB fragment limits, the fragment limit itself, `null` for NaN and omitted
 ranges, float and composite formatting against `json.dumps` (fast and per-value paths), referencing quirks,
 PointSeries, VerticalProfile and Trajectory layouts, no polytope imports.
@@ -62,3 +62,16 @@ PointSeries, VerticalProfile and Trajectory layouts, no polytope imports.
 `CoordsBlock` + `ValuesBlock` produce 318 MB of CoverageJSON in 54 fragments of at most 8 MiB for ~41 MB of
 peak RSS above the blocks (1M points: ~30 MB; 20M points: ~49 MB), asserted below 100 MB and against any
 growth with the block size.
+
+## One fragment bound, and blocks without band attributes
+
+- **The block IR has no `band` / `offset` / `n_bands`.** polytope-mars fetches a field whole, so those
+  attributes were always 0, 0 and 1; the encoder never read them (it places a block by arrival order and
+  its own value counters). A producer that does split a group's points over several consecutive blocks is
+  still supported and still writes the same bytes -- `_OpenCoverage.coords` keeps the coordinates of a
+  multi-level coverage per block -- and `tests/test_stream_encoder.py` pins it.
+- **`encode_iter` slices a block once, not twice.** `_fragment_slices` yields one `(start, stop)` range per
+  fragment and the serialiser is called once per fragment. The 256 KiB sub-slicing inside a fragment did
+  not lower the peak: joining the pieces materialises the whole fragment while the pieces are still alive,
+  which is the same 2x a single `orjson.dumps` of the fragment costs. `max_fragment_bytes` is the bound,
+  and the ~41 MB peak for a 318 MB document (`tests/test_stream_memory.py`) is unchanged.

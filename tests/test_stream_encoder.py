@@ -50,15 +50,12 @@ class Group:
     params: tuple
     levels: tuple
     n_points: int
-    n_bands: int
     mars_metadata: dict
 
 
 @dataclass(frozen=True)
 class Coords:
     group: Any
-    band: int
-    offset: int
     lat: np.ndarray
     lon: np.ndarray
 
@@ -68,8 +65,6 @@ class Values:
     group: Any
     param: str
     level: Any
-    band: int
-    offset: int
     values: np.ndarray
 
 
@@ -99,17 +94,20 @@ def _nan_to_none(values):
     return [None if v != v else v for v in np.asarray(values, dtype=np.float64).tolist()]
 
 
-def multipoint_blocks(fields, lat, lon, levels=(), meta=None, t=("2024-01-01T00:00:00Z",), n_bands=1, index=0):
-    """Blocks of one MultiPoint group; ``fields`` = {(param, level): values}."""
+def multipoint_blocks(fields, lat, lon, levels=(), meta=None, t=("2024-01-01T00:00:00Z",), n_blocks=1, index=0):
+    """Blocks of one MultiPoint group; ``fields`` = {(param, level): values}.
+
+    ``n_blocks`` splits the group's points over that many consecutive blocks, which a producer that
+    cannot fetch a field whole would do and which must not change the bytes.
+    """
     params = tuple(dict.fromkeys(p for p, _ in fields))
-    bounds = np.array_split(np.arange(len(lat)), n_bands)
-    g = Group(index, {}, t, params, tuple(levels), len(lat), n_bands, meta or {"class": "od", "number": 0})
-    starts = [idx[0].item() if len(idx) else 0 for idx in bounds]
-    blocks: list[Any] = [Coords(g, b, starts[b], lat[idx], lon[idx]) for b, idx in enumerate(bounds)]
+    bounds = np.array_split(np.arange(len(lat)), n_blocks)
+    g = Group(index, {}, t, params, tuple(levels), len(lat), meta or {"class": "od", "number": 0})
+    blocks: list[Any] = [Coords(g, lat[idx], lon[idx]) for idx in bounds]
     for p in params:
         for lev in levels or (None,):
-            for b, idx in enumerate(bounds):
-                blocks.append(Values(g, p, lev, b, starts[b], fields[(p, lev)][idx]))
+            for idx in bounds:
+                blocks.append(Values(g, p, lev, fields[(p, lev)][idx]))
     blocks.append(End(g))
     return blocks
 
@@ -194,13 +192,13 @@ def test_multipoint_matches_legacy_json_dumps():
     json.loads(out)
 
 
-@pytest.mark.parametrize("n_bands", [1, 2, 3, 13])
-def test_band_size_invariance(n_bands):
+def test_several_blocks_per_group_give_the_same_bytes():
+    """Blocks are placed by arrival order, so a group split over several blocks encodes identically."""
     lat, lon = _data(13, 1)
     levels = ("500", "850")
     fields = {(p, lev): np.random.default_rng(2).normal(size=13) * 1e3 for p in ("165", "167") for lev in levels}
-    ref = encode(BBOX, multipoint_blocks(fields, lat, lon, levels=levels, n_bands=1))
-    assert encode(BBOX, multipoint_blocks(fields, lat, lon, levels=levels, n_bands=n_bands)) == ref
+    ref = encode(BBOX, multipoint_blocks(fields, lat, lon, levels=levels))
+    assert encode(BBOX, multipoint_blocks(fields, lat, lon, levels=levels, n_blocks=3)) == ref
     group = (fields, lat, lon, levels, {"class": "od", "number": 0}, ("2024-01-01T00:00:00Z",))
     expected = legacy_multipoint(BBOX, [group])
     assert ref == expected
@@ -221,7 +219,7 @@ def test_fragments_join_to_the_single_fragment_bytes(max_fragment_bytes):
     lat, lon = _data(500, 8)
     lon[4] = 3e-5  # forces the per-value path for the composite tuples as well
     fields = _mixed_fields(500, levels)
-    blocks = multipoint_blocks(fields, lat, lon, levels=levels, n_bands=3)
+    blocks = multipoint_blocks(fields, lat, lon, levels=levels, n_blocks=3)
     joined = b"".join(fragments(BBOX, blocks, max_fragment_bytes))
     assert joined == encode(BBOX, blocks)
     group = (fields, lat, lon, levels, {"class": "od", "number": 0}, ("2024-01-01T00:00:00Z",))
@@ -232,7 +230,7 @@ def test_fragments_join_to_the_single_fragment_bytes(max_fragment_bytes):
 def test_no_fragment_exceeds_the_limit(max_fragment_bytes):
     lat, lon = _data(5000, 9)
     fields = {("167", None): np.linspace(200.0, 320.0, 5000)}
-    frags = fragments(BBOX, multipoint_blocks(fields, lat, lon, n_bands=2), max_fragment_bytes)
+    frags = fragments(BBOX, multipoint_blocks(fields, lat, lon, n_blocks=2), max_fragment_bytes)
     assert max(len(f) for f in frags) <= max_fragment_bytes
     assert all(f for f in frags)  # no empty fragment is handed out
     assert len(frags) > 5  # the arrays really were sliced
@@ -241,7 +239,7 @@ def test_no_fragment_exceeds_the_limit(max_fragment_bytes):
 def test_small_magnitude_values_are_formatted_per_value_in_every_slice():
     vals = np.array([1e-5, 2e-5, 0.00002, 9.99e-5, 3.0, np.nan])
     lat, lon = _data(6, 10)
-    blocks = multipoint_blocks({("167", None): vals}, lat, lon, n_bands=2)
+    blocks = multipoint_blocks({("167", None): vals}, lat, lon, n_blocks=2)
     out = b"".join(fragments(BBOX, blocks, 64))
     assert out == encode(BBOX, blocks)
     assert b"1e-05" in out and b"2e-05" in out and b"1e-5" not in out
@@ -328,10 +326,10 @@ def test_multipoint_referencing_quirks(feature, role, coords):
 
 def _point_group(index, t, meta, values, levels=(), lat=(51.5, -33.9), lon=(0.1, 18.4)):
     params = tuple(dict.fromkeys(p for p, _ in values))
-    g = Group(index, {}, t, params, tuple(levels), len(lat), 1, meta)
-    blocks: list[Any] = [Coords(g, 0, 0, np.array(lat), np.array(lon))]
+    g = Group(index, {}, t, params, tuple(levels), len(lat), meta)
+    blocks: list[Any] = [Coords(g, np.array(lat), np.array(lon))]
     for (p, lev), v in values.items():
-        blocks.append(Values(g, p, lev, 0, 0, np.asarray(v, dtype=float)))
+        blocks.append(Values(g, p, lev, np.asarray(v, dtype=float)))
     return blocks + [End(g)]
 
 

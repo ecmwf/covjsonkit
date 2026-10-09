@@ -63,13 +63,10 @@ def one_coverage(n_points: int):
         params=("167",),
         levels=(),
         n_points=n_points,
-        n_bands=1,
         mars_metadata={"class": "od", "stream": "oper", "number": 0, "step": 0},
     )
     coords = SimpleNamespace(
         group=group,
-        band=0,
-        offset=0,
         lat=np.linspace(-90.0, 90.0, n_points),
         lon=np.linspace(0.0, 359.9, n_points),
     )
@@ -77,8 +74,6 @@ def one_coverage(n_points: int):
         group=group,
         param="167",
         level=None,
-        band=0,
-        offset=0,
         values=np.linspace(200.0, 320.0, n_points),
     )
     return header, [coords, values, SimpleNamespace(group=group)]

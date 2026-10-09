@@ -22,10 +22,12 @@ polytope-mars:
 
 * header: ``feature_type``, ``domain_type``, ``time_axis``, ``parameters`` (each with ``id``,
   ``shortname``, ``name``, ``unit``, ``description``), ``extra``;
-* group (``block.group``): ``index``, ``t``, ``params``, ``levels``, ``n_points``, ``n_bands``,
-  ``mars_metadata``;
-* coordinates block: ``lat``, ``lon`` (float arrays), ``band``; values block: ``param``, ``level``,
-  ``band``, ``values`` (float array, NaN = missing); group end: only ``group``.
+* group (``block.group``): ``index``, ``t``, ``params``, ``levels``, ``n_points``, ``mars_metadata``;
+* coordinates block: ``lat``, ``lon`` (float arrays); values block: ``param``, ``level``, ``values``
+  (float array, NaN = missing); group end: only ``group``.
+
+A group's points may arrive in one block or in several consecutive ones: blocks are placed by arrival
+order, so a producer that splits a field writes the same bytes as one that does not.
 
 MultiPoint coverages are written as the blocks arrive (memory independent of the coverage size, apart
 from the coordinates of the current coverage when it has several levels).  PointSeries,
@@ -55,8 +57,6 @@ DEFAULT_MAX_FRAGMENT_BYTES = 8 * 1024 * 1024
 #: Longest text one float64 can take (``-1.2345678901234567e-308``), used to size array slices.
 _FLOAT_CHARS = 24
 
-#: Text built in one serialiser call; a fragment is assembled from pieces of this size.
-_WORK_BYTES = 256 * 1024
 
 _CRS = {"type": "GeographicCRS", "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}
 _LATLON = ["latitude", "longitude", "levelist"]
@@ -85,20 +85,16 @@ def _fragment_limit(value) -> int:
     return limit
 
 
-def _fragment_slices(n: int, item_bytes: int, max_fragment_bytes: int) -> Iterator[list]:
-    """Per fragment, the ``(start, stop)`` point ranges to serialise and join into it.
+def _fragment_slices(n: int, item_bytes: int, max_fragment_bytes: int) -> Iterator[tuple]:
+    """Per fragment, the ``(start, stop)`` point range to serialise into it.
 
     ``item_bytes`` is an upper bound on the text of one point (its floats at their longest plus
     separators), so a fragment stays within ``max_fragment_bytes``.  A fragment always holds at least one
     point: with a limit smaller than one point's text, the fragment is one point long and exceeds it.
-    A fragment is assembled from :data:`_WORK_BYTES`-sized ranges, which keeps the serialiser's
-    temporary buffers small whatever the fragment size.
     """
     per_fragment = max(1, max_fragment_bytes // max(1, item_bytes))
-    per_piece = min(per_fragment, max(1, _WORK_BYTES // max(1, item_bytes)))
     for start in range(0, n, per_fragment):
-        stop = min(start + per_fragment, n)
-        yield [(a, min(a + per_piece, stop)) for a in range(start, stop, per_piece)]
+        yield start, min(start + per_fragment, n)
 
 
 def format_floats(values) -> list:
@@ -428,19 +424,19 @@ class CovjsonStreamEncoder:
             cur.coords.append((np.array(block.lat, dtype=np.float64), np.array(block.lon, dtype=np.float64)))
 
     def _tuples(self, cur: _OpenCoverage, lat, lon, level) -> Iterator[bytes]:
-        """The composite tuples of one band at one level, sliced into fragments.
+        """The composite tuples of one block of points at one level, sliced into fragments.
 
-        The ``(n, 3)`` tuples are built per slice, so the text of a whole band never exists at once.
+        The ``(n, 3)`` tuples are built per slice, so the text of a whole block never exists at once.
         """
         lat = np.asarray(lat)
         lon = np.asarray(lon)
         item = 2 * _FLOAT_CHARS + 8 + len(_dumps(level))  # "[lat, lon, level], "
-        for ranges in _fragment_slices(lat.size, item, self.max_fragment_bytes):
-            body = b", ".join(composite_tuples(lat[a:b], lon[a:b], level) for a, b in ranges)
+        for a, b in _fragment_slices(lat.size, item, self.max_fragment_bytes):
+            body = composite_tuples(lat[a:b], lon[a:b], level)
             if not body:
                 continue
             sep = b", " if cur.n_tuples else b""
-            cur.n_tuples += ranges[-1][1] - ranges[0][0]
+            cur.n_tuples += b - a
             yield sep + body
 
     def _open_coverage(self, g) -> bytes:
@@ -483,12 +479,12 @@ class CovjsonStreamEncoder:
             cur.n_values = 0
             yield head
         values = np.asarray(block.values)
-        for ranges in _fragment_slices(values.size, _FLOAT_CHARS + 2, self.max_fragment_bytes):
-            body = b", ".join(float_list_bytes(values[a:b]) for a, b in ranges)
+        for a, b in _fragment_slices(values.size, _FLOAT_CHARS + 2, self.max_fragment_bytes):
+            body = float_list_bytes(values[a:b])
             if not body:
                 continue
             sep = b", " if cur.n_values else b""
-            cur.n_values += ranges[-1][1] - ranges[0][0]
+            cur.n_values += b - a
             yield sep + body
 
     def _group_end(self, block) -> Iterator[bytes]:
