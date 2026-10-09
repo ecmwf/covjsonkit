@@ -21,7 +21,7 @@ Blocks are read structurally (attributes only), so this module imports neither p
 polytope-mars:
 
 * header: ``feature_type``, ``domain_type``, ``time_axis``, ``parameters`` (each with ``id``,
-  ``shortname``, ``name``, ``unit``, ``description``), ``extra``;
+  ``shortname``, ``name``, ``unit``, ``description``), ``referencing_coordinates``, ``extra``;
 * group (``block.group``): ``index``, ``t``, ``params``, ``levels``, ``n_points``, ``mars_metadata``;
 * coordinates block: ``lat``, ``lon`` (float arrays); values block: ``param``, ``level``, ``values``
   (float array, NaN = missing); group end: only ``group``.
@@ -47,7 +47,6 @@ import orjson
 __all__ = [
     "CovjsonStreamEncoder",
     "DEFAULT_MAX_FRAGMENT_BYTES",
-    "legacy_referencing",
     "pointseries_coverages",
 ]
 
@@ -59,8 +58,6 @@ _FLOAT_CHARS = 24
 
 
 _CRS = {"type": "GeographicCRS", "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}
-_LATLON = ["latitude", "longitude", "levelist"]
-_XYZ = ["x", "y", "z"]
 
 
 def _dumps(obj) -> bytes:
@@ -138,29 +135,6 @@ def composite_tuples(lat, lon, level) -> bytes:
 def _py_values(values) -> list:
     """Floats for ``json.dumps``; NaN -> None."""
     return [None if (v is None or (isinstance(v, float) and not math.isfinite(v))) else v for v in values]
-
-
-def legacy_referencing(header) -> list:
-    """The ``coordinates`` of the reference system each legacy encoder wrote (preserved quirk)."""
-    domain, feature, role = header.domain_type, header.feature_type, header.time_axis
-    if domain == "Trajectory":
-        return list(_LATLON) if role == "hdate" else ["t", "x", "y", "z"]
-    if domain == "VerticalProfile":
-        return list(_LATLON)
-    if domain == "PointSeries":
-        if role == "step":
-            return list(_XYZ)
-        if role == "month" and feature == "position":
-            return list(_XYZ)
-        return list(_LATLON)
-    # MultiPoint
-    if role == "hdate":
-        return list(_LATLON)
-    if role == "date":
-        return list(_LATLON) if feature in ("boundingbox", "circle") else list(_XYZ)
-    if role == "month":
-        return list(_LATLON) if feature == "circle" else list(_XYZ)
-    return list(_XYZ)
 
 
 def _parameter(p) -> dict:
@@ -367,7 +341,7 @@ class CovjsonStreamEncoder:
         self._header = header
         self.n_coverages = 0
         self._shortname = {p.id: p.shortname for p in header.parameters}
-        self._coordinates = legacy_referencing(header)
+        self._coordinates = list(header.referencing_coordinates)
         self._streaming = header.domain_type == "MultiPoint" or (
             header.domain_type == "Trajectory" and header.time_axis == "hdate"
         )

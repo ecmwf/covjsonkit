@@ -29,8 +29,10 @@ polytope-mars selects it for `format: covjson` (lazy import, `polytope_mars.enco
   are small and the legacy layout is point-major across field groups). The PointSeries layout is the single
   function `pointseries_coverages` (to port covjsonkit `develop` #137 there); consecutive groups with equal
   `mars_metadata` and `levels` form one series (one coverage per point and level).
-- `referencing` and the composite `coordinates` reproduce what each legacy encoder method wrote
-  (`legacy_referencing`: `latitude/longitude/levelist`, `x/y/z` or `t/x/y/z` by feature and time-axis role).
+- `referencing` and every coverage's composite `coordinates` are the names the header carries
+  (`header.referencing_coordinates`), which is how the legacy variants
+  (`latitude/longitude/levelist`, `x/y/z`, `t/x/y/z`) are reproduced without the encoder knowing
+  anything about feature types.
 - **Bytes:** identical to `json.dumps(legacy_covjson).encode()` (separators `", "`/`": "`, ASCII escapes,
   key order `type, domainType, coverages, referencing, parameters`). Text with strings in it (metadata,
   parameters, referencing) uses `json.dumps`; numeric arrays use `orjson` with `OPT_SERIALIZE_NUMPY` per
@@ -52,11 +54,11 @@ polytope-mars selects it for `format: covjson` (lazy import, `polytope_mars.enco
 
 ## Tests
 
-`tests/test_stream_encoder.py` (29 tests, synthetic blocks, no polytope): legacy-identical MultiPoint bytes,
+`tests/test_stream_encoder.py` (26 tests, synthetic blocks, no polytope): legacy-identical MultiPoint bytes,
 the same bytes for a group split over several blocks, fragment joins equal to the single-fragment and
 legacy bytes at 64 B / 1 KiB / 8 MiB fragment limits, the fragment limit itself, `null` for NaN and omitted
-ranges, float and composite formatting against `json.dumps` (fast and per-value paths), referencing quirks,
-PointSeries, VerticalProfile and Trajectory layouts, no polytope imports.
+ranges, float and composite formatting against `json.dumps` (fast and per-value paths), the header's
+referencing coordinates, PointSeries, VerticalProfile and Trajectory layouts, no polytope imports.
 
 `tests/test_stream_memory.py` runs `tests/stream_memory_probe.py` in a subprocess: a 5M-point
 `CoordsBlock` + `ValuesBlock` produce 318 MB of CoverageJSON in 54 fragments of at most 8 MiB for ~41 MB of
@@ -75,3 +77,8 @@ growth with the block size.
   not lower the peak: joining the pieces materialises the whole fragment while the pieces are still alive,
   which is the same 2x a single `orjson.dumps` of the fragment costs. `max_fragment_bytes` is the bound,
   and the ~41 MB peak for a 318 MB document (`tests/test_stream_memory.py`) is unchanged.
+- **The referencing table moved to polytope-mars** (`polytope_mars.legacy_format.referencing_coordinates`,
+  beside the other rules that reproduce the legacy output). The header carries the names as
+  `referencing_coordinates` and the encoder writes them, so `pointseries_coverages` is the only place left
+  that reasons about a feature type -- which is what makes the port of #137 onto `develop` a
+  one-function change. `covjsonkit.stream.legacy_referencing` is gone.

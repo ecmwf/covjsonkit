@@ -19,7 +19,6 @@ from covjsonkit.stream import (
     composite_tuples,
     float_list_bytes,
     format_floats,
-    legacy_referencing,
 )
 
 
@@ -38,6 +37,8 @@ class Header:
     domain_type: str
     time_axis: str
     parameters: tuple
+    #: polytope-mars decides these (``legacy_format.referencing_coordinates``); the encoder writes them
+    referencing_coordinates: tuple = ("latitude", "longitude", "levelist")
     mars_metadata: dict = field(default_factory=dict)
     extra: dict = field(default_factory=dict)
 
@@ -132,7 +133,7 @@ def fragments(header, blocks, max_fragment_bytes) -> list:
 
 def legacy_multipoint(header, groups):
     """What BoundingBox.from_polytope + json.dumps produced for the same data."""
-    coords = legacy_referencing(header)
+    coords = list(header.referencing_coordinates)
     covs = []
     for fields, lat, lon, levels, meta, t in groups:
         composite = [[float(a), float(o), lev] for lev in (levels or (0,)) for a, o in zip(lat, lon)]
@@ -308,20 +309,14 @@ def test_composite_and_value_bytes_match_json_dumps(small, level):
     assert composite_tuples(np.empty(0), np.empty(0), level) == b""
 
 
-@pytest.mark.parametrize(
-    "feature,role,coords",
-    [
-        ("boundingbox", "date", ["latitude", "longitude", "levelist"]),
-        ("polygon", "date", ["x", "y", "z"]),
-        ("polygon", "step", ["x", "y", "z"]),
-        ("polygon", "hdate", ["latitude", "longitude", "levelist"]),
-        ("boundingbox", "month", ["x", "y", "z"]),
-        ("circle", "month", ["latitude", "longitude", "levelist"]),
-    ],
-)
-def test_multipoint_referencing_quirks(feature, role, coords):
-    referencing = legacy_referencing(Header(feature, "MultiPoint", role, ()))
-    assert referencing == coords
+@pytest.mark.parametrize("coords", [("latitude", "longitude", "levelist"), ("x", "y", "z")])
+def test_the_header_decides_the_referencing_coordinates(coords):
+    """Which names a collection declares is polytope-mars' rule; the encoder writes what it is given."""
+    header = Header("boundingbox", "MultiPoint", "date", (T2,), referencing_coordinates=coords)
+    lat, lon = _data(3, 7)
+    doc = json.loads(encode(header, multipoint_blocks({("167", None): np.ones(3)}, lat, lon)))
+    assert doc["referencing"][0]["coordinates"] == list(coords)
+    assert doc["coverages"][0]["domain"]["axes"]["composite"]["coordinates"] == list(coords)
 
 
 def _point_group(index, t, meta, values, levels=(), lat=(51.5, -33.9), lon=(0.1, 18.4)):
@@ -376,7 +371,7 @@ def test_verticalprofile_layout():
 
 
 def test_trajectory_layout():
-    header = Header("trajectory", "Trajectory", "date", (T2,))
+    header = Header("trajectory", "Trajectory", "date", (T2,), referencing_coordinates=("t", "x", "y", "z"))
     blocks = _point_group(0, (0,), {"number": 0}, {("167", None): [1, 2]})
     doc = json.loads(encode(header, blocks))
     (cov,) = doc["coverages"]

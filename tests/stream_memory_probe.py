@@ -54,6 +54,7 @@ def one_coverage(n_points: int):
         time_axis="date",
         parameters=(param,),
         mars_metadata={},
+        referencing_coordinates=("latitude", "longitude", "levelist"),
         extra={},
     )
     group = SimpleNamespace(
