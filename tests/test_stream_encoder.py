@@ -132,13 +132,18 @@ def fragments(header, blocks, max_fragment_bytes) -> list:
 
 
 def legacy_multipoint(header, groups):
-    """What BoundingBox.from_polytope + json.dumps produced for the same data."""
+    """What BoundingBox.from_polytope + json.dumps produced for the same data.
+
+    The collection's ``parameters`` lists the parameters some coverage has a range for, in header order.
+    """
     coords = list(header.referencing_coordinates)
     covs = []
+    present = set()
     for fields, lat, lon, levels, meta, t in groups:
         composite = [[float(a), float(o), lev] for lev in (levels or (0,)) for a, o in zip(lat, lon)]
         ranges = {}
         params = tuple(dict.fromkeys(p for p, _ in fields))
+        present.update(params)
         short = {p.id: p.shortname for p in header.parameters}
         for p in params:
             vals = [v for lev in (levels or (None,)) for v in _nan_to_none(fields[(p, lev)])]
@@ -168,7 +173,7 @@ def legacy_multipoint(header, groups):
         "domainType": "MultiPoint",
         "coverages": covs,
         "referencing": [{"coordinates": coords, "system": CRS}],
-        "parameters": _parameters(header.parameters),
+        "parameters": _parameters([p for p in header.parameters if p.id in present]),
     }
     return json.dumps(doc).encode()
 
@@ -266,7 +271,7 @@ def test_nan_is_null_and_missing_param_is_omitted():
     ranges = doc["coverages"][0]["ranges"]
     assert list(ranges) == ["2t"]  # 10u not in group.params -> no range
     assert ranges["2t"]["values"] == [1.0, None, 3.0, None]
-    assert list(doc["parameters"]) == ["10u", "2t"]  # header parameters are always listed
+    assert list(doc["parameters"]) == ["2t"]  # a parameter with no range in any coverage is not listed
 
 
 def test_several_groups_and_empty_collection():
@@ -280,6 +285,16 @@ def test_several_groups_and_empty_collection():
     ]
     empty = json.loads(encode(BBOX, []))
     assert empty["coverages"] == [] and list(empty) == ["type", "domainType", "coverages", "referencing", "parameters"]
+    assert empty["parameters"] == {}
+
+
+def test_parameters_lists_what_the_coverages_hold_in_header_order():
+    lat, lon = _data(3, 4)
+    blocks = multipoint_blocks({("167", None): np.ones(3)}, lat, lon, index=0)
+    blocks += multipoint_blocks({("165", None): np.zeros(3)}, lat, lon, index=1, t=("2024-01-02T00:00:00Z",))
+    doc = json.loads(encode(BBOX, blocks))
+    assert [list(c["ranges"]) for c in doc["coverages"]] == [["2t"], ["10u"]]
+    assert list(doc["parameters"]) == ["10u", "2t"]
 
 
 def test_float_formatting_matches_json_dumps():

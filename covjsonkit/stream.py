@@ -342,6 +342,9 @@ class CovjsonStreamEncoder:
         self.n_coverages = 0
         self._shortname = {p.id: p.shortname for p in header.parameters}
         self._coordinates = list(header.referencing_coordinates)
+        #: ids of the parameters some coverage has a range for; the collection's ``parameters`` lists
+        #: these, so a reader can take it as the list of what the result holds
+        self._present: set = set()
         self._streaming = header.domain_type == "MultiPoint" or (
             header.domain_type == "Trajectory" and header.time_axis == "hdate"
         )
@@ -375,7 +378,7 @@ class CovjsonStreamEncoder:
                 out.append((b", " if self.n_coverages or i else b"") + _dumps(cov))
             self.n_coverages += len(covs)
             self._buffered = []
-        parameters = {p.shortname: _parameter(p) for p in self.header.parameters}
+        parameters = {p.shortname: _parameter(p) for p in self.header.parameters if p.id in self._present}
         referencing = [{"coordinates": self._coordinates, "system": dict(_CRS)}]
         out.append(b'], "referencing": ' + _dumps(referencing) + b', "parameters": ' + _dumps(parameters) + b"}")
         return b"".join(out)
@@ -437,6 +440,7 @@ class CovjsonStreamEncoder:
 
     def _values(self, block) -> Iterator[bytes]:
         g = block.group
+        self._present.add(block.param)
         if not self._streaming:
             cur = self._buffer_group(g)
             cur["values"].setdefault((block.param, block.level), []).append(np.asarray(block.values, dtype=np.float64))
