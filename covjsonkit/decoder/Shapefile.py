@@ -8,6 +8,22 @@ class Shapefile(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
+        # Backwards-compatible composite ordering: derive x/y/z positions from
+        # the ``composite`` axis's ``coordinates`` labels (reads both x/y[/z]
+        # and legacy latitude/longitude/levelist labels).
+        labels = self.domains[0]["axes"]["composite"]["coordinates"]
+        self.x_idx = self._label_index(labels, ("x", "longitude"))
+        self.y_idx = self._label_index(labels, ("y", "latitude"))
+        self.z_idx = self._label_index(labels, ("z", "levelist"), required=False)
+
+    @staticmethod
+    def _label_index(labels, names, required=True):
+        for name in names:
+            if name in labels:
+                return labels.index(name)
+        if required:
+            raise ValueError(f"None of {names} found in composite coordinates {labels}")
+        return None
 
     def get_domains(self):
         domains = []
@@ -60,12 +76,15 @@ class Shapefile(Decoder):
                 param_vals["datetime"] = datetime
                 if "mars:metadata" in coverage:
                     param_vals["mars:metadata"] = mars_metadata
+                geom_coords = [lonlat[self.x_idx], lonlat[self.y_idx]]
+                if self.z_idx is not None:
+                    geom_coords.append(lonlat[self.z_idx])
                 features.append(
                     {
                         "type": "Feature",
                         "geometry": {
                             "type": "Point",
-                            "coordinates": [lonlat[1], lonlat[0], lonlat[2]],
+                            "coordinates": geom_coords,
                         },
                         "properties": param_vals,
                     }
@@ -94,8 +113,8 @@ class Shapefile(Decoder):
             times.append(domain["axes"]["t"]["values"][0])
             if i == 0:
                 for coord in domain["axes"]["composite"]["values"]:
-                    x.append(float(coord[0]))
-                    y.append(float(coord[1]))
+                    x.append(float(coord[self.x_idx]))
+                    y.append(float(coord[self.y_idx]))
 
         n_points = len(x)
 

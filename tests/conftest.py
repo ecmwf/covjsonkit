@@ -48,16 +48,15 @@ REFORECAST_METADATA_BASE = {
     "domain": "g",
     "expver": "4321",
     "levtype": "sfc",
-    "step": 0,
     "stream": "efcl",
     "type": "sfo",
     "number": 0,
 }
 
-COMPOSITE_TWO_POINTS_XYZ = {
+COMPOSITE_TWO_POINTS = {
     "dataType": "tuple",
-    "coordinates": ["x", "y", "z"],
-    "values": [[48.0, 11.0, 0], [50.0, 12.0, 0]],
+    "coordinates": ["x", "y"],
+    "values": [[11.0, 48.0], [12.0, 50.0]],
 }
 
 
@@ -216,6 +215,7 @@ def reforecast_separate_datetime_tree(
     step=(0,),
     param="167",
     point_factory=make_point,
+    stream="efcl",
 ):
     """Build a separate-datetime reforecast tree (class=ce).
 
@@ -237,7 +237,7 @@ def reforecast_separate_datetime_tree(
         node("levtype", ("sfc",)),
         node("param", (param,)),
         node("step", step),
-        node("stream", ("efcl",)),
+        node("stream", (stream,)),
         node("time", times),
         node("type", ("sfo",)),
     )
@@ -311,6 +311,7 @@ def reforecast_separate_datetime_vertical_tree(
     step=(0,),
     param="130",
     point_factory=make_point,
+    stream="efcl",
 ):
     """Build a separate-datetime reforecast tree (class=ce) with a ``levelist`` axis.
 
@@ -329,7 +330,7 @@ def reforecast_separate_datetime_vertical_tree(
         node("param", (param,)),
         node("levelist", levels),
         node("step", step),
-        node("stream", ("efcl",)),
+        node("stream", (stream,)),
         node("time", times),
         node("type", ("sfo",)),
     )

@@ -8,7 +8,11 @@ coverage per ``(reference-datetime = hdate + time, step, number)``.
 
 import numpy as np
 import pytest
-from conftest import forecast_separate_datetime_tree, reforecast_separate_datetime_tree
+from conftest import (
+    forecast_separate_datetime_tree,
+    reforecast_separate_datetime_tree,
+    reforecast_separate_datetime_vertical_tree,
+)
 
 from covjsonkit.api import Covjsonkit
 
@@ -34,21 +38,39 @@ def test_separate_datetime_reforecast_composite_encoders(feature):
     tree = reforecast_separate_datetime_tree(POINTS, HDATES, TIMES)
     covjson = Covjsonkit().encode("CoverageCollection", feature).from_polytope_reforecast(tree)
 
+    assert [r["coordinates"] for r in covjson["referencing"]] == [["x", "y"], ["t"]]
     assert len(covjson["coverages"]) == len(EXPECTED)
     for cov, (ref, vals) in zip(covjson["coverages"], EXPECTED):
         assert cov["domain"]["axes"]["t"]["values"] == [ref]
-        assert cov["domain"]["axes"]["composite"]["values"] == [
-            [48.0, 11.0, 0],
-            [50.0, 12.0, 0],
-        ]
+        composite = cov["domain"]["axes"]["composite"]
+        assert composite["coordinates"] == ["x", "y"]
+        # [x, y] == [longitude, latitude]
+        assert composite["values"] == [[11.0, 48.0], [12.0, 50.0]]
         # Single parameter (167 -> 2t).
         (param_name,) = cov["ranges"].keys()
         assert cov["ranges"][param_name]["values"] == vals
         # efcl coverages are delineated by their valid time (the t-axis).
         assert "Forecast date" not in cov["mars:metadata"]
-        assert cov["mars:metadata"]["step"] == 0
+        assert "step" not in cov["mars:metadata"]
         assert cov["mars:metadata"]["class"] == "ce"
         assert cov["mars:metadata"]["stream"] == "efcl"
+
+
+@pytest.mark.parametrize("feature", ["BoundingBox", "Frame", "Circle", "Shapefile", "polygon"])
+def test_separate_datetime_reforecast_composite_encoders_with_levels(feature):
+    # Layout product(hdate, levelist, step, time) for a single point.
+    points = [(48.0, 11.0, [1, 2, 3, 4, 5, 6, 7, 8])]
+    tree = reforecast_separate_datetime_vertical_tree(points, HDATES, TIMES, (500, 850))
+    covjson = Covjsonkit().encode("CoverageCollection", feature).from_polytope_reforecast(tree)
+
+    assert [r["coordinates"] for r in covjson["referencing"]] == [["x", "y"], ["t"], ["z"]]
+    cov = covjson["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2025-07-14T00:00:00Z"]
+    composite = cov["domain"]["axes"]["composite"]
+    assert composite["coordinates"] == ["x", "y", "z"]
+    assert composite["values"] == [[11.0, 48.0, 500], [11.0, 48.0, 850]]
+    # L0 t0 -> idx0=1, L1 t0 -> idx2=3
+    assert cov["ranges"]["t"]["values"] == [1.0, 3.0]
 
 
 def test_separate_datetime_reforecast_single_point_two_steps():
@@ -60,19 +82,16 @@ def test_separate_datetime_reforecast_single_point_two_steps():
 
     assert len(covjson["coverages"]) == 8
     # t = hdate + time + step; ordered by reference (hdate + time), then step.
-    seen = [
-        (c["domain"]["axes"]["t"]["values"][0], c["mars:metadata"]["step"], c["ranges"]["2t"]["values"][0])
-        for c in covjson["coverages"]
-    ]
+    seen = [(c["domain"]["axes"]["t"]["values"][0], c["ranges"]["2t"]["values"][0]) for c in covjson["coverages"]]
     assert seen == [
-        ("2025-07-14T00:00:00Z", 0, 1.0),
-        ("2025-07-14T06:00:00Z", 6, 3.0),
-        ("2025-07-14T12:00:00Z", 0, 2.0),
-        ("2025-07-14T18:00:00Z", 6, 4.0),
-        ("2025-07-15T00:00:00Z", 0, 5.0),
-        ("2025-07-15T06:00:00Z", 6, 7.0),
-        ("2025-07-15T12:00:00Z", 0, 6.0),
-        ("2025-07-15T18:00:00Z", 6, 8.0),
+        ("2025-07-14T00:00:00Z", 1.0),
+        ("2025-07-14T06:00:00Z", 3.0),
+        ("2025-07-14T12:00:00Z", 2.0),
+        ("2025-07-14T18:00:00Z", 4.0),
+        ("2025-07-15T00:00:00Z", 5.0),
+        ("2025-07-15T06:00:00Z", 7.0),
+        ("2025-07-15T12:00:00Z", 6.0),
+        ("2025-07-15T18:00:00Z", 8.0),
     ]
 
 

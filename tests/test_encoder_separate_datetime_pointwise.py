@@ -25,7 +25,8 @@ POINTS = [
     (50.0, 12.0, [10.0, 20.0, 30.0, 40.0]),
 ]
 
-# (point lat/lon, reference datetime, value)
+# (point lat/lon, valid datetime, value). With a single step the valid time
+# equals the reference datetime hdate + time.
 POSITION_EXPECTED = [
     ((48.0, 11.0), "2025-07-14T00:00:00Z", 1.0),
     ((48.0, 11.0), "2025-07-14T12:00:00Z", 2.0),
@@ -37,29 +38,49 @@ POSITION_EXPECTED = [
     ((50.0, 12.0), "2025-07-15T12:00:00Z", 40.0),
 ]
 
+POINT_SERIES_REFERENCING = [
+    {
+        "coordinates": ["x", "y"],
+        "system": {"type": "GeographicCRS", "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"},
+    },
+    {"coordinates": ["t"], "system": {"type": "TemporalRS", "calendar": "Gregorian"}},
+]
+
 
 def test_position_separate_datetime_single_step():
     tree = reforecast_separate_datetime_tree(POINTS, HDATES, TIMES)
     covjson = Covjsonkit().encode("CoverageCollection", "position").from_polytope_reforecast(tree)
 
     assert covjson["domainType"] == "PointSeries"
+    assert covjson["referencing"] == POINT_SERIES_REFERENCING
     assert len(covjson["coverages"]) == len(POSITION_EXPECTED)
 
     seen = set()
     for cov in covjson["coverages"]:
         axes = cov["domain"]["axes"]
-        lat = axes["latitude"]["values"][0]
-        lon = axes["longitude"]["values"][0]
-        assert axes["levelist"]["values"] == [0]
-        # Single step -> single valid time equal to the reference datetime.
-        assert axes["t"]["values"] == [cov["mars:metadata"]["Forecast date"]]
+        # Surface data: no levelist axis in the tree, so no z axis.
+        assert set(axes) == {"x", "y", "t"}
+        lon = axes["x"]["values"][0]
+        lat = axes["y"]["values"][0]
+        (valid_time,) = axes["t"]["values"]
         (param_name,) = cov["ranges"].keys()
         (value,) = cov["ranges"][param_name]["values"]
+        # Reanalysis (efcl): only the valid-time is exposed.
+        assert "Forecast date" not in cov["mars:metadata"]
         assert "step" not in cov["mars:metadata"]
         assert cov["mars:metadata"]["class"] == "ce"
-        seen.add(((lat, lon), cov["mars:metadata"]["Forecast date"], value))
+        seen.add(((lat, lon), valid_time, value))
 
     assert seen == set(POSITION_EXPECTED)
+
+
+def test_position_separate_datetime_non_efcl_keeps_forecast_date():
+    tree = reforecast_separate_datetime_tree(POINTS, HDATES, TIMES, stream="enfh")
+    covjson = Covjsonkit().encode("CoverageCollection", "position").from_polytope_reforecast(tree)
+
+    for cov in covjson["coverages"]:
+        # Single step -> the valid time equals the reference datetime.
+        assert cov["domain"]["axes"]["t"]["values"] == [cov["mars:metadata"]["Forecast date"]]
 
 
 def test_position_separate_datetime_multi_step_collapses_into_t():
@@ -72,7 +93,8 @@ def test_position_separate_datetime_multi_step_collapses_into_t():
     # One coverage per (point, level, number, reference) = 4 references, single point.
     assert len(covjson["coverages"]) == 4
 
-    by_ref = {c["mars:metadata"]["Forecast date"]: c for c in covjson["coverages"]}
+    # Key by the first valid time (reference + step 0).
+    by_ref = {c["domain"]["axes"]["t"]["values"][0]: c for c in covjson["coverages"]}
     # Reference 2025-07-14T00:00 (h0, t0): step0 -> idx0=1, step6 -> idx2=3.
     cov = by_ref["2025-07-14T00:00:00Z"]
     assert cov["domain"]["axes"]["t"]["values"] == [
@@ -93,19 +115,33 @@ def test_verticalprofile_separate_datetime():
     covjson = Covjsonkit().encode("CoverageCollection", "verticalprofile").from_polytope_reforecast(tree)
 
     assert covjson["domainType"] == "VerticalProfile"
+    assert [r["coordinates"] for r in covjson["referencing"]] == [["x", "y"], ["z"], ["t"]]
     # One coverage per (point, number, reference, step) = 4 references, single point/step.
     assert len(covjson["coverages"]) == 4
 
-    by_ref = {c["mars:metadata"]["Forecast date"]: c for c in covjson["coverages"]}
-    cov = by_ref["2025-07-14T00:00:00Z"]
+    by_time = {c["domain"]["axes"]["t"]["values"][0]: c for c in covjson["coverages"]}
+    cov = by_time["2025-07-14T00:00:00Z"]
     axes = cov["domain"]["axes"]
-    assert axes["levelist"]["values"] == [500, 850]
-    assert axes["t"]["values"] == ["2025-07-14T00:00:00Z"]
+    assert axes["x"]["values"] == [11.0]
+    assert axes["y"]["values"] == [48.0]
+    assert axes["z"]["values"] == [500, 850]
     (param_name,) = cov["ranges"].keys()
     # L0 t0 -> idx0=1, L1 t0 -> idx2=3
     assert cov["ranges"][param_name]["values"] == [1, 3]
-    assert cov["ranges"][param_name]["axisNames"] == ["levelist"]
-    assert cov["mars:metadata"]["step"] == 0
+    assert cov["ranges"][param_name]["axisNames"] == ["z"]
+    # Reanalysis (efcl): only the valid-time is exposed.
+    assert "Forecast date" not in cov["mars:metadata"]
+    assert "step" not in cov["mars:metadata"]
+
+
+def test_verticalprofile_separate_datetime_non_efcl_keeps_forecast_date():
+    points = [(48.0, 11.0, [1, 2, 3, 4, 5, 6, 7, 8])]
+    tree = reforecast_separate_datetime_vertical_tree(points, HDATES, TIMES, (500, 850), stream="enfh")
+    covjson = Covjsonkit().encode("CoverageCollection", "verticalprofile").from_polytope_reforecast(tree)
+
+    for cov in covjson["coverages"]:
+        assert cov["domain"]["axes"]["t"]["values"] == [cov["mars:metadata"]["Forecast date"]]
+        assert cov["mars:metadata"]["step"] == 0
 
 
 def test_pointwise_reforecast_backward_compat_delegates():

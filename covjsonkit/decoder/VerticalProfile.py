@@ -1,9 +1,6 @@
-from datetime import datetime as dt
-from datetime import timedelta
-
 import xarray as xr
 
-from ..encoder.encoder import parse_step_string, sort_step_values
+from ..encoder.encoder import sort_step_values, valid_time
 from .decoder import Decoder
 
 
@@ -12,18 +9,13 @@ class VerticalProfile(Decoder):
         super().__init__(covjson)
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
-        if "x" in self.covjson["coverages"][0]["domain"]["axes"]:
-            self.x_name = "x"
-        else:
-            self.x_name = "latitude"
-        if "y" in self.covjson["coverages"][0]["domain"]["axes"]:
-            self.y_name = "y"
-        else:
-            self.y_name = "longitude"
-        if "z" in self.covjson["coverages"][0]["domain"]["axes"]:
-            self.z_name = "z"
-        else:
-            self.z_name = "levelist"
+        # Backwards-compatible axis-name detection: read both spec-compliant
+        # coverages (x/y/z) and legacy coverages (longitude/latitude/levelist).
+        # Semantics are preserved: x == longitude, y == latitude.
+        first_axes = self.covjson["coverages"][0]["domain"]["axes"]
+        self.x_name = "x" if "x" in first_axes else "longitude"
+        self.y_name = "y" if "y" in first_axes else "latitude"
+        self.z_name = "z" if "z" in first_axes else "levelist"
 
     def get_domains(self):
         domains = []
@@ -74,8 +66,8 @@ class VerticalProfile(Decoder):
     def to_geojson(self):
         features = []
         for coverage in self.covjson["coverages"]:
-            lat = coverage["domain"]["axes"][self.x_name]["values"][0]
-            lon = coverage["domain"]["axes"][self.y_name]["values"][0]
+            lon = coverage["domain"]["axes"][self.x_name]["values"][0]
+            lat = coverage["domain"]["axes"][self.y_name]["values"][0]
             levels = coverage["domain"]["axes"][self.z_name]["values"]
             datetimes = coverage["domain"]["axes"]["t"]["values"]
             if "mars:metadata" in coverage:
@@ -143,8 +135,8 @@ class VerticalProfile(Decoder):
             dataarraydict = {}
 
             # Get coordinates
-            x = coords["axes"][self.x_name]["values"]
-            y = coords["axes"][self.y_name]["values"]
+            longitude = coords["axes"][self.x_name]["values"]
+            latitude = coords["axes"][self.y_name]["values"]
             levelist = coords["axes"][self.z_name]["values"]
             steps = coords["axes"]["t"]["values"]
 
@@ -153,8 +145,8 @@ class VerticalProfile(Decoder):
             steps = []
             for coverage in self.covjson["coverages"]:
                 num.append(coverage["mars:metadata"]["number"])
-                datetime.append(coverage["mars:metadata"]["Forecast date"])
-                steps.append(coverage["mars:metadata"]["step"])
+                datetime.append(self.forecast_reference(coverage))
+                steps.append(coverage["mars:metadata"].get("step", 0))
 
             nums = list(set(num))
             datetime = list(set(datetime))
@@ -176,14 +168,12 @@ class VerticalProfile(Decoder):
                             if len(param_values[parameter][domain_idx][i][j]) <= k:
                                 param_values[parameter][domain_idx][i][j].append([])
                             for coverage in self.covjson["coverages"]:
-                                new_step = (
-                                    dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=parse_step_string(step))
-                                ).isoformat() + "Z"
+                                new_step = valid_time(date, step)
                                 if (
                                     coverage["mars:metadata"]["number"] == num
-                                    and coverage["mars:metadata"]["Forecast date"] == date
-                                    and coverage["domain"]["axes"][self.x_name]["values"][0] == x[0]
-                                    and coverage["domain"]["axes"][self.y_name]["values"][0] == y[0]
+                                    and self.forecast_reference(coverage) == date
+                                    and coverage["domain"]["axes"][self.x_name]["values"][0] == longitude[0]
+                                    and coverage["domain"]["axes"][self.y_name]["values"][0] == latitude[0]
                                     and coverage["domain"]["axes"]["t"]["values"][0] == new_step
                                 ):
                                     param_values[parameter][domain_idx][i][j][k] = coverage["ranges"][parameter][
@@ -192,8 +182,8 @@ class VerticalProfile(Decoder):
 
             for parameter in self.parameters:
                 param_coords = {
-                    "latitude": x,
-                    "longitude": y,
+                    "latitude": latitude,
+                    "longitude": longitude,
                     "number": nums,
                     "datetime": datetime,
                     "time": steps,
