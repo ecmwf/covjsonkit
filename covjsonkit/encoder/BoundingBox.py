@@ -3,9 +3,10 @@ import time
 
 from .encoder import (
     Encoder,
-    efas_anoffset_hours,
+    anoffset_timedelta,
     is_reanalysis,
     normalize_step_value,
+    range_shape,
     valid_time,
 )
 
@@ -47,8 +48,9 @@ class BoundingBox(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["composite"]
+            shape, axis_names = range_shape(values[parameter], "composite")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -124,7 +126,9 @@ class BoundingBox(Encoder):
                     for dv in dataset.data_vars:
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
-                    self.add_coverage(mars_metadata, coords, dv_dict, include_z)
+                    cov_coords = dict(coords)
+                    cov_coords["t"] = [valid_time(datetime, step, anoffset=anoffset_timedelta(mars_metadata))]
+                    self.add_coverage(mars_metadata, cov_coords, dv_dict, include_z)
 
         # Return the generated CoverageJSON
         return self.covjson
@@ -210,7 +214,7 @@ class BoundingBox(Encoder):
                     mm["step"] = normalize_step_value(step)
                     # ``t`` is the valid-time (forecast date + step offset).
                     cov_coords = dict(coords[date])
-                    cov_coords["t"] = [valid_time(date, step, efas_anoffset_hours(mars_metadata))]
+                    cov_coords["t"] = [valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))]
                     if reanalysis:
                         # Reanalysis (class=ce, stream=efcl): expose only the
                         # valid-time; drop the scalar forecast-date metadata.

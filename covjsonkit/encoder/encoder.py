@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import numpy as np
@@ -30,6 +31,17 @@ def is_merged_node(node) -> bool:
     if MergedTensorIndexNode is not None:
         return isinstance(node, MergedTensorIndexNode)
     return hasattr(node, "axes") and getattr(node, "axes", None) is not None
+
+
+def range_shape(values, axis_name):
+    """Return ``(shape, axisNames)`` for a one-dimensional NdArray range.
+
+    A single value is emitted as a 0D array (``[]``, ``[]``): the spec allows
+    single-valued axes to be omitted and covjson-validator rejects them.
+    """
+    if len(values) == 1:
+        return [], []
+    return [len(values)], [axis_name]
 
 
 def timedelta_to_step_string(td: timedelta) -> str:
@@ -64,38 +76,113 @@ def timedelta_to_step_string(td: timedelta) -> str:
 
 def parse_step_string(step_str: str) -> float:
     """
-    Parse a step string in format 'XhYm' and return total hours as float.
+    Parse a step value and return total hours as float.
 
-    Args:
-        step_str: Step string in format 'Xh', 'Ym', or 'XhYm'
-
-    Returns:
-        Total hours as a float value
+    Accepts every format understood by :func:`step_to_timedelta`.
 
     Examples:
         parse_step_string("13h") -> 13.0
         parse_step_string("13h30m") -> 13.5
         parse_step_string("30m") -> 0.5
-        parse_step_string("0h") -> 0.0
+        parse_step_string("6") -> 6.0
+        parse_step_string("0-6") -> 6.0
     """
-    if isinstance(step_str, (int, float)):
-        return float(step_str)
+    return step_to_timedelta(step_str).total_seconds() / 3600.0
 
-    step_str = str(step_str)
-    hours = 0.0
-    minutes = 0.0
 
-    # Parse hours
-    if "h" in step_str:
-        parts = step_str.split("h")
-        hours = float(parts[0])
-        step_str = parts[1] if len(parts) > 1 else ""
+_STEP_UNITS_RE = re.compile(r"(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?")
 
-    # Parse minutes
-    if "m" in step_str and step_str:
-        minutes = float(step_str.replace("m", ""))
 
-    return hours + (minutes / 60.0)
+def step_to_timedelta(step) -> timedelta:
+    """Convert a MARS/polytope ``step`` value to a :class:`datetime.timedelta`.
+
+    Accepts timedelta-likes, hour counts (int, float or numeric string), unit
+    strings (``"6h"``, ``"30m"``, ``"13h30m"``) and single-element sequences.
+    A step range ``"a-b"`` (accumulations, means) is valid at the end of its
+    period, so ``b`` is used.
+    """
+    if step is None:
+        return timedelta(0)
+    if isinstance(step, (list, tuple, np.ndarray)):
+        if len(step) != 1:
+            raise ValueError(f"Expected a single step value, got {step!r}")
+        return step_to_timedelta(step[0])
+    if isinstance(step, (timedelta, pd.Timedelta, np.timedelta64)):
+        return pd.Timedelta(step).to_pytimedelta()
+    if isinstance(step, (int, float, np.integer, np.floating)):
+        return timedelta(hours=float(step))
+
+    text = str(step).strip()
+    if "-" in text.lstrip("-"):
+        text = text.rsplit("-", 1)[1]
+    try:
+        return timedelta(hours=float(text))
+    except ValueError:
+        pass
+    match = _STEP_UNITS_RE.fullmatch(text)
+    if not match or not any(match.groups()):
+        raise ValueError(f"Unrecognised step value: {step!r}")
+    hours, minutes = match.groups()
+    return timedelta(hours=float(hours or 0), minutes=float(minutes or 0))
+
+
+def time_to_timedelta(value) -> timedelta:
+    """Convert a MARS ``time`` (time-of-day) value to a :class:`datetime.timedelta`.
+
+    Accepts timedelta-likes, ``"HH:MM[:SS]"`` strings and ``HHMM`` numbers or
+    strings (``600``, ``"0600"``, ``"1200"``). Numbers below 100 are hours.
+    """
+    if value is None:
+        return timedelta(0)
+    if isinstance(value, (list, tuple, np.ndarray)):
+        if len(value) != 1:
+            raise ValueError(f"Expected a single time value, got {value!r}")
+        return time_to_timedelta(value[0])
+    if isinstance(value, (timedelta, pd.Timedelta, np.timedelta64)):
+        return pd.Timedelta(value).to_pytimedelta()
+    if isinstance(value, str) and ":" in value:
+        return pd.to_timedelta(value).to_pytimedelta()
+    try:
+        number = int(float(str(value)))
+    except ValueError:
+        return pd.to_timedelta(value).to_pytimedelta()
+    if number < 100:
+        return timedelta(hours=number)
+    return timedelta(hours=number // 100, minutes=number % 100)
+
+
+def to_naive_utc(value) -> pd.Timestamp:
+    """Return ``value`` as a timezone-naive UTC :class:`pandas.Timestamp`.
+
+    Accepts anything ``pandas.Timestamp`` does, including ISO strings with a
+    trailing ``"Z"`` and timezone-aware values (converted to UTC).
+    """
+    if isinstance(value, str):
+        value = value.strip()
+        if value.endswith("Z"):
+            value = value[:-1]
+    stamp = pd.Timestamp(value)
+    if stamp.tzinfo is not None:
+        stamp = stamp.tz_convert("UTC").tz_localize(None)
+    return stamp
+
+
+def iso_utc(value) -> str:
+    """Format a datetime-like as an ISO-8601 UTC string with a trailing ``"Z"``."""
+    return to_naive_utc(value).isoformat() + "Z"
+
+
+def reference_datetime(date, time=None) -> pd.Timestamp:
+    """Reference datetime of a forecast/reforecast: ``date`` (or ``hdate``) + ``time``."""
+    return to_naive_utc(date) + time_to_timedelta(time)
+
+
+def valid_datetime(date, step=0, time=None, anoffset=None) -> pd.Timestamp:
+    """Valid datetime: ``date + time + step - anoffset`` (see :func:`step_to_timedelta`).
+
+    ``anoffset`` is a time difference in hours (see :func:`anoffset_timedelta`).
+    """
+    return reference_datetime(date, time) + step_to_timedelta(step) - step_to_timedelta(anoffset)
 
 
 def sort_step_values(steps: list) -> list:
@@ -196,74 +283,44 @@ def normalize_step_value(step):
     return str(step)
 
 
-def valid_time(date, step, anoffset_hours=0):
-    """Return the ISO-8601 valid-time string for a forecast ``date`` and ``step``.
+def valid_time(date, step=0, time=None, anoffset=None) -> str:
+    """Return the ISO-8601 valid-time string ``date + time + step - anoffset`` with a trailing ``"Z"``.
 
-    The valid time is ``date + step - anoffset``. ``date`` may be any value
-    accepted by ``pandas.Timestamp`` (e.g. a MARS ``"YYYYMMDDTHHMMSS"`` string,
-    optionally suffixed with ``"Z"``). ``step`` may be a
-    ``timedelta``/``numpy.timedelta64`` or an hour count (int, float, numeric
-    string, or a single-element list).
-
-    ``anoffset_hours`` (default ``0``) shifts the analysis reference time
-    backward: ``step`` is counted from that shifted reference, so the offset is
-    subtracted from the valid-time. Use :func:`efas_anoffset_hours` to derive it
-    from ``mars_metadata`` (it is non-zero only for ``class=ce``/``stream=efas``).
-
-    The result is an ISO-8601 string with a trailing ``"Z"``, matching the
-    valid-time strings produced by the PointSeries encoders.
+    ``date`` may be any value accepted by :func:`to_naive_utc`, ``time`` any
+    value accepted by :func:`time_to_timedelta`, and ``step`` and ``anoffset``
+    any value accepted by :func:`step_to_timedelta`.
     """
-    date_format = "%Y%m%dT%H%M%S"
-    new_date = pd.Timestamp(str(date).rstrip("Z")).strftime(date_format)
-    start_time = pd.Timestamp(new_date).to_pydatetime()
-    if isinstance(step, (timedelta, pd.Timedelta, np.timedelta64)):
-        stamp = start_time + pd.Timedelta(step).to_pytimedelta()
-    else:
-        if isinstance(step, (list, tuple)):
-            step = step[0]
-        try:
-            hours = int(step)
-        except (TypeError, ValueError):
-            hours = int(str(step).split("h")[0])
-        stamp = start_time + timedelta(hours=hours)
-    if anoffset_hours:
-        stamp -= timedelta(hours=anoffset_hours)
-    return stamp.isoformat() + "Z"
+    return iso_utc(valid_datetime(date, step, time, anoffset))
 
 
-def anoffset_hours(mars_metadata) -> int:
-    """Return the ``anoffset`` (in hours) from ``mars_metadata`` as an int.
+def anoffset_value(values):
+    """The single ``anoffset`` of a tree node or record, as integer hours when whole.
 
-    ``anoffset`` shifts the analysis reference time *backward* from the forecast
-    issue time (``date``/``time``). ``step`` is counted from that shifted
-    reference, so the valid-time must be corrected by subtracting ``anoffset``
-    hours. Returns ``0`` when ``anoffset`` is absent (the common case).
+    MARS defines ``anoffset`` as an integer number of hours; polytope may hand it
+    over as a string. Only one ``anoffset`` per request is supported.
     """
-    raw = mars_metadata.get("anoffset")
-    if raw is None:
-        return 0
-    if isinstance(raw, (list, tuple)):
-        raw = raw[0]
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
-        try:
-            return int(str(raw).split("h")[0])
-        except (TypeError, ValueError):
-            return 0
+    if isinstance(values, (list, tuple, np.ndarray)):
+        if len(values) != 1:
+            raise ValueError(f"Only a single anoffset value is supported, got {list(values)!r}")
+        values = values[0]
+    hours = step_to_timedelta(values).total_seconds() / 3600.0
+    return int(hours) if hours.is_integer() else hours
 
 
-def efas_anoffset_hours(mars_metadata) -> int:
-    """Return the anoffset correction (hours) but only for ``class=ce``/``stream=efas``.
+def anoffset_timedelta(mars_metadata) -> timedelta:
+    """The ``anoffset`` subtracted from valid times, for ``class=ce, stream=efas`` only.
 
-    The ``anoffset`` valid-time correction is restricted to regular forecast data
-    under ``class=ce``, ``stream=efas``. Other streams may carry an ``anoffset``
-    in the request, but their valid-times must not be shifted, so this returns
-    ``0`` for them. Returns ``0`` when ``anoffset`` is absent as well.
+    ``anoffset`` shifts the analysis reference time back from the forecast run
+    (``date + time``) and ``step`` is counted from that shifted reference, so
+    ``valid = date + time + step - anoffset``. Other streams may carry an
+    ``anoffset`` but are not shifted; without one this is zero.
     """
-    if mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efas":
-        return anoffset_hours(mars_metadata)
-    return 0
+    if mars_metadata.get("class") != "ce" or mars_metadata.get("stream") != "efas":
+        return timedelta(0)
+    value = mars_metadata.get("anoffset")
+    if value is None:
+        return timedelta(0)
+    return timedelta(hours=anoffset_value(value))
 
 
 def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:
@@ -274,6 +331,25 @@ def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:
     valid-time on the ``t`` axis, mirroring the PointSeries behaviour.
     """
     return date_key == "hdate" and mars_metadata.get("class") == "ce" and mars_metadata.get("stream") == "efcl"
+
+
+def set_forecast_date(meta: dict, reference) -> dict:
+    """Apply the ``"Forecast date"`` rules to ``meta`` in place and return it.
+
+    * ``class=ce, stream=efcl`` (reanalysis): no forecast date; ``t`` carries
+      the valid time.
+    * ``class=ce, stream=efas`` (forecast): ``date + time`` is the run
+      reference, so the raw ``date`` is dropped in favour of ``"Forecast date"``.
+    * otherwise ``"Forecast date"`` is ``reference``.
+    """
+    is_ce = meta.get("class") == "ce"
+    if is_ce and meta.get("stream") == "efcl":
+        meta.pop("Forecast date", None)
+        return meta
+    if is_ce and meta.get("stream") == "efas":
+        meta.pop("date", None)
+    meta["Forecast date"] = iso_utc(reference)
+    return meta
 
 
 class Encoder(ABC):
@@ -449,6 +525,8 @@ class Encoder(ABC):
                 elif child.axis.name == "step":
                     # Step is not a timedelta! Need to normalize it
                     val = normalize_step_value(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes(child):
@@ -458,7 +536,7 @@ class Encoder(ABC):
                 return child.values
             if child.axis.name == "param":
                 return child.values
-            if child.axis.name in [date_key, "time"]:
+            if child.axis.name == date_key:
                 dates = [f"{date}Z" for date in child.values]
                 mars_metadata["Forecast date"] = str(child.values[0])
                 for date in dates:
@@ -466,11 +544,39 @@ class Encoder(ABC):
                     coords[date]["composite"] = []
                     coords[date]["t"] = [date]
                 return dates
+            if child.axis.name == "time":
+                fold_time_into_date(child.values)
+                return None
             if child.axis.name == "number":
                 return child.values
             if child.axis.name == "step":
                 return child.values
             return None
+
+        def fold_time_into_date(times):
+            """Shift the current date key by a single time-of-day offset.
+
+            Independent ``date``/``time`` axes with several times are encoded by
+            ``from_polytope_step``/``from_polytope_reforecast``; here only a
+            single time can be folded into the date dimension.
+            """
+            if len(times) != 1:
+                raise ValueError(
+                    "A multi-valued 'time' axis is not supported by from_polytope; "
+                    "use from_polytope_step or from_polytope_reforecast."
+                )
+            base_dates = fields.setdefault("_base_dates", {})
+            current = fields["dates"][-1]
+            base = base_dates.get(current, current)
+            shifted = iso_utc(reference_datetime(base, times[0]))
+            if shifted == current:
+                return
+            base_dates[shifted] = base
+            entry = coords.pop(current)
+            entry["t"] = [shifted]
+            coords.setdefault(shifted, entry)
+            fields["dates"][-1] = shifted
+            mars_metadata["Forecast date"] = shifted
 
         def calculate_index_bounds(level_len, num_len, para_len, step_len, l, i, j, k):  # noqa: E741
             start_index = int(l * level_len) + int(i * num_len) + int(j * para_len) + int(k * step_len)
@@ -540,7 +646,7 @@ class Encoder(ABC):
                             fields["l"].extend(result)
                     elif child.axis.name == "param":
                         fields["param"] = result
-                    elif child.axis.name in [date_key, "time"]:
+                    elif child.axis.name == date_key:
                         fields["dates"].extend(result)
                     elif child.axis.name == "number":
                         fields["number"] = result
@@ -550,6 +656,142 @@ class Encoder(ABC):
                             fields["s"].extend(result)
 
                 self.walk_tree(child, fields, coords, mars_metadata, range_dict, date_key=date_key)
+        else:
+            emit_leaf(fields["lat"], tree.values, tree.result)
+
+    def walk_tree_reforecast(self, tree, fields, coords, mars_metadata, range_dict):
+        """Walk the result tree for reforecast/reanalysis with an independent ``time`` axis.
+
+        Unlike :meth:`walk_tree` (which, for the legacy merged representation,
+        folds any ``time`` axis into the ``hdate`` time dimension), this walker
+        treats ``hdate`` as the branching time axis and captures the separate
+        ``time`` axis as a scalar time-of-day offset stored in
+        ``fields["time_offset"]``. The valid-time for each hdate is then
+        ``hdate + time_offset + step`` (computed downstream in the collapse step).
+
+        For efcl the ``date`` and ``step`` axes are single-valued and ``time`` is a
+        single timedelta, so the offset is a scalar. Backward compatibility with
+        merged trees (no separate ``time`` node) is preserved: ``time_offset``
+        simply stays absent and the timestamps reduce to ``hdate + step``.
+        """
+        date_key = "hdate"
+
+        def create_composite_key(date, level, num, para, s):
+            return (date, level, num, para, s)
+
+        def handle_non_leaf_node(child):
+            non_leaf_axes = ["latitude", "longitude", "param", date_key, "time"]
+            if child.axis.name not in non_leaf_axes:
+                val = child.values[0]
+                if isinstance(val, np.datetime64):
+                    val = str(val)
+                elif isinstance(val, timedelta):
+                    val = timedelta_to_step_string(val)
+                elif child.axis.name == "step":
+                    # Step is not a timedelta! Need to normalize it
+                    val = normalize_step_value(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
+                mars_metadata[child.axis.name] = val
+
+        def handle_specific_axes(child):
+            if child.axis.name == "latitude":
+                return child.values[0]
+            if child.axis.name == "levelist":
+                return child.values
+            if child.axis.name == "param":
+                return child.values
+            if child.axis.name == date_key:
+                dates = [f"{date}Z" for date in child.values]
+                mars_metadata["Forecast date"] = str(child.values[0])
+                for date in dates:
+                    coords[date] = {}
+                    coords[date]["composite"] = []
+                    coords[date]["t"] = [date]
+                return dates
+            if child.axis.name == "time":
+                # Independent time-of-day axis: capture as a scalar offset rather
+                # than folding it into the hdate time dimension. efcl guarantees a
+                # single time value; take the first if a span is ever returned.
+                fields["time_offset"] = time_to_timedelta(child.values[0])
+                return None
+            if child.axis.name == "number":
+                return child.values
+            if child.axis.name == "step":
+                return child.values
+            return None
+
+        def calculate_index_bounds(level_len, num_len, para_len, step_len, l, i, j, k):  # noqa: E741
+            start_index = int(l * level_len) + int(i * num_len) + int(j * para_len) + int(k * step_len)
+            end_index = start_index + int(step_len)
+            return start_index, end_index
+
+        def append_composite_coords(dates, tree_values, lat, coords):
+            for value in tree_values:
+                coords[dates]["composite"].append([lat, value])
+
+        def emit_leaf(lat, lon_values, result):
+            lon_values = [float(val) for val in lon_values]
+            if all(val is None for val in result):
+                fields["dates"] = fields["dates"][:-1]
+                for date in fields["dates"]:
+                    for level in fields["levels"]:
+                        for num in fields["number"]:
+                            for para in fields["param"]:
+                                for s in fields["step"]:
+                                    key = create_composite_key(date, level, num, para, s)
+                                    if key in range_dict:
+                                        del range_dict[key]
+            else:
+                result = [float(val) if val is not None else val for val in result]
+                level_len = len(result) / len(fields["levels"])
+                num_len = level_len / len(fields["number"])
+                para_len = num_len / len(fields["param"])
+                step_len = para_len / len(fields["step"])
+
+                append_composite_coords(fields["dates"][-1], lon_values, lat, coords)
+
+                for l, level in enumerate(fields["levels"]):  # noqa: E741
+                    for i, num in enumerate(fields["number"]):
+                        for j, para in enumerate(fields["param"]):
+                            for k, s in enumerate(fields["step"]):
+                                start_index, end_index = calculate_index_bounds(
+                                    level_len, num_len, para_len, step_len, l, i, j, k
+                                )
+                                key = create_composite_key(fields["dates"][-1], level, num, para, s)
+                                if key not in range_dict:
+                                    range_dict[key] = []
+                                range_dict[key].extend(result[start_index:end_index])
+
+        if len(tree.children) != 0:
+            for child in tree.children:
+                # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
+                if is_merged_node(child):
+                    emit_leaf(child.values[0], [child.values[1]], child.result)
+                    continue
+                handle_non_leaf_node(child)
+                result = handle_specific_axes(child)
+                if result is not None:
+                    if child.axis.name == "latitude":
+                        fields["lat"] = result
+                    elif child.axis.name == "levelist":
+                        fields["levels"] = result
+                        if "has_level_axis" in fields:
+                            fields["has_level_axis"] = True
+                        if "l" in fields:
+                            fields["l"].extend(result)
+                    elif child.axis.name == "param":
+                        fields["param"] = result
+                    elif child.axis.name == date_key:
+                        fields["dates"].extend(result)
+                    elif child.axis.name == "number":
+                        fields["number"] = result
+                    elif child.axis.name == "step":
+                        fields["step"] = result
+                        if "s" in fields:
+                            fields["s"].extend(result)
+
+                self.walk_tree_reforecast(child, fields, coords, mars_metadata, range_dict)
         else:
             emit_leaf(fields["lat"], tree.values, tree.result)
 
@@ -568,6 +810,8 @@ class Encoder(ABC):
                 elif child.axis.name == "step":
                     # Step is not a timedelta! Need to normalize it
                     val = normalize_step_value(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_step(child):
@@ -593,10 +837,7 @@ class Encoder(ABC):
                 for date in fields["dates"]:
                     coords[date] = {}
                     coords[date]["composite"] = []
-                    coords[date]["t"] = []
-                    for time in child.values:
-                        datetime = pd.Timestamp(date) + time
-                        coords[date]["t"].append(str(datetime).split("+")[0] + "Z")
+                    coords[date]["t"] = [self._step_path_valid_time(date, time, fields) for time in child.values]
                 return child.values
             return None
 
@@ -711,6 +952,8 @@ class Encoder(ABC):
                 val = child.values[0]
                 if isinstance(val, np.datetime64):
                     val = str(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_month(child):
@@ -878,11 +1121,191 @@ class Encoder(ABC):
     def from_polytope(self, result, date_key: str = "date") -> dict:
         pass
 
+    @staticmethod
+    def _reforecast_stringify(value):
+        """Coerce datetime/timedelta-like values to strings for mars:metadata."""
+        if isinstance(value, (pd.Timestamp, datetime)):
+            # str() renders "YYYY-MM-DD HH:MM:SS"; emit ISO-8601 instead.
+            return value.isoformat()
+        if isinstance(value, (np.datetime64, np.timedelta64, timedelta)):
+            return str(value)
+        return value
+
+    def _step_path_valid_time(self, date, time, fields) -> str:
+        """Valid time for the date/time ``*_step`` paths: ``date + time + step``.
+
+        Their values are indexed by date and time only, so a step is applied
+        when it is single-valued.
+        """
+        steps = fields.get("step")
+        if isinstance(steps, (list, tuple, np.ndarray)) and len(steps) == 1:
+            return valid_time(date, steps[0], time)
+        return valid_time(date, 0, time)
+
+    @staticmethod
+    def _single_anoffset(mars_metadata, values):
+        """The request's ``anoffset`` for mars:metadata; only one value is supported."""
+        value = anoffset_value(values)
+        if mars_metadata.get("anoffset", value) != value:
+            raise ValueError(
+                f"Only a single anoffset value is supported, got {mars_metadata['anoffset']!r} and {value!r}"
+            )
+        return value
+
+    @staticmethod
+    def _tree_has_axis(tree, axis_name) -> bool:
+        stack = [tree]
+        while stack:
+            node = stack.pop()
+            for child in getattr(node, "children", []):
+                if is_merged_node(child):
+                    continue
+                if getattr(getattr(child, "axis", None), "name", None) == axis_name:
+                    return True
+                stack.append(child)
+        return False
+
+    def _reforecast_records(self, result):
+        """Flatten a reforecast result tree into per-value records.
+
+        Every leaf value is expanded into a dict of ``{axis_name: value}`` for
+        the full root-to-leaf path (latitude/longitude included), using the same
+        ``itertools.product`` layout the compressed leaf ``result`` array follows.
+        Handles both the compacted ``MergedTensorIndexNode`` lat/lon leaves and
+        the classic nested latitude/longitude branches.
+        """
+        import itertools
+
+        records = []
+
+        def emit(full_path, flat_result):
+            axis_names = [name for name, _ in full_path]
+            axis_values = [values for _, values in full_path]
+            for idx, combo in enumerate(itertools.product(*axis_values)):
+                value = flat_result[idx]
+                if value is None:
+                    continue
+                records.append(dict(zip(axis_names, combo)))
+                records[-1]["__value__"] = value
+
+        def recurse(node, path):
+            children = node.children
+            if len(children) == 0:
+                emit(path, node.result)
+                return
+            for child in children:
+                if is_merged_node(child):
+                    lat, lon = child.values[0], child.values[1]
+                    emit(
+                        path + [("latitude", (lat,)), ("longitude", (lon,))],
+                        child.result,
+                    )
+                    continue
+                recurse(child, path + [(child.axis.name, tuple(child.values))])
+
+        recurse(result, [])
+        return records
+
+    def _reforecast_coverages(self, result, by_step=True):
+        """Group separate-datetime (``class=ce``) records into coverages.
+
+        Coverages are keyed by ``(reference, number)`` -- plus ``step`` when
+        ``by_step`` -- where the reference datetime is ``hdate`` (or ``date``)
+        ``+ time``. Each coverage maps ``(valid, lat, lon, level)`` entries, in
+        record order, to ``{param: value}``. Coverages are returned in
+        reference -> step -> number order with ``"Forecast date"`` applied by
+        :func:`set_forecast_date`. For ``stream=efas`` the valid time is shifted
+        back by the request's single ``anoffset`` (:func:`anoffset_timedelta`).
+
+        Returns ``(coverages, param_order)``.
+        """
+        exclude_meta = {"latitude", "longitude", "hdate", "time", "step", "param", "number", "levelist"}
+
+        coverages = {}
+        param_order = []
+        anoffsets = {}
+
+        for rec in self._reforecast_records(result):
+            level = rec.get("levelist", 0)
+            try:
+                level = int(level)
+            except (TypeError, ValueError):
+                pass
+            number = rec.get("number", 0)
+            try:
+                number = int(number)
+            except (TypeError, ValueError):
+                pass
+            para = rec.get("param")
+            step = normalize_step_value(rec.get("step", 0))
+            ref = reference_datetime(rec.get("hdate", rec.get("date")), rec.get("time"))
+            if "anoffset" in rec:
+                anoffsets["anoffset"] = self._single_anoffset(anoffsets, rec["anoffset"])
+            valid = iso_utc(ref + step_to_timedelta(step) - anoffset_timedelta(rec))
+
+            key = (ref, step_to_timedelta(step), number) if by_step else (ref, number)
+            if key not in coverages:
+                meta = {}
+                for name in rec:
+                    if name == "__value__" or name in exclude_meta:
+                        continue
+                    meta[name] = self._reforecast_stringify(rec[name])
+                if "anoffset" in meta:
+                    meta["anoffset"] = anoffset_value(rec["anoffset"])
+                meta["number"] = number
+                if by_step:
+                    meta["step"] = step
+                set_forecast_date(meta, ref)
+                if "Forecast date" not in meta:
+                    # Reanalysis (efcl): the valid time on ``t`` replaces date and step.
+                    meta.pop("step", None)
+                coverages[key] = {"meta": meta, "entries": {}}
+
+            if para not in param_order:
+                param_order.append(para)
+            entry = (valid, float(rec["latitude"]), float(rec["longitude"]), level)
+            coverages[key]["entries"].setdefault(entry, {})[para] = float(rec["__value__"])
+
+        if not coverages:
+            raise ValueError("No data was returned.")
+
+        ordered = [coverages[key] for key in sorted(coverages, key=lambda k: k)]
+        return ordered, param_order
+
     def from_polytope_reforecast(self, result) -> dict:
         """Encode reforecast/reanalysis data that uses ``"hdate"`` as the time axis.
 
-        Delegates to :meth:`from_polytope` with ``date_key="hdate"``.
-        Each hdate produces a separate coverage; steps within a single
-        hdate become that coverage's t-axis values.
+        Two representations are supported:
+
+        * **Legacy merged** trees (no independent ``time`` node): ``hdate`` is the
+          branching time axis and each hdate/step produces its own coverage. This
+          is delegated to :meth:`from_polytope` with ``date_key="hdate"``.
+        * **Separate-datetime** trees (``class=ce``) where ``date``, ``hdate`` and
+          ``time`` are independent axes: the reforecast reference datetime is
+          ``hdate + time`` and one MultiPoint coverage is produced per
+          ``(reference-datetime, step, number)`` combination, holding all spatial
+          points in its ``composite`` axis and the valid time on ``t``.
+
+        Encoders whose domain is not MultiPoint (Grid, Path, PointSeries,
+        VerticalProfile) override this method.
         """
-        return self.from_polytope(result, date_key="hdate")
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
+
+        coverages, param_order = self._reforecast_coverages(result, by_step=True)
+        for para in param_order:
+            self.add_parameter(para)
+
+        for cov in coverages:
+            entries = cov["entries"]
+            valid = next(iter(entries))[0]
+            composite = []
+            for _valid, lat, lon, level in entries:
+                composite.append([lon, lat, level] if include_z else [lon, lat])
+            val_dict = {para: [values.get(para) for values in entries.values()] for para in param_order}
+            self.add_coverage(cov["meta"], {"composite": composite, "t": [valid]}, val_dict, include_z)
+
+        return self.covjson

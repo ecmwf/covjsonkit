@@ -232,7 +232,8 @@ class TestEncoder:
 
         cov = encoder.covjson["coverages"][0]
         assert set(cov["domain"]["axes"].keys()) == {"x", "y", "z", "t"}
-        assert cov["ranges"]["2t"]["axisNames"] == ["t"]
+        assert cov["ranges"]["2t"]["axisNames"] == []
+        assert cov["ranges"]["2t"]["shape"] == []
 
         print(json_string)
 

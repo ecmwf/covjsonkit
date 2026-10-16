@@ -1,9 +1,6 @@
-from datetime import datetime as dt
-from datetime import timedelta
-
 import xarray as xr
 
-from ..encoder.encoder import parse_step_string, sort_step_values
+from ..encoder.encoder import sort_step_values, valid_time
 from .decoder import Decoder
 
 
@@ -148,8 +145,8 @@ class VerticalProfile(Decoder):
             steps = []
             for coverage in self.covjson["coverages"]:
                 num.append(coverage["mars:metadata"]["number"])
-                datetime.append(coverage["mars:metadata"]["Forecast date"])
-                steps.append(coverage["mars:metadata"]["step"])
+                datetime.append(self.forecast_reference(coverage))
+                steps.append(coverage["mars:metadata"].get("step", 0))
 
             nums = list(set(num))
             datetime = list(set(datetime))
@@ -171,12 +168,10 @@ class VerticalProfile(Decoder):
                             if len(param_values[parameter][domain_idx][i][j]) <= k:
                                 param_values[parameter][domain_idx][i][j].append([])
                             for coverage in self.covjson["coverages"]:
-                                new_step = (
-                                    dt.fromisoformat(date.replace("Z", "")) + timedelta(hours=parse_step_string(step))
-                                ).isoformat() + "Z"
+                                new_step = valid_time(date, step)
                                 if (
                                     coverage["mars:metadata"]["number"] == num
-                                    and coverage["mars:metadata"]["Forecast date"] == date
+                                    and self.forecast_reference(coverage) == date
                                     and coverage["domain"]["axes"][self.x_name]["values"][0] == longitude[0]
                                     and coverage["domain"]["axes"][self.y_name]["values"][0] == latitude[0]
                                     and coverage["domain"]["axes"]["t"]["values"][0] == new_step

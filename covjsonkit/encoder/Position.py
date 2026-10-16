@@ -1,9 +1,7 @@
 import logging
 import time
 
-import pandas as pd
-
-from .encoder import Encoder, efas_anoffset_hours, is_reanalysis, valid_time
+from .encoder import Encoder, anoffset_timedelta, is_reanalysis, range_shape, valid_time
 
 
 class Position(Encoder):
@@ -41,8 +39,9 @@ class Position(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["t"]
+            shape, axis_names = range_shape(values[parameter], "t")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]
@@ -101,7 +100,6 @@ class Position(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 dv_dict = {}
@@ -175,11 +173,6 @@ class Position(Encoder):
 
         points = len(coords[fields["dates"][0]]["composite"])
 
-        # Regular forecast valid-time correction for ``class=ce, stream=efas``:
-        # valid_datetime = forecast_issue_datetime + step - anoffset (0h no-op
-        # otherwise, and restricted to efas so other streams are unaffected).
-        efas_anoffset = efas_anoffset_hours(mars_metadata)
-
         for date in fields["dates"]:
             coordinates[date] = []
             for i, point in enumerate(range(points)):
@@ -195,7 +188,9 @@ class Position(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                coordinates[date][i]["t"].append(valid_time(date, step, efas_anoffset))
+                                coordinates[date][i]["t"].append(
+                                    valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))
+                                )
                             break
                         break
                     break
@@ -251,6 +246,38 @@ class Position(Encoder):
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data into a PointSeries (Position) collection.
+
+        For legacy merged trees (no independent ``time`` axis) this delegates to
+        :meth:`from_polytope` with ``date_key="hdate"``. For separate-datetime
+        (``class=ce``) trees where ``date``, ``hdate`` and ``time`` are independent
+        axes, the reference datetime is ``hdate + time`` and one coverage is
+        produced per ``(point, levelist, number, reference)`` with a ``t`` axis
+        spanning ``reference + step`` across all steps.
+        """
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
+
+        coverages, param_order = self._reforecast_coverages(result, by_step=False)
+        for para in param_order:
+            self.add_parameter(para)
+
+        for cov in coverages:
+            series_by_point = {}
+            for (valid, lat, lon, level), values in cov["entries"].items():
+                series_by_point.setdefault((lat, lon, level), {})[valid] = values
+            for (lat, lon, level), series in series_by_point.items():
+                times = sorted(series)
+                coords = {"latitude": [lat], "longitude": [lon], "levelist": [level], "t": times}
+                val_dict = {para: [series[t].get(para) for t in times] for para in param_order}
+                self.add_coverage(dict(cov["meta"]), coords, val_dict, include_z)
 
         return self.covjson
 
@@ -399,9 +426,8 @@ class Position(Encoder):
                         for para in fields["param"]:
                             for date in fields["dates"]:
                                 for times in fields["times"]:
-                                    datetime = pd.Timestamp(date) + times
                                     coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"].append(
-                                        str(datetime).split("+")[0] + "Z"
+                                        self._step_path_valid_time(date, times, fields)
                                     )
                             break
                         break

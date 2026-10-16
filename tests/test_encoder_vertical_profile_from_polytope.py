@@ -191,8 +191,8 @@ class TestVerticalProfileFromPolytope:
             "t": {
                 "type": "NdArray",
                 "dataType": "float",
-                "shape": [1],
-                "axisNames": ["z"],
+                "shape": [],
+                "axisNames": [],
                 "values": [290.0],
             }
         }
