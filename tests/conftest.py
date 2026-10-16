@@ -264,6 +264,7 @@ def forecast_separate_datetime_tree(
     anoffset=None,
     levels=None,
     type_="cf",
+    cls="ce",
 ):
     """Build a separate-datetime *forecast* tree (class=ce, stream=efas).
 
@@ -308,7 +309,7 @@ def forecast_separate_datetime_tree(
 
     tree = chain(
         TensorIndexTree(),
-        node("class", ("ce",)),
+        node("class", (cls,)),
     )
     tip(tree).add_child(branch)
     return tree

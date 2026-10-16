@@ -1,6 +1,6 @@
 """anoffset on the separate-datetime path (``from_polytope_reforecast``) used for every class=ce request.
 
-For ``class=ce, stream=efas`` the valid time is ``date + time + step - anoffset`` while
+For ``class`` in ``ce``/``ef``/``gf`` the valid time is ``date + time + step - anoffset`` while
 ``"Forecast date"`` stays the run (``date + time``); ``anoffset`` is kept in mars:metadata as
 integer hours. Cases mirror the polytope-efas-configs anoffset fixtures.
 """
@@ -130,3 +130,10 @@ def test_multiple_anoffsets_rejected_on_from_polytope_path():
     tip(tree).add_child(make_point(50.7, 7.1, [1.0]))
     with pytest.raises(ValueError, match="single anoffset"):
         Covjsonkit().encode("CoverageCollection", "boundingbox").from_polytope(tree)
+
+
+def test_other_flood_class_applies_anoffset():
+    # class=gf (GloFAS) gets the same correction whatever its stream.
+    tree = forecast_separate_datetime_tree([(50.7, 7.1, [1.0])], T00, step=(6,), anoffset=(18,), type_="fu", cls="gf")
+    cov = _encode("timeseries", tree)["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z"]

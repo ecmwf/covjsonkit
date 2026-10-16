@@ -418,7 +418,7 @@ class TimeSeries(Encoder):
                 time_off = d.get("time")
                 if "anoffset" in d:
                     anoffsets["anoffset"] = self._single_anoffset(anoffsets, d["anoffset"])
-                # efas: step is counted from the analysis reference, anoffset before the run.
+                # ce/ef/gf: step is counted from the analysis reference, anoffset before the run.
                 stamp = valid_datetime(hdate, step, time_off, anoffset_timedelta(d))
 
                 # Stream determines the coverage grouping for class=ce:

@@ -307,15 +307,19 @@ def anoffset_value(values):
     return int(hours) if hours.is_integer() else hours
 
 
+#: MARS classes whose ``anoffset`` shifts the valid time (CEMS flood: EFAS and GloFAS), whatever the stream.
+ANOFFSET_CLASSES = frozenset({"ce", "ef", "gf"})
+
+
 def anoffset_timedelta(mars_metadata) -> timedelta:
-    """The ``anoffset`` subtracted from valid times, for ``class=ce, stream=efas`` only.
+    """The ``anoffset`` subtracted from valid times, for the :data:`ANOFFSET_CLASSES` only.
 
     ``anoffset`` shifts the analysis reference time back from the forecast run
     (``date + time``) and ``step`` is counted from that shifted reference, so
-    ``valid = date + time + step - anoffset``. Other streams may carry an
+    ``valid = date + time + step - anoffset``. Other classes may carry an
     ``anoffset`` but are not shifted; without one this is zero.
     """
-    if mars_metadata.get("class") != "ce" or mars_metadata.get("stream") != "efas":
+    if mars_metadata.get("class") not in ANOFFSET_CLASSES:
         return timedelta(0)
     value = mars_metadata.get("anoffset")
     if value is None:
@@ -1214,7 +1218,7 @@ class Encoder(ABC):
         ``+ time``. Each coverage maps ``(valid, lat, lon, level)`` entries, in
         record order, to ``{param: value}``. Coverages are returned in
         reference -> step -> number order with ``"Forecast date"`` applied by
-        :func:`set_forecast_date`. For ``stream=efas`` the valid time is shifted
+        :func:`set_forecast_date`. For the :data:`ANOFFSET_CLASSES` the valid time is shifted
         back by the request's single ``anoffset`` (:func:`anoffset_timedelta`).
 
         Returns ``(coverages, param_order)``.

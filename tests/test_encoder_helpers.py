@@ -71,16 +71,17 @@ class TestAnoffsetTimedelta:
         mm = {"class": "ce", "stream": "efas", "anoffset": None}
         assert anoffset_timedelta(mm) == timedelta(0)
 
-    def test_non_efas_stream_ignored(self):
-        # anoffset present but stream is not efas -> not applied.
+    @pytest.mark.parametrize("cls", ["ce", "ef", "gf"])
+    @pytest.mark.parametrize("stream", ["efas", "efcl", "oper"])
+    def test_flood_classes_apply_whatever_the_stream(self, cls, stream):
+        mm = {"class": cls, "stream": stream, "anoffset": 6}
+        assert anoffset_timedelta(mm) == timedelta(hours=6)
+
+    def test_other_class_ignored(self):
+        # anoffset present but class is not ce/ef/gf -> not applied.
         mm = {"class": "od", "stream": "oper", "anoffset": 6}
         assert anoffset_timedelta(mm) == timedelta(0)
 
-    def test_efcl_stream_ignored(self):
-        # Reanalysis (efcl) must not receive the efas correction.
-        mm = {"class": "ce", "stream": "efcl", "anoffset": 6}
-        assert anoffset_timedelta(mm) == timedelta(0)
-
-    def test_wrong_class_ignored(self):
+    def test_other_class_with_efas_stream_ignored(self):
         mm = {"class": "od", "stream": "efas", "anoffset": 6}
         assert anoffset_timedelta(mm) == timedelta(0)
