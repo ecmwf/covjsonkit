@@ -177,9 +177,12 @@ def reference_datetime(date, time=None) -> pd.Timestamp:
     return to_naive_utc(date) + time_to_timedelta(time)
 
 
-def valid_datetime(date, step=0, time=None) -> pd.Timestamp:
-    """Valid datetime: ``date + time + step`` (see :func:`step_to_timedelta`)."""
-    return reference_datetime(date, time) + step_to_timedelta(step)
+def valid_datetime(date, step=0, time=None, anoffset=None) -> pd.Timestamp:
+    """Valid datetime: ``date + time + step - anoffset`` (see :func:`step_to_timedelta`).
+
+    ``anoffset`` is a time difference in hours (see :func:`anoffset_timedelta`).
+    """
+    return reference_datetime(date, time) + step_to_timedelta(step) - step_to_timedelta(anoffset)
 
 
 def sort_step_values(steps: list) -> list:
@@ -280,14 +283,48 @@ def normalize_step_value(step):
     return str(step)
 
 
-def valid_time(date, step=0, time=None) -> str:
-    """Return the ISO-8601 valid-time string ``date + time + step`` with a trailing ``"Z"``.
+def valid_time(date, step=0, time=None, anoffset=None) -> str:
+    """Return the ISO-8601 valid-time string ``date + time + step - anoffset`` with a trailing ``"Z"``.
 
     ``date`` may be any value accepted by :func:`to_naive_utc`, ``time`` any
-    value accepted by :func:`time_to_timedelta` and ``step`` any value accepted
-    by :func:`step_to_timedelta`.
+    value accepted by :func:`time_to_timedelta`, and ``step`` and ``anoffset``
+    any value accepted by :func:`step_to_timedelta`.
     """
-    return iso_utc(valid_datetime(date, step, time))
+    return iso_utc(valid_datetime(date, step, time, anoffset))
+
+
+def anoffset_value(values):
+    """The single ``anoffset`` of a tree node or record, as integer hours when whole.
+
+    MARS defines ``anoffset`` as an integer number of hours; polytope may hand it
+    over as a string. Only one ``anoffset`` per request is supported.
+    """
+    if isinstance(values, (list, tuple, np.ndarray)):
+        if len(values) != 1:
+            raise ValueError(f"Only a single anoffset value is supported, got {list(values)!r}")
+        values = values[0]
+    hours = step_to_timedelta(values).total_seconds() / 3600.0
+    return int(hours) if hours.is_integer() else hours
+
+
+#: MARS classes whose ``anoffset`` shifts the valid time (CEMS flood: EFAS and GloFAS), whatever the stream.
+ANOFFSET_CLASSES = frozenset({"ce", "ef", "gf"})
+
+
+def anoffset_timedelta(mars_metadata) -> timedelta:
+    """The ``anoffset`` subtracted from valid times, for the :data:`ANOFFSET_CLASSES` only.
+
+    ``anoffset`` shifts the analysis reference time back from the forecast run
+    (``date + time``) and ``step`` is counted from that shifted reference, so
+    ``valid = date + time + step - anoffset``. Other classes may carry an
+    ``anoffset`` but are not shifted; without one this is zero.
+    """
+    if mars_metadata.get("class") not in ANOFFSET_CLASSES:
+        return timedelta(0)
+    value = mars_metadata.get("anoffset")
+    if value is None:
+        return timedelta(0)
+    return timedelta(hours=anoffset_value(value))
 
 
 def is_reanalysis(mars_metadata: dict, date_key: str = "date") -> bool:
@@ -492,6 +529,8 @@ class Encoder(ABC):
                 elif child.axis.name == "step":
                     # Step is not a timedelta! Need to normalize it
                     val = normalize_step_value(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes(child):
@@ -655,6 +694,8 @@ class Encoder(ABC):
                 elif child.axis.name == "step":
                     # Step is not a timedelta! Need to normalize it
                     val = normalize_step_value(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes(child):
@@ -773,6 +814,8 @@ class Encoder(ABC):
                 elif child.axis.name == "step":
                     # Step is not a timedelta! Need to normalize it
                     val = normalize_step_value(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_step(child):
@@ -913,6 +956,8 @@ class Encoder(ABC):
                 val = child.values[0]
                 if isinstance(val, np.datetime64):
                     val = str(val)
+                if child.axis.name == "anoffset":
+                    val = self._single_anoffset(mars_metadata, child.values)
                 mars_metadata[child.axis.name] = val
 
         def handle_specific_axes_month(child):
@@ -1102,6 +1147,16 @@ class Encoder(ABC):
         return valid_time(date, 0, time)
 
     @staticmethod
+    def _single_anoffset(mars_metadata, values):
+        """The request's ``anoffset`` for mars:metadata; only one value is supported."""
+        value = anoffset_value(values)
+        if mars_metadata.get("anoffset", value) != value:
+            raise ValueError(
+                f"Only a single anoffset value is supported, got {mars_metadata['anoffset']!r} and {value!r}"
+            )
+        return value
+
+    @staticmethod
     def _tree_has_axis(tree, axis_name) -> bool:
         stack = [tree]
         while stack:
@@ -1163,7 +1218,8 @@ class Encoder(ABC):
         ``+ time``. Each coverage maps ``(valid, lat, lon, level)`` entries, in
         record order, to ``{param: value}``. Coverages are returned in
         reference -> step -> number order with ``"Forecast date"`` applied by
-        :func:`set_forecast_date`.
+        :func:`set_forecast_date`. For the :data:`ANOFFSET_CLASSES` the valid time is shifted
+        back by the request's single ``anoffset`` (:func:`anoffset_timedelta`).
 
         Returns ``(coverages, param_order)``.
         """
@@ -1171,6 +1227,7 @@ class Encoder(ABC):
 
         coverages = {}
         param_order = []
+        anoffsets = {}
 
         for rec in self._reforecast_records(result):
             level = rec.get("levelist", 0)
@@ -1186,7 +1243,9 @@ class Encoder(ABC):
             para = rec.get("param")
             step = normalize_step_value(rec.get("step", 0))
             ref = reference_datetime(rec.get("hdate", rec.get("date")), rec.get("time"))
-            valid = iso_utc(ref + step_to_timedelta(step))
+            if "anoffset" in rec:
+                anoffsets["anoffset"] = self._single_anoffset(anoffsets, rec["anoffset"])
+            valid = iso_utc(ref + step_to_timedelta(step) - anoffset_timedelta(rec))
 
             key = (ref, step_to_timedelta(step), number) if by_step else (ref, number)
             if key not in coverages:
@@ -1195,6 +1254,8 @@ class Encoder(ABC):
                     if name == "__value__" or name in exclude_meta:
                         continue
                     meta[name] = self._reforecast_stringify(rec[name])
+                if "anoffset" in meta:
+                    meta["anoffset"] = anoffset_value(rec["anoffset"])
                 meta["number"] = number
                 if by_step:
                     meta["step"] = step

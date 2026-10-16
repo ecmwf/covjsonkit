@@ -1,6 +1,6 @@
 import xarray as xr
 
-from ..encoder.encoder import sort_step_values, valid_time
+from ..encoder.encoder import anoffset_timedelta, sort_step_values, valid_time
 from .decoder import Decoder
 
 
@@ -168,7 +168,9 @@ class VerticalProfile(Decoder):
                             if len(param_values[parameter][domain_idx][i][j]) <= k:
                                 param_values[parameter][domain_idx][i][j].append([])
                             for coverage in self.covjson["coverages"]:
-                                new_step = valid_time(date, step)
+                                new_step = valid_time(
+                                    date, step, anoffset=anoffset_timedelta(coverage["mars:metadata"])
+                                )
                                 if (
                                     coverage["mars:metadata"]["number"] == num
                                     and self.forecast_reference(coverage) == date

@@ -170,6 +170,84 @@ class TestTimeseriesFromPolytope:
             assert cov["ranges"]["dis06"]["values"] == vals
             assert cov["mars:metadata"] == {**shared_metadata, "Forecast date": date}
 
+    def test_efas_anoffset_shifts_valid_time(self):
+        # class=ce, stream=efas regular forecast with anoffset present:
+        # valid_datetime = forecast_issue_datetime + step - anoffset.
+        # Here 00:00 + step 6h - anoffset 6h = 00:00.
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (np.datetime64("2026-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("model", ("lisflood",)),
+            node("origin", ("ecmf",)),
+            node("param", ("240023",)),
+            node("step", (6,)),
+            node("stream", ("efas",)),
+            node("type", ("fc",)),
+            node("anoffset", (6,)),
+            make_point(51.5, 6.5, [12.5]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
+
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-01-01T00:00:00Z"]
+        assert cov["ranges"]["dis06"]["values"] == [12.5]
+        # anoffset is preserved in the metadata.
+        assert cov["mars:metadata"]["anoffset"] == 6
+
+    def test_efas_anoffset_absent_leaves_valid_time_unchanged(self):
+        # No anoffset in an efas request → valid-time is plain date + step
+        # (00:00 + 6h = 06:00), defaulting anoffset to 0h.
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("ce",)),
+            node("date", (np.datetime64("2026-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("model", ("lisflood",)),
+            node("origin", ("ecmf",)),
+            node("param", ("240023",)),
+            node("step", (6,)),
+            node("stream", ("efas",)),
+            node("type", ("fc",)),
+            make_point(51.5, 6.5, [12.5]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
+
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-01-01T06:00:00Z"]
+        assert "anoffset" not in cov["mars:metadata"]
+
+    def test_anoffset_ignored_for_non_efas_stream(self):
+        # anoffset can appear on other streams, but the correction is restricted
+        # to stream=efas. Here class=od, stream=oper with anoffset=6 must NOT be
+        # shifted: valid-time stays date + step (00:00 + 6h = 06:00).
+        tree = chain(
+            TensorIndexTree(),
+            node("class", ("od",)),
+            node("date", (np.datetime64("2026-01-01T00:00:00"),)),
+            node("domain", ("g",)),
+            node("expver", ("0001",)),
+            node("levtype", ("sfc",)),
+            node("param", ("167",)),
+            node("step", (6,)),
+            node("stream", ("oper",)),
+            node("type", ("fc",)),
+            node("anoffset", (6,)),
+            make_point(51.5, 6.5, [264.9]),
+        )
+
+        covjson = Covjsonkit().encode("CoverageCollection", "PointSeries").from_polytope(tree)
+
+        cov = covjson["coverages"][0]
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-01-01T06:00:00Z"]
+
     def test_multiple_params(self):
         # 1 date, 2 params (167 = 2t, 168 = 2d), 1 step, 1 point → 1 coverage with both params
         tree = chain(

@@ -6,6 +6,7 @@ import pandas as pd
 
 from .encoder import (
     Encoder,
+    anoffset_timedelta,
     iso_utc,
     range_shape,
     reference_datetime,
@@ -273,7 +274,9 @@ class TimeSeries(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                coordinates[date][i]["t"].append(valid_time(date, step))
+                                coordinates[date][i]["t"].append(
+                                    valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))
+                                )
                             break
                         break
                     break
@@ -369,6 +372,7 @@ class TimeSeries(Encoder):
         coverages = {}
         coverage_order = []
         param_order = []
+        anoffsets = {}
         # Set True as soon as a forecast (efas) coverage is created, so the final
         # emission can be reordered date -> time -> point (see below).
         forecast_result = False
@@ -412,7 +416,10 @@ class TimeSeries(Encoder):
                 step = d.get("step", 0)
                 hdate = d.get("hdate", d.get("date"))
                 time_off = d.get("time")
-                stamp = valid_datetime(hdate, step, time_off)
+                if "anoffset" in d:
+                    anoffsets["anoffset"] = self._single_anoffset(anoffsets, d["anoffset"])
+                # ce/ef/gf: step is counted from the analysis reference, anoffset before the run.
+                stamp = valid_datetime(hdate, step, time_off, anoffset_timedelta(d))
 
                 # Stream determines the coverage grouping for class=ce:
                 #   * efcl (reforecast/reanalysis): collapse all hdates into a
@@ -440,6 +447,8 @@ class TimeSeries(Encoder):
                         if name in exclude_meta:
                             continue
                         meta[name] = stringify(d[name])
+                    if "anoffset" in meta:
+                        meta["anoffset"] = anoffsets["anoffset"]
                     meta["number"] = number
                     meta["levelist"] = level
                     # efas: Forecast date is the run (date + time); efcl: none;
