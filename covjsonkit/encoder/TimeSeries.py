@@ -379,7 +379,7 @@ class TimeSeries(Encoder):
 
         import numpy as np
 
-        from .encoder import is_merged_node
+        from .encoder import bulk_point_results, is_bulk_node, is_merged_node
 
         # Spatial reference system (temporal RS is implied by the t-axis).
         self.add_reference(
@@ -518,6 +518,14 @@ class TimeSeries(Encoder):
                 emit(path, node.result)
                 return
             for child in children:
+                if is_bulk_node(child):
+                    # Bulk lat/lon leaf: expand to one single-point leaf per coordinate.
+                    for lat, lon, point_result in bulk_point_results(child):
+                        emit(
+                            path + [("latitude", (lat,)), ("longitude", (lon,))],
+                            point_result,
+                        )
+                    continue
                 if is_merged_node(child):
                     # Compacted lat/lon leaf: carries its own (lat, lon) + result.
                     lat, lon = child.values[0], child.values[1]
