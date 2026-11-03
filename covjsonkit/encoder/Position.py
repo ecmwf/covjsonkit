@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .encoder import Encoder
+from .encoder import Encoder, normalize_step_value
 
 
 class Position(Encoder):
@@ -98,7 +98,6 @@ class Position(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 dv_dict = {}
@@ -253,6 +252,111 @@ class Position(Encoder):
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data into a PointSeries (Position) collection.
+
+        For legacy merged trees (no independent ``time`` axis) this delegates to
+        :meth:`from_polytope` with ``date_key="hdate"``. For separate-datetime
+        (``class=ce``) trees where ``date``, ``hdate`` and ``time`` are independent
+        axes, the reference datetime is ``hdate + time`` and one coverage is
+        produced per ``(point, levelist, number, reference)`` with a ``t`` axis
+        spanning ``reference + step`` across all steps.
+        """
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        self.add_reference(
+            {
+                "coordinates": ["latitude", "longitude", "levelist"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            }
+        )
+
+        exclude_meta = {
+            "latitude",
+            "longitude",
+            "hdate",
+            "time",
+            "step",
+            "param",
+            "number",
+            "levelist",
+        }
+
+        coverages = {}
+        coverage_order = []
+        param_order = []
+
+        for rec in self._reforecast_records(result):
+            value = float(rec["__value__"])
+            lat = float(rec["latitude"])
+            lon = float(rec["longitude"])
+            level = rec.get("levelist", 0)
+            try:
+                level = int(level)
+            except (TypeError, ValueError):
+                pass
+            number = rec.get("number", 0)
+            try:
+                number = int(number)
+            except (TypeError, ValueError):
+                pass
+            para = rec.get("param")
+            step = normalize_step_value(rec.get("step", 0))
+            ref = self._reforecast_reference(rec)
+            valid = ref + self._reforecast_step_timedelta(step)
+            valid_iso = valid.isoformat() + "Z"
+
+            key = (lat, lon, level, number, ref.isoformat())
+            if key not in coverages:
+                meta = {}
+                for name in rec:
+                    if name == "__value__" or name in exclude_meta:
+                        continue
+                    meta[name] = self._reforecast_stringify(rec[name])
+                meta["number"] = number
+                meta["Forecast date"] = ref.isoformat() + "Z"
+                coverages[key] = {
+                    "lat": lat,
+                    "lon": lon,
+                    "level": level,
+                    "meta": meta,
+                    "values": {},
+                    "times": {},
+                }
+                coverage_order.append(key)
+
+            if para not in param_order:
+                param_order.append(para)
+            cov = coverages[key]
+            cov["times"][valid_iso] = None
+            cov["values"].setdefault(para, {})[valid_iso] = value
+
+        if not coverages:
+            raise ValueError("No data was returned.")
+
+        for para in param_order:
+            self.add_parameter(para)
+
+        for key in coverage_order:
+            cov = coverages[key]
+            times = sorted(cov["times"].keys())
+            coords = {
+                "latitude": [cov["lat"]],
+                "longitude": [cov["lon"]],
+                "levelist": [cov["level"]],
+                "t": times,
+            }
+            val_dict = {}
+            for para, time_vals in cov["values"].items():
+                val_dict[para] = [time_vals[t] for t in times]
+            self.add_coverage(cov["meta"], coords, val_dict)
 
         return self.covjson
 
