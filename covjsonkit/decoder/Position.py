@@ -2,6 +2,7 @@ import pandas as pd
 import xarray as xr
 
 from .decoder import Decoder
+from .TimeSeries import TimeSeries
 
 
 class Position(Decoder):
@@ -108,6 +109,9 @@ class Position(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
+        if not all("Forecast date" in cov.get("mars:metadata", {}) for cov in self.covjson["coverages"]):
+            # Reanalysis (efcl) coverages carry only valid times on ``t``.
+            return TimeSeries._to_xarray_no_forecast_date(self)
         if self.z_name:
             dims = ["latitude", "longitude", "levelist", "number", "datetime", "t"]
         else:

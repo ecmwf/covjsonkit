@@ -1,6 +1,12 @@
 import logging
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    is_reanalysis,
+    normalize_step_value,
+    range_shape,
+    valid_time,
+)
 
 
 class Path(Encoder):
@@ -40,8 +46,9 @@ class Path(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["composite"]
+            shape, axis_names = range_shape(values[parameter], "composite")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -236,6 +243,38 @@ class Path(Encoder):
                 else:
                     mm["Forecast date"] = date
                 self.add_coverage(mm, coords[date], val_dict, include_z)
+
+        return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data into a Trajectory collection.
+
+        Legacy merged trees (no independent ``time`` axis) are delegated to
+        :meth:`from_polytope` with ``date_key="hdate"``. For separate-datetime
+        (``class=ce``) trees one coverage is produced per
+        ``(reference = hdate + time, number)`` whose composite holds
+        ``[t, x, y(, z)]`` for every point, ``t`` being its valid time.
+        """
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
+
+        coverages, param_order = self._reforecast_coverages(result, by_step=False)
+        for para in param_order:
+            self.add_parameter(para)
+
+        for cov in coverages:
+            # Stable sort by valid time keeps the path's point order within a step.
+            entries = sorted(cov["entries"].items(), key=lambda item: item[0][0])
+            composite = [
+                [valid, lon, lat, level] if include_z else [valid, lon, lat] for (valid, lat, lon, level), _ in entries
+            ]
+            val_dict = {para: [values.get(para) for _, values in entries] for para in param_order}
+            meta = dict(cov["meta"])
+            meta.pop("levelist", None)
+            self.add_coverage(meta, {"composite": composite}, val_dict, include_z)
 
         return self.covjson
 

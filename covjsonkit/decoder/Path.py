@@ -145,21 +145,14 @@ class Path(Decoder):
             if "step" not in coverage["mars:metadata"]:
                 coverage["mars:metadata"]["step"] = 0
             steps.append(coverage["mars:metadata"]["step"])
-            datetimes.append(coverage["mars:metadata"]["Forecast date"])
+            datetime = self.forecast_reference(coverage)
+            datetimes.append(datetime)
+            number = coverage["mars:metadata"]["number"]
+            step = coverage["mars:metadata"]["step"]
             for parameter in self.parameters:
-                # values[parameter].append(coverage["ranges"][parameter]["values"])
-                if coverage["mars:metadata"]["Forecast date"] not in values[parameter]:
-                    values[parameter][coverage["mars:metadata"]["Forecast date"]] = {}
-                if (
-                    coverage["mars:metadata"]["number"]
-                    not in values[parameter][coverage["mars:metadata"]["Forecast date"]]
-                ):
-                    values[parameter][coverage["mars:metadata"]["Forecast date"]][
-                        coverage["mars:metadata"]["number"]
-                    ] = {}
-                values[parameter][coverage["mars:metadata"]["Forecast date"]][coverage["mars:metadata"]["number"]][
-                    coverage["mars:metadata"]["step"]
-                ] = coverage["ranges"][parameter]["values"]
+                values[parameter].setdefault(datetime, {}).setdefault(number, {})[step] = coverage["ranges"][parameter][
+                    "values"
+                ]
 
         datetimes = list(set(datetimes))
         numbers = list(set(numbers))
@@ -173,7 +166,10 @@ class Path(Decoder):
                 for j, number in enumerate(numbers):
                     new_values[parameter][i].append([])
                     for k, step in enumerate(steps):
-                        new_values[parameter][i][j].append(values[parameter][datetime][number][step])
+                        cell = values[parameter].get(datetime, {}).get(number, {}).get(step)
+                        if cell is None:
+                            cell = [None] * len(longitude)
+                        new_values[parameter][i][j].append(cell)
 
         for parameter in self.parameters:
             dataarray = xr.DataArray(new_values[parameter], dims=dims)

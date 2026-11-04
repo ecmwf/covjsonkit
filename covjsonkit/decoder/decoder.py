@@ -91,6 +91,25 @@ class Decoder(ABC):
                 mars_metadata.append(coverage["mars:metadata"])
         return mars_metadata
 
+    @staticmethod
+    def forecast_reference(coverage):
+        """Return a coverage's ``"Forecast date"``, or its first valid time when absent.
+
+        Reanalysis coverages (``class=ce``, ``stream=efcl``) carry no forecast
+        date; their valid time (from ``t`` or the composite ``t`` coordinate)
+        identifies them instead.
+        """
+        mars_metadata = coverage.get("mars:metadata", {})
+        if "Forecast date" in mars_metadata:
+            return mars_metadata["Forecast date"]
+        axes = coverage["domain"]["axes"]
+        if "t" in axes:
+            return axes["t"]["values"][0]
+        composite = axes.get("composite", {})
+        if "t" in composite.get("coordinates", []):
+            return composite["values"][0][composite["coordinates"].index("t")]
+        return 0
+
     @abstractmethod
     def get_ranges(self):
         pass

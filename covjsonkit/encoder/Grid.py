@@ -123,7 +123,7 @@ class Grid(Encoder):
                         arr = dataset[dv].sel(datetimes=datetime, number=num, steps=step).values
                         dv_dict[dv] = arr.ravel().tolist()
 
-                    coords = {"t": [str(step)], "y": y_vals, "x": x_vals}
+                    coords = {"t": [valid_time(datetime, step)], "y": y_vals, "x": x_vals}
                     if include_z:
                         coords["z"] = z_vals
                     self.add_coverage(mars_metadata, coords, dv_dict, include_z)
@@ -227,9 +227,58 @@ class Grid(Encoder):
                     mm.pop("Forecast date", None)
                     mm.pop("step", None)
                 else:
-                    mm["step"] = normalize_step_value(step)
+                    if len(fields["step"]) == 1:
+                        mm["step"] = normalize_step_value(fields["step"][0])
+                    else:
+                        # ``t`` carries the valid time of every step.
+                        mm.pop("step", None)
                     mm["Forecast date"] = date
                 self.add_coverage(mm, coordinates[date], val_dict, include_z)
+
+        return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data into a Grid collection.
+
+        Legacy merged trees (no independent ``time`` axis) are delegated to
+        :meth:`from_polytope` with ``date_key="hdate"``. For separate-datetime
+        (``class=ce``) trees one coverage is produced per
+        ``(reference = hdate + time, number)`` whose ``t`` axis holds the valid
+        time of every step, with values ordered ``[t, (z,) y, x]``.
+        """
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
+
+        coverages, param_order = self._reforecast_coverages(result, by_step=False)
+        for para in param_order:
+            self.add_parameter(para)
+
+        for cov in coverages:
+            entries = cov["entries"]
+            times = sorted({valid for valid, _lat, _lon, _level in entries})
+            levels = list(dict.fromkeys(level for _valid, _lat, _lon, level in entries))
+            lats = list(dict.fromkeys(lat for _valid, lat, _lon, _level in entries))
+            lons = list(dict.fromkeys(lon for _valid, _lat, lon, _level in entries))
+
+            coords = {"t": times, "y": lats, "x": lons}
+            if include_z:
+                coords["z"] = levels
+                self.shp = [len(times), len(levels), len(lats), len(lons)]
+            else:
+                self.shp = [len(times), len(lats), len(lons)]
+
+            val_dict = {para: [] for para in param_order}
+            for valid in times:
+                for level in levels:
+                    for lat in lats:
+                        for lon in lons:
+                            values = entries.get((valid, lat, lon, level), {})
+                            for para in param_order:
+                                val_dict[para].append(values.get(para))
+            self.add_coverage(dict(cov["meta"]), coords, val_dict, include_z)
 
         return self.covjson
 

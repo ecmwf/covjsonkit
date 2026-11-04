@@ -1,10 +1,13 @@
 import logging
 import time
-from datetime import datetime, timedelta
 
-import pandas as pd
-
-from .encoder import Encoder, is_reanalysis, normalize_step_value
+from .encoder import (
+    Encoder,
+    is_reanalysis,
+    normalize_step_value,
+    range_shape,
+    valid_time,
+)
 
 
 class VerticalProfile(Encoder):
@@ -41,8 +44,9 @@ class VerticalProfile(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = ["z"]
+            shape, axis_names = range_shape(values[parameter], "z")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[parameter]
 
     def add_mars_metadata(self, coverage, metadata):
@@ -95,7 +99,6 @@ class VerticalProfile(Encoder):
             self.add_parameter(data_var)
 
         for dataset in datasets:
-
             # Process each "number" in the dataset
             for num in dataset["number"].values:
                 for step in dataset["time"].values:
@@ -115,7 +118,7 @@ class VerticalProfile(Encoder):
                             "latitude": [float(x) for x in dataset["latitude"].values],
                             "longitude": [float(x) for x in dataset["longitude"].values],
                             "levelist": [float(x) for x in dataset["levelist"].values],
-                            "t": [str(x) for x in dataset["datetime"].values],
+                            "t": [valid_time(x, step) for x in dataset["datetime"].values],
                         },
                         dv_dict,
                     )
@@ -165,24 +168,12 @@ class VerticalProfile(Encoder):
             for i, point in enumerate(range(points)):
                 coordinates[date][i] = []
                 for step in fields["step"]:
-                    date_format = "%Y%m%dT%H%M%S"
-                    new_date = pd.Timestamp(date).strftime(date_format)
-                    start_time = datetime.strptime(new_date, date_format)
-                    # add current date to list by converting it to iso format
-                    if isinstance(step, timedelta):
-                        stamp = start_time + step
-                    else:
-                        try:
-                            int(step)
-                        except ValueError:
-                            step = step[0]
-                        stamp = start_time + timedelta(hours=int(step))
                     coordinates[date][i].append(
                         {
                             "latitude": [coords[date]["composite"][i][0]],
                             "longitude": [coords[date]["composite"][i][1]],
                             "levelist": list(levels),
-                            "t": [stamp.isoformat() + "Z"],
+                            "t": [valid_time(date, step)],
                         }
                     )
 
@@ -235,6 +226,38 @@ class VerticalProfile(Encoder):
         delta = end - start
         logging.debug("Coverage creation: %s", end)  # noqa: E501
         logging.debug("Coverage creation: %s", delta)  # noqa: E501
+
+        return self.covjson
+
+    def from_polytope_reforecast(self, result) -> dict:
+        """Encode reforecast/reanalysis data into a VerticalProfile collection.
+
+        For legacy merged trees (no independent ``time`` axis) this delegates to
+        :meth:`from_polytope` with ``date_key="hdate"``. For separate-datetime
+        (``class=ce``) trees where ``date``, ``hdate`` and ``time`` are independent
+        axes, the reference datetime is ``hdate + time`` and one coverage is
+        produced per ``(point, number, reference, step)`` holding all levels in
+        its ``z`` axis and a single valid time ``reference + step``.
+        """
+        if not self._tree_has_axis(result, "time"):
+            return self.from_polytope(result, date_key="hdate")
+
+        self._set_references()
+
+        coverages, param_order = self._reforecast_coverages(result, by_step=True)
+        for para in param_order:
+            self.add_parameter(para)
+
+        for cov in coverages:
+            profile_by_point = {}
+            for (valid, lat, lon, level), values in cov["entries"].items():
+                profile = profile_by_point.setdefault((lat, lon), {"t": valid, "levels": {}})
+                profile["levels"][level] = values
+            for (lat, lon), profile in profile_by_point.items():
+                levels = sorted(profile["levels"])
+                coords = {"latitude": [lat], "longitude": [lon], "levelist": levels, "t": [profile["t"]]}
+                val_dict = {para: [profile["levels"][lev].get(para) for lev in levels] for para in param_order}
+                self.add_coverage(dict(cov["meta"]), coords, val_dict)
 
         return self.covjson
 
