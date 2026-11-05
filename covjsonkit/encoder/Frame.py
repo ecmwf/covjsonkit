@@ -2,6 +2,7 @@ import logging
 
 from .encoder import (
     Encoder,
+    anoffset_timedelta,
     is_reanalysis,
     normalize_step_value,
     range_shape,
@@ -117,7 +118,7 @@ class Frame(Encoder):
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
                     cov_coords = dict(coords)
-                    cov_coords["t"] = [valid_time(datetime, step)]
+                    cov_coords["t"] = [valid_time(datetime, step, anoffset=anoffset_timedelta(mars_metadata))]
                     self.add_coverage(mars_metadata, cov_coords, dv_dict, include_z)
 
         return self.covjson
@@ -197,7 +198,7 @@ class Frame(Encoder):
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
                     cov_coords = dict(coords[date])
-                    cov_coords["t"] = [valid_time(date, step)]
+                    cov_coords["t"] = [valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))]
                     if reanalysis:
                         mm.pop("Forecast date", None)
                         mm.pop("step", None)

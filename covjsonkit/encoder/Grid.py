@@ -1,7 +1,13 @@
 import logging
 import time
 
-from .encoder import Encoder, is_reanalysis, normalize_step_value, valid_time
+from .encoder import (
+    Encoder,
+    anoffset_timedelta,
+    is_reanalysis,
+    normalize_step_value,
+    valid_time,
+)
 
 
 class Grid(Encoder):
@@ -123,7 +129,11 @@ class Grid(Encoder):
                         arr = dataset[dv].sel(datetimes=datetime, number=num, steps=step).values
                         dv_dict[dv] = arr.ravel().tolist()
 
-                    coords = {"t": [valid_time(datetime, step)], "y": y_vals, "x": x_vals}
+                    coords = {
+                        "t": [valid_time(datetime, step, anoffset=anoffset_timedelta(mars_metadata))],
+                        "y": y_vals,
+                        "x": x_vals,
+                    }
                     if include_z:
                         coords["z"] = z_vals
                     self.add_coverage(mars_metadata, coords, dv_dict, include_z)
@@ -188,7 +198,9 @@ class Grid(Encoder):
         for date in coords.keys():
             coordinates[date] = {}
             # ``t`` axis holds the valid-time (forecast date + step) for each step.
-            coordinates[date]["t"] = [valid_time(date, s) for s in fields["step"]]
+            coordinates[date]["t"] = [
+                valid_time(date, s, anoffset=anoffset_timedelta(mars_metadata)) for s in fields["step"]
+            ]
             if include_z:
                 coordinates[date]["z"] = list(fields["levels"])
             coordinates[date]["y"] = []

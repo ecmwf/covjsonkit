@@ -3,6 +3,7 @@ import time
 
 from .encoder import (
     Encoder,
+    anoffset_timedelta,
     is_reanalysis,
     normalize_step_value,
     range_shape,
@@ -126,7 +127,7 @@ class BoundingBox(Encoder):
                         dv_dict[dv] = dataset[dv].sel(number=num, steps=step, datetimes=datetime).values.tolist()
 
                     cov_coords = dict(coords)
-                    cov_coords["t"] = [valid_time(datetime, step)]
+                    cov_coords["t"] = [valid_time(datetime, step, anoffset=anoffset_timedelta(mars_metadata))]
                     self.add_coverage(mars_metadata, cov_coords, dv_dict, include_z)
 
         # Return the generated CoverageJSON
@@ -213,7 +214,7 @@ class BoundingBox(Encoder):
                     mm["step"] = normalize_step_value(step)
                     # ``t`` is the valid-time (forecast date + step offset).
                     cov_coords = dict(coords[date])
-                    cov_coords["t"] = [valid_time(date, step)]
+                    cov_coords["t"] = [valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))]
                     if reanalysis:
                         # Reanalysis (class=ce, stream=efcl): expose only the
                         # valid-time; drop the scalar forecast-date metadata.
