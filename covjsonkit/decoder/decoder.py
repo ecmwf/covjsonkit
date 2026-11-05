@@ -1,9 +1,42 @@
+import functools
 import json
 from abc import ABC, abstractmethod
+
+import numpy as np
 
 from covjsonkit.Coverage import Coverage
 from covjsonkit.CoverageCollection import CoverageCollection
 from covjsonkit.utils import coverage_to_coveragecollection
+
+
+def _is_numeric_or_null(array) -> bool:
+    """True if every element of an object array is ``None`` or a real number (not ``bool``/``str``)."""
+    return all(
+        value is None or (isinstance(value, (int, float, np.number)) and not isinstance(value, (bool, np.bool_)))
+        for value in array.ravel()
+    )
+
+
+def nulls_as_nan(method):
+    """Decorate a ``to_xarray`` method so that null range values come out as ``NaN``.
+
+    Points without data are encoded with ``null`` range values (``None`` once parsed).
+    Building a dataset from nested lists that contain ``None`` gives an ``object`` array;
+    this casts those variables to ``float`` so the nulls become ``NaN``. Only genuinely
+    numeric variables are converted: a variable holding strings (or any other non-numeric
+    value) is left as it is, even if its strings happen to look like numbers.
+    """
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        result = method(self, *args, **kwargs)
+        for dataset in result if isinstance(result, list) else [result]:
+            for name, variable in dataset.data_vars.items():
+                if variable.dtype == object and _is_numeric_or_null(variable.values):
+                    dataset[name] = variable.astype(float)
+        return result
+
+    return wrapper
 
 
 class Decoder(ABC):

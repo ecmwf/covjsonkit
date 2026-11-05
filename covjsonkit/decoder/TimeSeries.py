@@ -1,7 +1,7 @@
 import pandas as pd
 import xarray as xr
 
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 
 
 class TimeSeries(Decoder):
@@ -108,6 +108,7 @@ class TimeSeries(Decoder):
         return geojson
 
     # function to convert covjson to xarray dataset
+    @nulls_as_nan
     def to_xarray(self):
         # Monthly-means fast path: coverages produced by from_polytope_month() pack all
         # time steps into a single coverage's t-axis and do NOT write "Forecast date"
@@ -238,6 +239,7 @@ class TimeSeries(Decoder):
             match = axes[self.z_name]["values"] == z
         return match
 
+    @nulls_as_nan
     def _to_xarray_no_forecast_date(self):
         """Monthly-means path: all time steps are packed into a single coverage's
         t-axis and there is no "Forecast date" in mars:metadata.

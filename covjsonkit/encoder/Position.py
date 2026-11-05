@@ -135,6 +135,10 @@ class Position(Encoder):
     def from_polytope(self, result, date_key: str = "date") -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a PointSeries (Position) CoverageJSON collection.
 
+        A requested point whose values are all ``None`` is not dropped: it is emitted, in request
+        order, with its label and ``null`` range values. Only a date with no data for any point is
+        omitted (``ValueError`` if there is none left). See ``docs/TIMESERIES_LABELS.md``.
+
         Args:
             result: The polytope ``TensorIndexTree`` containing the data to be converted.
             date_key: Tree axis name to treat as the time dimension

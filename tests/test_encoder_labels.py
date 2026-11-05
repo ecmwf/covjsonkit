@@ -125,8 +125,9 @@ class TestTagHelpers:
             assert expand_points_by_tags([[], [(0, "A")]], 2) == [(1, "A"), (0, None)]
         assert "carry no tag" in caplog.text
 
-    def test_expand_mismatched_length_ignores_tags(self):
-        assert expand_points_by_tags([[(0, "A")]], 2) == [(0, None), (1, None)]
+    def test_expand_mismatched_length_raises(self):
+        with pytest.raises(ValueError, match=r"1 tag entries for 2 points.*1:1"):
+            expand_points_by_tags([[(0, "A")]], 2)
 
 
 # -- TimeSeries (PointSeries) --
@@ -197,6 +198,27 @@ class TestTimeSeriesLabels:
         covjson = encode("pointseries", tree)
         assert labels(covjson) == ["West", "East"]
         assert points_of(covjson) == [(48.0, 11.0), (48.0, 12.0)]
+
+    def test_compressed_longitude_leaf_mislabels(self):
+        """Why polytope-mars must not compress longitude for point features.
+
+        Polytope stamps tags on a node, not on a value. A compressed longitude leaf holding the cells of two
+        requested points carries both tags, so the encoder cannot tell which cell belongs to which label: it
+        emits every tag for every cell (4 coverages for 2 requested points, each label on both cells) and
+        raises no error. The guard is ``Feature.uncompressed_axes()`` in polytope-mars. If the encoder
+        starts rejecting such a leaf, or polytope splits nodes per tag, update this test.
+        """
+        lat = node("latitude", (48.0,))
+        leaf = node("longitude", (11.0, 12.0))  # two requested points, one per cell, in one compressed node
+        leaf.result = [np.float64(r) for r in (1.0, 2.0, 3.0, 4.0)]  # [step][cell]
+        leaf.tags.update({(0, "West"), (1, "East")})
+        lat.add_child(leaf)
+        tree = forecast_tree([], step=(0, 6))
+        tip(tree).add_child(lat)
+
+        covjson = encode("pointseries", tree)
+        assert labels(covjson) == ["West", "West", "East", "East"]
+        assert points_of(covjson) == [(48.0, 11.0), (48.0, 12.0), (48.0, 11.0), (48.0, 12.0)]
 
     def test_multiple_dates(self):
         tree = two_date_tree(tagged(make_point, {P1[:2]: [(1, "B")], P2[:2]: [(0, "A")]}))

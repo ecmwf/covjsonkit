@@ -1,7 +1,7 @@
 import xarray as xr
 
 from ..encoder.encoder import sort_step_values, valid_time
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 
 
 class VerticalProfile(Decoder):
@@ -93,6 +93,7 @@ class VerticalProfile(Decoder):
         geojson = {"type": "FeatureCollection", "features": features}
         return geojson
 
+    @nulls_as_nan
     def to_xarray(self):
         dims = [
             "latitude",

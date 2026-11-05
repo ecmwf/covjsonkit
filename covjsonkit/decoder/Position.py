@@ -1,7 +1,7 @@
 import pandas as pd
 import xarray as xr
 
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 from .TimeSeries import TimeSeries
 
 
@@ -108,6 +108,7 @@ class Position(Decoder):
         return geojson
 
     # function to convert covjson to xarray dataset
+    @nulls_as_nan
     def to_xarray(self):
         if not all("Forecast date" in cov.get("mars:metadata", {}) for cov in self.covjson["coverages"]):
             # Reanalysis (efcl) coverages carry only valid times on ``t``.

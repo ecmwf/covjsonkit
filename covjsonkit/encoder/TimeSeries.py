@@ -209,6 +209,10 @@ class TimeSeries(Encoder):
     def from_polytope(self, result, date_key: str = "date", reforecast: bool = False) -> dict:
         """Encode a polytope ``TensorIndexTree`` result into a PointSeries CoverageJSON collection.
 
+        A requested point whose values are all ``None`` is not dropped: it is emitted, in request
+        order, with its label and ``null`` range values. Only a date with no data for any point is
+        omitted (``ValueError`` if there is none left). See ``docs/TIMESERIES_LABELS.md``.
+
         Args:
             result: The polytope ``TensorIndexTree`` containing the data to be converted.
             date_key: Tree axis name to treat as the time dimension
@@ -354,6 +358,10 @@ class TimeSeries(Encoder):
         Backward compatible with the legacy tree where ``time`` was pre-merged
         into ``hdate`` (no separate ``time`` node) and ``hdate`` was branched:
         the timestamps then reduce to ``hdate + step``.
+
+        A requested point whose values are all ``None`` is not dropped: it is emitted, in request
+        order, with its label and ``null`` range values. Only a date with no data for any point is
+        omitted (``ValueError`` if there is none left). See ``docs/TIMESERIES_LABELS.md``.
         """
         import itertools
 
@@ -383,6 +391,8 @@ class TimeSeries(Encoder):
         # Set True as soon as a forecast (efas) coverage is created, so the final
         # emission can be reordered date -> time -> point (see below).
         forecast_result = False
+        # Reference datetimes (hdate + time) for which at least one point has data.
+        refs_with_data = set()
 
         def stringify(value):
             if isinstance(value, (np.datetime64, np.timedelta64)):
@@ -404,8 +414,6 @@ class TimeSeries(Encoder):
             axis_values = [values for _, values in full_path]
             for idx, combo in enumerate(itertools.product(*axis_values)):
                 value = flat_result[idx]
-                if value is None:
-                    continue
                 d = dict(zip(axis_names, combo))
                 lat = float(d["latitude"])
                 lon = float(d["longitude"])
@@ -424,6 +432,11 @@ class TimeSeries(Encoder):
                 hdate = d.get("hdate", d.get("date"))
                 time_off = d.get("time")
                 stamp = valid_datetime(hdate, step, time_off)
+                # A point without data is kept with null values; only a reference
+                # datetime with no data for any point is dropped (see below).
+                slice_ref = reference_datetime(hdate, time_off)
+                if value is not None:
+                    refs_with_data.add(slice_ref)
 
                 # Stream determines the coverage grouping for class=ce:
                 #   * efcl (reforecast/reanalysis): collapse all hdates into a
@@ -489,7 +502,7 @@ class TimeSeries(Encoder):
                     if para not in param_order:
                         param_order.append(para)
                     params = coverages[key]["params"]
-                    params.setdefault(para, []).append((stamp, float(value)))
+                    params.setdefault(para, []).append((stamp, None if value is None else float(value), slice_ref))
 
         def recurse(node, path):
             children = node.children
@@ -510,6 +523,15 @@ class TimeSeries(Encoder):
                 recurse(child, path + [(child.axis.name, tuple(child.values))])
 
         recurse(result, [])
+
+        # Drop the reference datetimes for which no point has any data.
+        for key in list(coverages):
+            params = coverages[key]["params"]
+            for para in params:
+                params[para] = [entry for entry in params[para] if entry[2] in refs_with_data]
+            if not any(params.values()):
+                del coverages[key]
+        coverage_order = [key for key in coverage_order if key in coverages]
 
         if not coverages:
             raise ValueError("No data was returned.")

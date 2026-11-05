@@ -88,6 +88,7 @@ def encode(kind, tree, method="from_polytope"):
 
 
 def summary(covjson):
+    """(label, step, [(lon, lat), ...], values) per coverage; composite axes are ["x", "y"] = [lon, lat]."""
     out = []
     for c in covjson["coverages"]:
         points = [tuple(p[:2]) for p in c["domain"]["axes"]["composite"]["values"]]
@@ -108,6 +109,10 @@ class TestGroupPointsByTags:
         assert group_points_by_tags([[], [], []], 3) == [(None, None, [0, 1, 2])]
         assert group_points_by_tags(None, 2) == [(None, None, [0, 1])]
 
+    def test_count_mismatch_raises(self):
+        with pytest.raises(ValueError, match=r"1 tag entries for 3 points.*1:1"):
+            group_points_by_tags([[(0, "P")]], 3)
+
     def test_untagged_points_last(self):
         assert group_points_by_tags([[], [(0, "P")]], 2) == [(0, "P", [1]), (None, None, [0])]
 
@@ -120,8 +125,8 @@ class TestAreaEncoders:
     def test_one_coverage_per_area(self, kind):
         covjson = encode(kind, area_tree(TAGS))
         assert summary(covjson) == [
-            ("P", 0, [(48.0, 11.0), (48.0, 11.1), (49.0, 11.5)], [1.0, 2.0, 3.0]),
-            ("Q", 0, [(49.0, 11.5), (50.0, 12.0)], [3.0, 4.0]),
+            ("P", 0, [(11.0, 48.0), (11.1, 48.0), (11.5, 49.0)], [1.0, 2.0, 3.0]),
+            ("Q", 0, [(11.5, 49.0), (12.0, 50.0)], [3.0, 4.0]),
         ]
 
     def test_request_order_then_steps(self, kind):
@@ -139,8 +144,17 @@ class TestAreaEncoders:
 
     def test_untagged_unchanged(self, kind):
         assert summary(encode(kind, area_tree({}))) == [
-            (None, 0, [(48.0, 11.0), (48.0, 11.1), (49.0, 11.5), (50.0, 12.0)], [1.0, 2.0, 3.0, 4.0]),
+            (None, 0, [(11.0, 48.0), (11.1, 48.0), (11.5, 49.0), (12.0, 50.0)], [1.0, 2.0, 3.0, 4.0]),
         ]
+
+
+@pytest.mark.parametrize("kind", AREA_KINDS)
+def test_tag_count_mismatch_raises(kind):
+    """Tags that cannot be matched 1:1 to the composite points are an error, not silently dropped."""
+    encoder = Covjsonkit().encode("CoverageCollection", kind)
+    composite = [(11.0, 48.0)] * 3
+    with pytest.raises(ValueError, match="1:1"):
+        encoder.add_coverages_by_tag({}, {"composite": composite}, {"167": [1.0] * 3}, [[(0, "P")], [(1, "Q")]])
 
 
 @pytest.mark.parametrize("kind", ["polygon", "boundingbox", "circle"])
@@ -150,10 +164,10 @@ def test_levels_split_per_area(kind):
     assert p["mars:metadata"]["label"] == "P" and q["mars:metadata"]["label"] == "Q"
     # Composite is level-major: each area's points repeated for each level
     assert [tuple(v) for v in q["domain"]["axes"]["composite"]["values"]] == [
-        (49.0, 11.5, 500),
-        (50.0, 12.0, 500),
-        (49.0, 11.5, 850),
-        (50.0, 12.0, 850),
+        (11.5, 49.0, 500),
+        (12.0, 50.0, 500),
+        (11.5, 49.0, 850),
+        (12.0, 50.0, 850),
     ]
     assert list(q["ranges"].values())[0]["values"] == [3.0, 4.0, 103.0, 104.0]
 
@@ -174,7 +188,7 @@ def test_month(kind):
     labels = [c["mars:metadata"].get("label") for c in covjson["coverages"]]
     assert labels == ["P", "P", "Q", "Q"]  # two months each
     first_q = covjson["coverages"][2]
-    assert [tuple(v[:2]) for v in first_q["domain"]["axes"]["composite"]["values"]] == [(49.0, 11.5), (50.0, 12.0)]
+    assert [tuple(v[:2]) for v in first_q["domain"]["axes"]["composite"]["values"]] == [(11.5, 49.0), (12.0, 50.0)]
 
 
 def test_reforecast_separate_datetime_split_per_area():
@@ -190,8 +204,8 @@ def test_reforecast_separate_datetime_split_per_area():
     )
     covjson = encode("polygon", tree, "from_polytope_reforecast")
     assert [(lbl, pts, vals) for lbl, _, pts, vals in summary(covjson)] == [
-        ("P", [(48.0, 11.0), (50.0, 12.0)], [1.0, 2.0]),
-        ("Q", [(50.0, 12.0)], [2.0]),
+        ("P", [(11.0, 48.0), (12.0, 50.0)], [1.0, 2.0]),
+        ("Q", [(12.0, 50.0)], [2.0]),
     ]
     assert all("__tags__" not in c["mars:metadata"] for c in covjson["coverages"])
 
