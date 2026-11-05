@@ -412,6 +412,8 @@ class Encoder(ABC):
 
         if domaintype == "pointseries":
             self.domaintype = DomainType.point_series
+        elif domaintype == "multipointseries":
+            self.domaintype = DomainType.multi_point_series
         elif domaintype == "multipoint":
             self.domaintype = DomainType.multi_point
         elif domaintype == "polygon":

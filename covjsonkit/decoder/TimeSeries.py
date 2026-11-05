@@ -10,6 +10,9 @@ class TimeSeries(Decoder):
         self.domains = self.get_domains()
         self.ranges = self.get_ranges()
         first_axes = self.covjson["coverages"][0]["domain"]["axes"]
+        # MultiPointSeries coverages carry a ``composite`` (x/y tuple) axis and a
+        # shared ``t`` axis. Detect this to switch to the combined decode paths.
+        self.multipoint = self.covjson.get("domainType") == "MultiPointSeries" or "composite" in first_axes
         # Backwards-compatible axis-name detection: read both spec-compliant
         # coverages (x/y/z) and legacy coverages (longitude/latitude/levelist).
         # Semantics are preserved: x == longitude, y == latitude.
@@ -73,6 +76,8 @@ class TimeSeries(Decoder):
         raise TypeError("Timeseries domain cannot be converted to GeoTIFF.")
 
     def to_geojson(self):
+        if self.multipoint:
+            return self._to_geojson_multipoint()
         features = []
         for coverage in self.covjson["coverages"]:
             longitude = coverage["domain"]["axes"][self.x_name]["values"][0]
@@ -109,6 +114,8 @@ class TimeSeries(Decoder):
 
     # function to convert covjson to xarray dataset
     def to_xarray(self):
+        if self.multipoint:
+            return self._to_xarray_multipoint()
         # Monthly-means fast path: coverages produced by from_polytope_month() pack all
         # time steps into a single coverage's t-axis and do NOT write "Forecast date"
         # into mars:metadata.  Detect this case and use a simpler (time, point) layout
@@ -290,3 +297,100 @@ class TimeSeries(Decoder):
         if len(ds_list) == 1:
             return ds_list[0]
         return ds_list
+
+    def _to_xarray_multipoint(self):
+        """MultiPointSeries → a single xarray Dataset per coverage (Option A layout).
+
+        Each coverage has a shared ``t`` axis and a ``composite`` (x/y tuple) axis.
+        Produces dims ``(t, points)`` with ``latitude``/``longitude`` as non-dimension
+        coordinates along ``points``. Multiple coverages return a list of Datasets.
+        """
+        ds_list = []
+
+        for coverage in self.covjson["coverages"]:
+            axes = coverage["domain"]["axes"]
+
+            steps = axes["t"]["values"]
+            steps = [s.replace("Z", "") if isinstance(s, str) else s for s in steps]
+            steps = pd.to_datetime(steps)
+
+            composite = axes["composite"]["values"]
+            # composite tuples are [x, y] = [lon, lat] per spec.
+            longitude = [pt[0] for pt in composite]
+            latitude = [pt[1] for pt in composite]
+            n_t = len(steps)
+            n_pts = len(composite)
+
+            dataarraydict = {}
+            for parameter in self.parameters:
+                flat = coverage["ranges"][parameter]["values"]
+                # Reshape row-major [t, composite] -> nested [t][point].
+                arr = [flat[j * n_pts : (j + 1) * n_pts] for j in range(n_t)]
+
+                long_name = self.get_parameter_metadata(parameter)["observedProperty"]["id"]
+                if long_name == "t":
+                    long_name = "T"  # Avoid collision with time dimension 't'
+
+                attrs = {
+                    "type": self.get_parameter_metadata(parameter)["type"],
+                    "units": self.get_parameter_metadata(parameter)["unit"]["symbol"],
+                    "long_name": long_name,
+                }
+                dataarraydict[long_name] = (["t", "points"], arr, attrs)
+
+            coord_dict = {
+                "t": steps,
+                "latitude": ("points", latitude),
+                "longitude": ("points", longitude),
+            }
+            if self.z_name:
+                coord_dict["levelist"] = axes[self.z_name]["values"][0]
+
+            dss = xr.Dataset(data_vars=dataarraydict, coords=coord_dict)
+
+            mm = coverage.get("mars:metadata", {})
+            for key, val in mm.items():
+                dss.attrs[key] = val
+
+            ds_list.append(dss)
+
+        if len(ds_list) == 1:
+            return ds_list[0]
+        return ds_list
+
+    def _to_geojson_multipoint(self):
+        """MultiPointSeries → one Point feature per (point × time)."""
+        features = []
+        for coverage in self.covjson["coverages"]:
+            axes = coverage["domain"]["axes"]
+            datetimes = axes["t"]["values"]
+            composite = axes["composite"]["values"]  # [lon, lat]
+            n_pts = len(composite)
+            mars_metadata = coverage.get("mars:metadata")
+
+            level = None
+            if self.z_name and self.z_name in axes:
+                level = axes[self.z_name]["values"][0]
+
+            values = {key: coverage["ranges"][key]["values"] for key in coverage["ranges"]}
+
+            for p, (lon, lat) in enumerate(composite):
+                geom_coords = [lon, lat]
+                if level is not None:
+                    geom_coords.append(level)
+                for t_idx, datetime in enumerate(datetimes):
+                    param_vals = {}
+                    for key in values:
+                        param_vals[key] = values[key][t_idx * n_pts + p]
+                    param_vals["datetime"] = datetime
+                    if mars_metadata is not None:
+                        param_vals["mars:metadata"] = mars_metadata
+                    features.append(
+                        {
+                            "type": "Feature",
+                            "geometry": {"type": "Point", "coordinates": geom_coords},
+                            "properties": param_vals,
+                        }
+                    )
+
+        return {"type": "FeatureCollection", "features": features}
