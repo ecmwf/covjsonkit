@@ -10,11 +10,11 @@ from covjsonkit.api import Covjsonkit
 
 THREE_POINTS_COMPOSITE = {
     "dataType": "tuple",
-    "coordinates": ["latitude", "longitude", "levelist"],
+    "coordinates": ["x", "y"],
     "values": [
-        [48.0, 11.0, 0],
-        [49.0, 11.5, 0],
-        [50.0, 12.0, 0],
+        [11.0, 48.0],
+        [11.5, 49.0],
+        [12.0, 50.0],
     ],
 }
 
@@ -39,7 +39,7 @@ class TestCircleFromPolytope:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.5, 266.1],
             }
         }
@@ -80,12 +80,12 @@ class TestCircleFromPolytopeReforecast:
                 "type": "NdArray",
                 "dataType": "float",
                 "shape": [3],
-                "axisNames": ["2t"],
+                "axisNames": ["composite"],
                 "values": [264.9, 265.5, 266.1],
             }
         }
 
-        assert cov["mars:metadata"] == {"Forecast date": "2025-07-14T06:00:00Z", **REFORECAST_METADATA_BASE}
+        assert cov["mars:metadata"] == REFORECAST_METADATA_BASE
 
     def test_reforecast_two_hdates_three_points(self):
         tree = reforecast_tree(
@@ -111,4 +111,4 @@ class TestCircleFromPolytopeReforecast:
                 "composite": THREE_POINTS_COMPOSITE,
             }
             assert cov["ranges"]["2t"]["values"] == range_vals
-            assert cov["mars:metadata"] == {"Forecast date": fc_date, **REFORECAST_METADATA_BASE}
+            assert cov["mars:metadata"] == REFORECAST_METADATA_BASE

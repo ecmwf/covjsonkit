@@ -36,12 +36,16 @@ class TestGeojsonConversion:
         ts = cov.to_geojson()
         assert ts["type"] == "FeatureCollection"
         assert len(ts["features"]) == 16
+        coords = ts["features"][0]["geometry"]["coordinates"]
+        assert len(coords) == 2
 
     def test_geojson_xyz_axes_timeseries(self):
         cov = Covjsonkit().decode(self.timeseries_xyz)
         ts = cov.to_geojson()
         assert ts["type"] == "FeatureCollection"
         assert len(ts["features"]) == 16
+        coords = ts["features"][0]["geometry"]["coordinates"]
+        assert len(coords) == 3
 
     def test_geojson_verticalprofile(self):
         cov = Covjsonkit().decode(self.verticalprofile)

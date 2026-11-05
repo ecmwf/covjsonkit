@@ -57,7 +57,8 @@ def labels(covjson):
 
 def points_of(covjson):
     return [
-        (c["domain"]["axes"]["latitude"]["values"][0], c["domain"]["axes"]["longitude"]["values"][0])
+        # Spec-compliant axes: x == longitude, y == latitude
+        (c["domain"]["axes"]["y"]["values"][0], c["domain"]["axes"]["x"]["values"][0])
         for c in covjson["coverages"]
     ]
 
