@@ -137,3 +137,83 @@ def test_other_flood_class_applies_anoffset():
     tree = forecast_separate_datetime_tree([(50.7, 7.1, [1.0])], T00, step=(6,), anoffset=(18,), type_="fu", cls="gf")
     cov = _encode("timeseries", tree)["coverages"][0]
     assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z"]
+
+
+# --- MultiPointSeries + anoffset -------------------------------------------------------------
+
+
+def _from_polytope_efas_tree(points, anoffset):
+    """class=ce/efas forecast for ``from_polytope``: one date, steps (6, 12), several points."""
+    tree = chain(
+        TensorIndexTree(),
+        node("anoffset", (anoffset,)),
+        node("class", ("ce",)),
+        node("date", (np.datetime64("2026-05-01T00:00:00"),)),
+        node("param", ("240023",)),
+        node("step", (6, 12)),
+        node("stream", ("efas",)),
+    )
+    leaf_parent = tip(tree)
+    for lat, lon, result in points:
+        leaf_parent.add_child(make_point(lat, lon, result))
+    return tree
+
+
+@pytest.mark.parametrize("domaintype", ["PointSeries", "MultiPointSeries"])
+def test_multipointseries_anoffset_from_polytope(domaintype):
+    # Two points: PointSeries auto-upgrades, MultiPointSeries is forced; both shift valid times by -18h.
+    tree = _from_polytope_efas_tree([(50.7, 7.1, [1.0, 2.0]), (50.8, 7.2, [3.0, 4.0])], anoffset=18)
+    covjson = Covjsonkit().encode("CoverageCollection", domaintype).from_polytope(tree)
+    assert covjson["domainType"] == "MultiPointSeries"
+    assert len(covjson["coverages"]) == 1
+    cov = covjson["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z", "2026-04-30T18:00:00Z"]
+    assert cov["domain"]["axes"]["composite"]["values"] == [[7.1, 50.7], [7.2, 50.8]]
+    assert cov["ranges"]["dis06"]["shape"] == [2, 2]
+    assert cov["ranges"]["dis06"]["axisNames"] == ["t", "composite"]
+    assert cov["ranges"]["dis06"]["values"] == [1.0, 3.0, 2.0, 4.0]
+    assert cov["mars:metadata"]["anoffset"] == 18
+
+
+def test_multipointseries_forced_single_point_anoffset_from_polytope():
+    tree = _from_polytope_efas_tree([(50.7, 7.1, [1.0, 2.0])], anoffset=18)
+    covjson = Covjsonkit().encode("CoverageCollection", "MultiPointSeries").from_polytope(tree)
+    assert covjson["domainType"] == "MultiPointSeries"
+    cov = covjson["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z", "2026-04-30T18:00:00Z"]
+    assert cov["mars:metadata"]["anoffset"] == 18
+
+
+@pytest.mark.parametrize("domaintype", ["timeseries", "multipointseries"])
+def test_multipointseries_anoffset_reforecast(domaintype):
+    # separate-datetime path: 2 points, steps 6/12, anoffset 18h -> shared shifted t-axis.
+    points = [(50.7, 7.1, [1.0, 2.0]), (50.8, 7.2, [3.0, 4.0])]
+    tree = forecast_separate_datetime_tree(points, T00, step=(6, 12), anoffset=(18,), type_="fu")
+    covjson = _encode(domaintype, tree)
+    assert covjson["domainType"] == "MultiPointSeries"
+    assert len(covjson["coverages"]) == 1
+    cov = covjson["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z", "2026-04-30T18:00:00Z"]
+    assert cov["domain"]["axes"]["composite"]["values"] == [[7.1, 50.7], [7.2, 50.8]]
+    assert cov["ranges"]["dis06"]["shape"] == [2, 2]
+    assert cov["ranges"]["dis06"]["values"] == [1.0, 3.0, 2.0, 4.0]
+    meta = cov["mars:metadata"]
+    assert meta["Forecast date"] == "2026-05-01T00:00:00Z"
+    assert meta["anoffset"] == 18
+
+
+def test_multipointseries_forced_single_point_anoffset_reforecast():
+    tree = forecast_separate_datetime_tree([(50.7, 7.1, [1.0, 2.0])], T00, step=(6, 12), anoffset=(18,), type_="fu")
+    covjson = _encode("multipointseries", tree)
+    assert covjson["domainType"] == "MultiPointSeries"
+    cov = covjson["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z", "2026-04-30T18:00:00Z"]
+    assert cov["mars:metadata"]["anoffset"] == 18
+
+
+def test_multipointseries_without_anoffset_reforecast_unshifted():
+    points = [(50.7, 7.1, [1.0]), (50.8, 7.2, [3.0])]
+    tree = forecast_separate_datetime_tree(points, T00, step=(6,), type_="fu")
+    cov = _encode("timeseries", tree)["coverages"][0]
+    assert cov["domain"]["axes"]["t"]["values"] == ["2026-05-01T06:00:00Z"]
+    assert "anoffset" not in cov["mars:metadata"]
