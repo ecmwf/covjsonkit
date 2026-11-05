@@ -75,6 +75,10 @@ class Shapefile(Decoder):
         return geojson
 
     def to_xarray(self):
+        # One dataset per requested area when several (e.g. labelled polygons) are present
+        return self._to_xarray_per_area()
+
+    def _to_xarray_single(self):
         """Convert a MultiPoint CoverageCollection to an xarray Dataset.
 
         Each coverage corresponds to one time step. The resulting Dataset has

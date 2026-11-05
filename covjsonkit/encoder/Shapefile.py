@@ -112,6 +112,7 @@ class Shapefile(Encoder):
                     self.add_coverage(mars_metadata, coords, dv_dict)
 
         # Return the generated CoverageJSON
+        self.sort_coverages_by_tag()
         return self.covjson
 
     def from_polytope(self, result, date_key: str = "date") -> dict:
@@ -191,8 +192,9 @@ class Shapefile(Encoder):
                     mm["number"] = num
                     mm["step"] = normalize_step_value(step)
                     mm["Forecast date"] = date
-                    self.add_coverage(mm, coords[date], val_dict[step])
+                    self.add_coverages_by_tag(mm, coords[date], val_dict[step], coords[date].get("tags"), len(levels))
 
+        self.sort_coverages_by_tag()
         return self.covjson
 
     def from_polytope_month(self, result):
@@ -261,4 +263,5 @@ class Shapefile(Encoder):
             mm["number"] = num
             self.add_coverage(mm, coordinates[fields["dates"][0]] if fields["dates"] else {}, val_dict)
 
+        self.sort_coverages_by_tag()
         return self.covjson

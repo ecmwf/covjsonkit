@@ -100,6 +100,37 @@ def add_label(metadata, label):
     return metadata
 
 
+def group_points_by_tags(tags_per_point, n_points) -> list:
+    """Group composite points by tag index: ``[(index, label, [point indices]), ...]`` in request order.
+
+    Used by the MultiPoint encoders, where each tag is a requested area (e.g. a polygon). A point
+    carrying several tags (inside several requested areas) belongs to each group. Without tags all
+    points form a single group ``(None, None, all points)``, so the output is unchanged; points left
+    untagged while others are tagged are returned as a final group without a label.
+    """
+    if tags_per_point is None or len(tags_per_point) != n_points:
+        if tags_per_point:
+            logging.warning("Found %s tag entries for %s points; ignoring tags", len(tags_per_point), n_points)
+        return [(None, None, list(range(n_points)))]
+
+    groups = {}
+    untagged = []
+    for i, tags in enumerate(tags_per_point):
+        indexed = [(index, label) for index, label in tags if index is not None]
+        if not indexed:
+            untagged.append(i)
+        for index, label in indexed:
+            groups.setdefault(index, (label, []))[1].append(i)
+    if not groups:
+        return [(None, None, list(range(n_points)))]
+    if untagged:
+        logging.warning("%s of %s points carry no tag and are returned without a label", len(untagged), n_points)
+    result = [(index, label, points) for index, (label, points) in sorted(groups.items())]
+    if untagged:
+        result.append((None, None, untagged))
+    return result
+
+
 def timedelta_to_step_string(td: timedelta) -> str:
     """
     Convert a timedelta object to a step string in the format 'XhYm'.
@@ -972,6 +1003,47 @@ class Encoder(ABC):
         else:
             emit_leaf_month(fields["lat"], tree.values, tree.result, node_tags(tree))
 
+    def add_coverages_by_tag(self, mars_metadata, coords, values, tags, n_levels=1):
+        """Add one MultiPoint coverage per tag index, holding only that tag's points.
+
+        ``coords["composite"]`` and every list in ``values`` are ordered level-major over the spatial
+        points (``n_levels`` blocks of ``len(tags)`` points), as built by the MultiPoint encoders.
+        Without tags, or if the layout doesn't match, a single coverage is added unchanged.
+        Call :meth:`sort_coverages_by_tag` before returning so the coverages come out in request order.
+        """
+        if not hasattr(self, "_coverage_tag_keys"):
+            self._coverage_tag_keys = []
+        n_points = len(tags) if tags is not None else 0
+        groups = group_points_by_tags(tags, n_points)
+        aligned = (
+            n_points > 0
+            and len(coords["composite"]) == n_levels * n_points
+            and all(len(vals) == n_levels * n_points for vals in values.values())
+        )
+        if len(groups) == 1 and groups[0][0] is None or not aligned:
+            if groups[0][0] is not None:
+                logging.warning("Composite and value layout don't match the point tags; returning one coverage")
+            self.add_coverage(mars_metadata, coords, values)
+            self._coverage_tag_keys.append(tag_sort_key(None))
+            return
+        for index, label, points in groups:
+            selection = [level * n_points + p for level in range(n_levels) for p in points]
+            group_coords = dict(coords)
+            group_coords.pop("tags", None)
+            group_coords["composite"] = [coords["composite"][k] for k in selection]
+            group_values = {para: [vals[k] for k in selection] for para, vals in values.items()}
+            self.add_coverage(add_label(dict(mars_metadata), label), group_coords, group_values)
+            self._coverage_tag_keys.append(tag_sort_key(index))
+
+    def sort_coverages_by_tag(self):
+        """Order coverages added by :meth:`add_coverages_by_tag` by request index (stable)."""
+        keys = getattr(self, "_coverage_tag_keys", [])
+        coverages = self.covjson["coverages"]
+        if len(keys) == len(coverages) and any(key != tag_sort_key(None) for key in keys):
+            order = sorted(range(len(coverages)), key=lambda i: keys[i])
+            self.covjson["coverages"] = [coverages[i] for i in order]
+            self._coverage_tag_keys = [keys[i] for i in order]
+
     @abstractmethod
     def add_coverage(self, mars_metadata, coords, values):
         pass
@@ -1142,7 +1214,11 @@ class Encoder(ABC):
         coverage_order = []
         param_order = []
 
-        for rec in self._reforecast_records(result):
+        for rec, tag_index, label in (
+            (rec, tag_index, label)
+            for rec in self._reforecast_records(result)
+            for tag_index, label in expand_tags(rec["__tags__"])
+        ):
             value = rec["__value__"]
             lat = float(rec["latitude"])
             lon = float(rec["longitude"])
@@ -1162,9 +1238,9 @@ class Encoder(ABC):
             ref = pd.Timestamp(hdate) + to_timedelta(rec.get("time"))
             valid = ref + self._reforecast_step_timedelta(step)
 
-            # One coverage per (reference, step, number); reference is
-            # hdate + time for efcl and date + time (the run) for efas.
-            key = (ref, step, number)
+            # One coverage per (reference, step, number) and requested area (tag);
+            # reference is hdate + time for efcl and date + time (the run) for efas.
+            key = (ref, step, number, tag_index)
             if key not in coverages:
                 meta = {}
                 for name in rec:
@@ -1183,6 +1259,7 @@ class Encoder(ABC):
                     # efcl coverages are delineated by their valid time, which
                     # the t-axis already carries, so they get no "Forecast date".
                     meta["Forecast date"] = ref.isoformat() + "Z"
+                add_label(meta, label)
                 coverages[key] = {
                     "valid": valid.isoformat() + "Z",
                     "points": [],
@@ -1207,8 +1284,8 @@ class Encoder(ABC):
         for para in param_order:
             self.add_parameter(para)
 
-        # Emit date -> time -> step -> number regardless of tree axis order.
-        coverage_order.sort(key=lambda k: (k[0], self._reforecast_step_timedelta(k[1]), k[2]))
+        # Emit requested area -> date -> time -> step -> number regardless of tree axis order.
+        coverage_order.sort(key=lambda k: (tag_sort_key(k[3]), k[0], self._reforecast_step_timedelta(k[1]), k[2]))
 
         for key in coverage_order:
             cov = coverages[key]

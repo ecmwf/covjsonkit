@@ -116,6 +116,37 @@ class Decoder(ABC):
             groups[key].append(coverage)
         return [groups[key] for key in order]
 
+    def _area_groups(self):
+        """Group MultiPoint coverages into one group per requested area (e.g. polygon), in request order.
+
+        Each area has one coverage per (number, forecast date, step, time), so the n-th coverage for a
+        given label and slot belongs to the n-th area with that label. Output without labels or
+        repeated slots is a single group.
+        """
+
+        def slot_key(coverage):
+            meta = coverage.get("mars:metadata", {})
+            return (
+                meta.get("number"),
+                meta.get("Forecast date"),
+                str(meta.get("step")),
+                tuple(coverage["domain"]["axes"]["t"]["values"]),
+            )
+
+        return self._point_groups(lambda coverage: None, slot_key)
+
+    def _to_xarray_per_area(self):
+        """``to_xarray`` for MultiPoint decoders: one dataset per requested area, or a single dataset as before."""
+        groups = self._area_groups()
+        if len(groups) <= 1:
+            return self._to_xarray_single()
+        datasets = []
+        for group in groups:
+            covjson = dict(self.covjson)
+            covjson["coverages"] = group
+            datasets.append(type(self)(covjson)._to_xarray_single())
+        return datasets
+
     def _point_dataset_attrs(self, group):
         """Dataset attributes for one point: shared MARS metadata plus the point's own label."""
         attrs = {key: val for key, val in self.mars_metadata[0].items() if key not in ("date", "step", "label")}
