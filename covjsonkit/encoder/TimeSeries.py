@@ -9,8 +9,14 @@ from .encoder import (
     add_label,
     expand_points_by_tags,
     expand_tags,
+    iso_utc,
     node_tags,
+    range_shape,
+    reference_datetime,
+    set_forecast_date,
     tag_sort_key,
+    valid_datetime,
+    valid_time,
 )
 
 
@@ -20,30 +26,28 @@ class TimeSeries(Encoder):
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
 
-    def add_coverage(self, mars_metadata, coords, values):
+    def add_coverage(self, mars_metadata, coords, values, include_z=False):
         new_coverage = {}
         new_coverage["mars:metadata"] = {}
         new_coverage["type"] = "Coverage"
         new_coverage["domain"] = {}
         new_coverage["ranges"] = {}
         self.add_mars_metadata(new_coverage, mars_metadata)
-        self.add_domain(new_coverage, coords)
+        self.add_domain(new_coverage, coords, include_z)
         self.add_range(new_coverage, values)
         self.covjson["coverages"].append(new_coverage)
         # cov = Coverage.model_validate_json(json.dumps(new_coverage))
         # self.pydantic_coverage.coverages.append(cov)
 
-    def add_domain(self, coverage, coords):
+    def add_domain(self, coverage, coords, include_z=False):
         coverage["domain"]["type"] = "Domain"
-        coverage["domain"]["axes"] = {}
-        coverage["domain"]["axes"]["latitude"] = {}
-        coverage["domain"]["axes"]["longitude"] = {}
-        coverage["domain"]["axes"]["levelist"] = {}
-        coverage["domain"]["axes"]["t"] = {}
-        coverage["domain"]["axes"]["latitude"]["values"] = coords["latitude"]
-        coverage["domain"]["axes"]["longitude"]["values"] = coords["longitude"]
-        coverage["domain"]["axes"]["levelist"]["values"] = coords["levelist"]
-        coverage["domain"]["axes"]["t"]["values"] = coords["t"]
+        axes = {}
+        axes["x"] = {"values": coords["longitude"]}
+        axes["y"] = {"values": coords["latitude"]}
+        if include_z:
+            axes["z"] = {"values": coords["levelist"]}
+        axes["t"] = {"values": coords["t"]}
+        coverage["domain"]["axes"] = axes
 
     def add_range(self, coverage, values):
         for parameter in values.keys():
@@ -51,8 +55,9 @@ class TimeSeries(Encoder):
             coverage["ranges"][param] = {}
             coverage["ranges"][param]["type"] = "NdArray"
             coverage["ranges"][param]["dataType"] = "float"
-            coverage["ranges"][param]["shape"] = [len(values[parameter])]
-            coverage["ranges"][param]["axisNames"] = [str(param)]
+            shape, axis_names = range_shape(values[parameter], "t")
+            coverage["ranges"][param]["shape"] = shape
+            coverage["ranges"][param]["axisNames"] = axis_names
             coverage["ranges"][param]["values"] = values[
                 parameter
             ]  # [values[parameter][val][0] for val in values[parameter].keys()]
@@ -60,32 +65,28 @@ class TimeSeries(Encoder):
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
-    @staticmethod
-    def _hdate_step_timestamp(date, step, time_offset=None):
-        """Return the valid-time (as a datetime) for a given hdate and step.
-
-        Mirrors the per-hdate stamp computation used in ``from_polytope`` so the
-        collapsed reanalysis path produces identical timestamps.
-
-        ``time_offset`` is an optional time-of-day offset (a ``timedelta``) coming
-        from an independent ``time`` axis (the separate-datetime reforecast
-        representation). When ``None`` the timestamp reduces to ``hdate + step``,
-        preserving the legacy merged-tree behaviour.
-        """
-        date_format = "%Y%m%dT%H%M%S"
-        if isinstance(date, str) and date.endswith("Z"):
-            date = date[:-1]
-        new_date = pd.Timestamp(date).strftime(date_format)
-        start_time = datetime.strptime(new_date, date_format)
-        if time_offset is not None:
-            start_time = start_time + time_offset
-        if isinstance(step, timedelta):
-            return start_time + step
-        try:
-            int(step)
-        except ValueError:
-            step = step[0]
-        return start_time + timedelta(hours=int(step))
+    def _set_references(self, include_z):
+        refs = [
+            {
+                "coordinates": ["x", "y"],
+                "system": {
+                    "type": "GeographicCRS",
+                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+            },
+            {
+                "coordinates": ["t"],
+                "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+            },
+        ]
+        if include_z:
+            refs.append(
+                {
+                    "coordinates": ["z"],
+                    "system": {"type": "VerticalCRS"},
+                }
+            )
+        self.covjson["referencing"] = refs
 
     def _collapse_reanalysis(self, fields, coords, mars_metadata, range_dict):
         """Collapse all hdates for each point into a single PointSeries coverage.
@@ -110,12 +111,12 @@ class TimeSeries(Encoder):
         stamp_order = []
         for date in fields["dates"]:
             for step in fields["step"]:
-                stamp = self._hdate_step_timestamp(date, step, time_offset)
+                stamp = valid_datetime(date, step, time_offset)
                 stamp_order.append((stamp, date, step))
         # Stable sort by valid-time so ties preserve insertion order.
         stamp_order.sort(key=lambda x: x[0])
 
-        t_values = [stamp.isoformat() + "Z" for stamp, _, _ in stamp_order]
+        t_values = [iso_utc(stamp) for stamp, _, _ in stamp_order]
 
         entries = expand_points_by_tags(coords[first_date].get("tags"), points)
 
@@ -148,7 +149,7 @@ class TimeSeries(Encoder):
                         "levelist": [level],
                         "t": t_values,
                     }
-                    self.add_coverage(mm, coord_entry, val_dict)
+                    self.add_coverage(mm, coord_entry, val_dict, fields.get("has_level_axis", False))
 
         return self.covjson
 
@@ -170,27 +171,10 @@ class TimeSeries(Encoder):
         self.covjson["domainType"] = "PointSeries"
         self.covjson["coverages"] = []
 
-        if "latitude" in datasets[0].coords:
-            x_coord = "latitude"
-        elif "x" in datasets[0].coords:
-            x_coord = "x"
-        if "longitude" in datasets[0].coords:
-            y_coord = "longitude"
-        elif "y" in datasets[0].coords:
-            y_coord = "y"
-        if "levelist" in datasets[0].coords:
-            z_coord = "levelist"
+        include_z = "levelist" in datasets[0].coords
 
         # Add reference system
-        self.add_reference(
-            {
-                "coordinates": [x_coord, y_coord, z_coord],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        self._set_references(include_z)
 
         for data_var in datasets[0].data_vars:
             data_var = self.convert_param_to_param_id(data_var)
@@ -213,10 +197,11 @@ class TimeSeries(Encoder):
                     {
                         "latitude": [float(x) for x in dataset["latitude"].values],
                         "longitude": [float(x) for x in dataset["longitude"].values],
-                        "levelist": [float(x) for x in dataset["levelist"].values],
+                        "levelist": [float(x) for x in dataset["levelist"].values] if include_z else None,
                         "t": [str(x) for x in dataset["t"].values],
                     },
                     dv_dict,
+                    include_z=include_z,
                 )
 
         return self.covjson
@@ -244,6 +229,7 @@ class TimeSeries(Encoder):
         fields["step"] = 0
         fields["dates"] = []
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -259,15 +245,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         coordinates = {}
 
@@ -302,19 +281,7 @@ class TimeSeries(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                date_format = "%Y%m%dT%H%M%S"
-                                new_date = pd.Timestamp(date).strftime(date_format)
-                                start_time = datetime.strptime(new_date, date_format)
-                                # add current date to list by converting it to iso format
-                                if isinstance(step, timedelta):
-                                    stamp = start_time + step
-                                else:
-                                    try:
-                                        int(step)
-                                    except ValueError:
-                                        step = step[0]
-                                    stamp = start_time + timedelta(hours=int(step))
-                                coordinates[date][i]["t"].append(stamp.isoformat() + "Z")
+                                coordinates[date][i]["t"].append(valid_time(date, step))
                             break
                         break
                     break
@@ -362,7 +329,7 @@ class TimeSeries(Encoder):
                         coordinates[date][i]["levelist"] = [level]
                         del mm["step"]
                         add_label(mm, label)
-                        self.add_coverage(mm, coordinates[date][i], val_dict)
+                        self.add_coverage(mm, coordinates[date][i], val_dict, include_z)
 
         end = time.time()
         delta = end - start
@@ -394,16 +361,8 @@ class TimeSeries(Encoder):
 
         from .encoder import is_merged_node
 
-        # Spatial reference system (temporal RS is implied by the t-axis).
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = self._tree_has_axis(result, "levelist")
+        self._set_references(include_z)
 
         # Axes that must not leak into the per-coverage mars:metadata block.
         exclude_meta = {
@@ -464,9 +423,7 @@ class TimeSeries(Encoder):
                 step = d.get("step", 0)
                 hdate = d.get("hdate", d.get("date"))
                 time_off = d.get("time")
-                if isinstance(time_off, np.timedelta64):
-                    time_off = pd.to_timedelta(time_off).to_pytimedelta()
-                stamp = self._hdate_step_timestamp(hdate, step, time_off)
+                stamp = valid_datetime(hdate, step, time_off)
 
                 # Stream determines the coverage grouping for class=ce:
                 #   * efcl (reforecast/reanalysis): collapse all hdates into a
@@ -482,7 +439,7 @@ class TimeSeries(Encoder):
                 forecast = is_ce and stream == "efas"
                 if forecast:
                     # Reference datetime of the forecast run = date + time.
-                    reference = self._hdate_step_timestamp(hdate, 0, time_off)
+                    reference = reference_datetime(hdate, time_off)
 
                 # One coverage per requested point: a grid point carrying several
                 # (index, label) tags is emitted once per tag.
@@ -501,13 +458,9 @@ class TimeSeries(Encoder):
                             meta[name] = stringify(d[name])
                         meta["number"] = number
                         meta["levelist"] = level
-                        if forecast:
-                            # date+time is folded into the run reference; drop the
-                            # raw date axis so it doesn't duplicate "Forecast date".
-                            meta.pop("date", None)
-                            meta["Forecast date"] = reference.isoformat() + "Z"
-                        elif not collapse:
-                            meta["Forecast date"] = pd.Timestamp(hdate).isoformat() + "Z"
+                        # efas: Forecast date is the run (date + time); efcl: none;
+                        # otherwise one coverage per hdate.
+                        set_forecast_date(meta, reference if forecast else hdate)
                         add_label(meta, label)
                         coverages[key] = {
                             "lat": lat,
@@ -578,7 +531,7 @@ class TimeSeries(Encoder):
             reference = params[paras[0]]
             # Stable sort by valid-time; ties preserve insertion order.
             order = sorted(range(len(reference)), key=lambda i: reference[i][0])
-            t_values = [reference[i][0].isoformat() + "Z" for i in order]
+            t_values = [iso_utc(reference[i][0]) for i in order]
             val_dict = {para: [params[para][i][1] for i in order] for para in paras}
             coord_entry = {
                 "latitude": [cov["lat"]],
@@ -586,7 +539,7 @@ class TimeSeries(Encoder):
                 "levelist": [cov["level"]],
                 "t": t_values,
             }
-            self.add_coverage(cov["meta"], coord_entry, val_dict)
+            self.add_coverage(cov["meta"], coord_entry, val_dict, include_z)
 
         return self.covjson
 
@@ -608,6 +561,7 @@ class TimeSeries(Encoder):
         fields["months"] = []
         fields["dates"] = []  # populated as "YYYY-MM" keys once both year and month are seen
         fields["levels"] = [0]
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)
@@ -619,15 +573,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)
 
-        self.add_reference(
-            {
-                "coordinates": ["latitude", "longitude", "levelist"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         if fields["param"] == 0:
             raise ValueError("No data was returned.")
@@ -696,7 +643,7 @@ class TimeSeries(Encoder):
                     coord_entry = coordinates[first_date][i].copy()
                     coord_entry["levelist"] = [level]
                     coord_entry["t"] = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
-                    self.add_coverage(mm, coord_entry, val_dict)
+                    self.add_coverage(mm, coord_entry, val_dict, include_z)
 
         end = time.time()
         logging.debug("Coverage creation ends: %s", end)
@@ -716,6 +663,7 @@ class TimeSeries(Encoder):
         fields["dates"] = []
         fields["levels"] = [0]
         fields["times"] = []
+        fields["has_level_axis"] = False
 
         start = time.time()
         logging.debug("Tree walking starts at: %s", start)  # noqa: E501
@@ -728,15 +676,8 @@ class TimeSeries(Encoder):
         start = time.time()
         logging.debug("Coords creation: %s", start)  # noqa: E501
 
-        self.add_reference(
-            {
-                "coordinates": ["x", "y", "z"],
-                "system": {
-                    "type": "GeographicCRS",
-                    "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-                },
-            }
-        )
+        include_z = fields["has_level_axis"]
+        self._set_references(include_z)
 
         coordinates = {}
 
@@ -765,14 +706,8 @@ class TimeSeries(Encoder):
                         for para in fields["param"]:
                             for date in fields["dates"]:
                                 for times in fields["times"]:
-                                    # date_format = "%Y%m%dT%H%M%S"
-                                    # new_date = pd.Timestamp(date).strftime(date_format)
-                                    # start_time = datetime.strptime(new_date, date_format)
-                                    # add current date to list by converting it to iso format
-                                    # stamp = start_time + timedelta(hours=int(step))
-                                    datetime = pd.Timestamp(date) + times
                                     coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)]["t"].append(
-                                        str(datetime).split("+")[0] + "Z"
+                                        self._step_path_valid_time(date, times, fields)
                                     )
                             break
                         break
@@ -803,7 +738,12 @@ class TimeSeries(Encoder):
                     mm["number"] = num
                     mm["Forecast date"] = date
                     add_label(mm, label)
-                    self.add_coverage(mm, coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)], val_dict)
+                    self.add_coverage(
+                        mm,
+                        coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)],
+                        val_dict,
+                        include_z,
+                    )
 
         end = time.time()
         delta = end - start
