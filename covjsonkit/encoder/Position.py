@@ -4,6 +4,7 @@ import time
 from .encoder import (
     Encoder,
     add_label,
+    anoffset_timedelta,
     expand_points_by_tags,
     is_reanalysis,
     range_shape,
@@ -199,7 +200,9 @@ class Position(Encoder):
                     for num in fields["number"]:
                         for para in fields["param"]:
                             for step in fields["step"]:
-                                coordinates[date][i]["t"].append(valid_time(date, step))
+                                coordinates[date][i]["t"].append(
+                                    valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))
+                                )
                             break
                         break
                     break

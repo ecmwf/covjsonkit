@@ -4,6 +4,7 @@ import time
 from .encoder import (
     Encoder,
     add_label,
+    anoffset_timedelta,
     expand_points_by_tags,
     is_reanalysis,
     normalize_step_value,
@@ -120,7 +121,10 @@ class VerticalProfile(Encoder):
                             "latitude": [float(x) for x in dataset["latitude"].values],
                             "longitude": [float(x) for x in dataset["longitude"].values],
                             "levelist": [float(x) for x in dataset["levelist"].values],
-                            "t": [valid_time(x, step) for x in dataset["datetime"].values],
+                            "t": [
+                                valid_time(x, step, anoffset=anoffset_timedelta(mars_metadata))
+                                for x in dataset["datetime"].values
+                            ],
                         },
                         dv_dict,
                     )
@@ -180,7 +184,7 @@ class VerticalProfile(Encoder):
                             "latitude": [coords[date]["composite"][i][0]],
                             "longitude": [coords[date]["composite"][i][1]],
                             "levelist": list(levels),
-                            "t": [valid_time(date, step)],
+                            "t": [valid_time(date, step, anoffset=anoffset_timedelta(mars_metadata))],
                         }
                     )
 

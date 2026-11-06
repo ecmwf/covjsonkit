@@ -261,6 +261,10 @@ def forecast_separate_datetime_tree(
     step=(6, 24),
     param="240023",
     point_factory=make_point,
+    anoffset=None,
+    levels=None,
+    type_="cf",
+    cls="ce",
 ):
     """Build a separate-datetime *forecast* tree (class=ce, stream=efas).
 
@@ -276,27 +280,36 @@ def forecast_separate_datetime_tree(
             here, so effectively (step, time)).
         times: tuple of ``np.timedelta64``/``timedelta`` time-of-day offsets.
         step: tuple of step values.
+        anoffset: optional ``anoffset`` axis values (hours), e.g. ``(18,)``.
+        levels: optional ``levelist`` values; the layout is then
+            (date, levelist, step, time).
     """
-    branch = chain(
+    axes = [node("anoffset", anoffset)] if anoffset is not None else []
+    axes += [
         node("date", (date,)),
         node("domain", ("g",)),
         node("expver", ("8888",)),
-        node("levtype", ("sfc",)),
+        node("levtype", ("pl" if levels else "sfc",)),
+    ]
+    if levels:
+        axes.append(node("levelist", levels))
+    axes += [
         node("model", ("lisflood",)),
         node("origin", ("ecmf",)),
         node("param", (param,)),
         node("step", step),
         node("stream", ("efas",)),
         node("time", times),
-        node("type", ("cf",)),
-    )
+        node("type", (type_,)),
+    ]
+    branch = chain(*axes)
     parent = tip(branch)
     for lat, lon, result in points:
         parent.add_child(point_factory(lat, lon, result))
 
     tree = chain(
         TensorIndexTree(),
-        node("class", ("ce",)),
+        node("class", (cls,)),
     )
     tip(tree).add_child(branch)
     return tree
@@ -344,4 +357,41 @@ def reforecast_separate_datetime_vertical_tree(
         node("date", (date,)),
     )
     tip(tree).add_child(branch)
+    return tree
+
+
+def efas_tree(
+    points,
+    param="240023",
+    step=(6,),
+    date=np.datetime64("2026-01-01T00:00:00"),
+    anoffset=None,
+    cls="ce",
+    stream="efas",
+    type_="fc",
+    point_factory=make_point,
+):
+    """Build a regular-forecast tree for the efas anoffset code path.
+
+    Defaults to ``class=ce, stream=efas`` (the only combination that receives the
+    anoffset valid-time correction). Pass ``anoffset=<hours>`` to add the axis,
+    or override ``cls``/``stream`` to build a non-efas tree for gate tests.
+    """
+    axes = [
+        node("class", (cls,)),
+        node("date", (date,)),
+        node("domain", ("g",)),
+        node("expver", ("0001",)),
+        node("levtype", ("sfc",)),
+        node("param", (param,)),
+        node("step", step),
+        node("stream", (stream,)),
+        node("type", (type_,)),
+    ]
+    if anoffset is not None:
+        axes.append(node("anoffset", (anoffset,)))
+    tree = chain(TensorIndexTree(), *axes)
+    parent = tip(tree)
+    for lat, lon, result in points:
+        parent.add_child(point_factory(lat, lon, result))
     return tree
