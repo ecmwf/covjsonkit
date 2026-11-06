@@ -209,8 +209,11 @@ class Wkt(Encoder):
                         mm.pop("step", None)
                     else:
                         mm["Forecast date"] = date
-                    self.add_coverage(mm, cov_coords, val_dict[step], include_z)
+                    self.add_coverages_by_tag(
+                        mm, cov_coords, val_dict[step], coords[date].get("tags"), len(levels), include_z
+                    )
 
+        self.sort_coverages_by_tag()
         return self.covjson
 
     def from_polytope_step(self, result):
@@ -256,6 +259,7 @@ class Wkt(Encoder):
                 coordinates[dt] = {}
                 coordinates[dt]["composite"] = []
                 coordinates[dt]["t"] = [dt]
+                coordinates[dt]["tags"] = coords[date].get("tags")
                 coord = coords[date]["composite"]
                 for level in levels:
                     for cor in coord:
@@ -287,7 +291,9 @@ class Wkt(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     valid = self._step_path_valid_time(date, t, fields)
-                    self.add_coverage(mm, coordinates[valid], val_dict, include_z)
+                    self.add_coverages_by_tag(
+                        mm, coordinates[valid], val_dict, coordinates[valid].get("tags"), len(levels), include_z
+                    )
 
         end = time.time()
         delta = end - start
@@ -297,6 +303,7 @@ class Wkt(Encoder):
         del coordinates
         gc.collect()
 
+        self.sort_coverages_by_tag()
         return self.covjson
 
     def from_polytope_month(self, result):
@@ -371,7 +378,9 @@ class Wkt(Encoder):
                 mm = mars_metadata.copy()
                 mm["number"] = num
                 mm["Forecast date"] = f"{date}-01T00:00:00Z"
-                self.add_coverage(mm, coordinates[date], val_dict, include_z)
+                self.add_coverages_by_tag(
+                    mm, coordinates[date], val_dict, coords.get(date, {}).get("tags"), len(levels), include_z
+                )
 
         end = time.time()
         logging.debug("Coverage creation: %s", end)  # noqa: E501
@@ -380,4 +389,5 @@ class Wkt(Encoder):
         del coordinates
         gc.collect()
 
+        self.sort_coverages_by_tag()
         return self.covjson

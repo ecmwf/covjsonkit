@@ -137,3 +137,86 @@ def test_other_flood_class_applies_anoffset():
     tree = forecast_separate_datetime_tree([(50.7, 7.1, [1.0])], T00, step=(6,), anoffset=(18,), type_="fu", cls="gf")
     cov = _encode("timeseries", tree)["coverages"][0]
     assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z"]
+
+
+# -- anoffset combined with point labels (polytope tags) --
+
+
+def _tagged(tags_by_point):
+    """Point factory whose leaf (and latitude node) carries polytope ``(index, label)`` tags."""
+
+    def build(lat, lon, result):
+        point = make_point(lat, lon, result)
+        for leaf in point.children:
+            # ``make_point`` turns None into NaN; keep None so missing values stay missing.
+            leaf.result = [None if r is None else np.float64(r) for r in result]
+        tags = set(tags_by_point.get((lat, lon), ()))
+        point.tags.update(tags)
+        for child in point.children:
+            child.tags.update(tags)
+        return point
+
+    return build
+
+
+LABELLED = {(50.7, 7.1): [(1, "Bonn")], (50.8, 7.2): [(0, "Cologne")]}
+
+
+def test_timeseries_anoffset_with_labels():
+    # Request order is Cologne (index 0), Bonn (index 1); the tree holds them the other way round.
+    tree = forecast_separate_datetime_tree(
+        [(50.7, 7.1, [1.0, 2.0]), (50.8, 7.2, [3.0, 4.0])],
+        T00,
+        step=(6, 12),
+        anoffset=(18,),
+        type_="fu",
+        point_factory=_tagged(LABELLED),
+    )
+    covs = _encode("timeseries", tree)["coverages"]
+    assert [c["mars:metadata"]["label"] for c in covs] == ["Cologne", "Bonn"]
+    assert [c["ranges"]["dis06"]["values"] for c in covs] == [[3.0, 4.0], [1.0, 2.0]]
+    for cov in covs:
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z", "2026-04-30T18:00:00Z"]
+        assert cov["mars:metadata"]["Forecast date"] == "2026-05-01T00:00:00Z"
+        assert cov["mars:metadata"]["anoffset"] == 18
+
+
+def test_timeseries_anoffset_keeps_null_labelled_point():
+    # A requested point without data stays as a null coverage; the shifted times are unaffected.
+    tree = forecast_separate_datetime_tree(
+        [(50.7, 7.1, [None, None]), (50.8, 7.2, [3.0, 4.0])],
+        T00,
+        step=(6, 12),
+        anoffset=(18,),
+        type_="fu",
+        point_factory=_tagged(LABELLED),
+    )
+    covs = _encode("timeseries", tree)["coverages"]
+    assert [c["mars:metadata"]["label"] for c in covs] == ["Cologne", "Bonn"]
+    assert [c["ranges"]["dis06"]["values"] for c in covs] == [[3.0, 4.0], [None, None]]
+    assert covs[1]["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z", "2026-04-30T18:00:00Z"]
+
+
+def test_position_anoffset_with_labels():
+    tree = forecast_separate_datetime_tree(
+        [(50.7, 7.1, [1.0]), (50.8, 7.2, [2.0])],
+        T12,
+        step=(6,),
+        anoffset=(30,),
+        type_="fu",
+        point_factory=_tagged(LABELLED),
+    )
+    covs = _encode("position", tree)["coverages"]
+    assert [c["mars:metadata"]["label"] for c in covs] == ["Cologne", "Bonn"]
+    assert [c["ranges"]["dis06"]["values"] for c in covs] == [[2.0], [1.0]]
+    for cov in covs:
+        assert cov["domain"]["axes"]["t"]["values"] == ["2026-04-30T12:00:00Z"]
+        assert cov["mars:metadata"]["Forecast date"] == "2026-05-01T12:00:00Z"
+        assert cov["mars:metadata"]["anoffset"] == 30
+
+
+def test_timeseries_anoffset_without_labels_has_no_label_key():
+    tree = forecast_separate_datetime_tree([(50.7, 7.1, [1.0])], T00, step=(6,), anoffset=(18,), type_="fu")
+    meta = _encode("timeseries", tree)["coverages"][0]["mars:metadata"]
+    assert "label" not in meta
+    assert meta["anoffset"] == 18

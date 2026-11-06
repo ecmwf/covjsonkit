@@ -1,6 +1,6 @@
 import xarray as xr
 
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 
 
 class Frame(Decoder):
@@ -90,7 +90,13 @@ class Frame(Decoder):
         geojson = {"type": "FeatureCollection", "features": features}
         return geojson
 
+    @nulls_as_nan
     def to_xarray(self):
+        # One dataset per requested area when several (e.g. labelled polygons) are present
+        return self._to_xarray_per_area()
+
+    @nulls_as_nan
+    def _to_xarray_single(self):
         """Convert a MultiPoint CoverageCollection to an xarray Dataset.
 
         Each coverage corresponds to one time step. The resulting Dataset has

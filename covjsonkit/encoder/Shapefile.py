@@ -204,8 +204,11 @@ class Shapefile(Encoder):
                         mm.pop("step", None)
                     else:
                         mm["Forecast date"] = date
-                    self.add_coverage(mm, cov_coords, val_dict[step], include_z)
+                    self.add_coverages_by_tag(
+                        mm, cov_coords, val_dict[step], coords[date].get("tags"), len(levels), include_z
+                    )
 
+        self.sort_coverages_by_tag()
         return self.covjson
 
     def from_polytope_month(self, result):
@@ -275,4 +278,5 @@ class Shapefile(Encoder):
                 include_z,
             )
 
+        self.sort_coverages_by_tag()
         return self.covjson

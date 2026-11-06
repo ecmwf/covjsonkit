@@ -1,7 +1,7 @@
 import xarray as xr
 
 from ..encoder.encoder import sort_step_values
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 
 
 class Path(Decoder):
@@ -114,6 +114,7 @@ class Path(Decoder):
 
         return geojson
 
+    @nulls_as_nan
     def to_xarray(self):
         dims = ["datetimes", "number", "steps", "points"]
         dataarraydict = {}

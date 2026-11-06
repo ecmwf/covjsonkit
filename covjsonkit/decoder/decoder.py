@@ -1,9 +1,42 @@
+import functools
 import json
 from abc import ABC, abstractmethod
+
+import numpy as np
 
 from covjsonkit.Coverage import Coverage
 from covjsonkit.CoverageCollection import CoverageCollection
 from covjsonkit.utils import coverage_to_coveragecollection
+
+
+def _is_numeric_or_null(array) -> bool:
+    """True if every element of an object array is ``None`` or a real number (not ``bool``/``str``)."""
+    return all(
+        value is None or (isinstance(value, (int, float, np.number)) and not isinstance(value, (bool, np.bool_)))
+        for value in array.ravel()
+    )
+
+
+def nulls_as_nan(method):
+    """Decorate a ``to_xarray`` method so that null range values come out as ``NaN``.
+
+    Points without data are encoded with ``null`` range values (``None`` once parsed).
+    Building a dataset from nested lists that contain ``None`` gives an ``object`` array;
+    this casts those variables to ``float`` so the nulls become ``NaN``. Only genuinely
+    numeric variables are converted: a variable holding strings (or any other non-numeric
+    value) is left as it is, even if its strings happen to look like numbers.
+    """
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        result = method(self, *args, **kwargs)
+        for dataset in result if isinstance(result, list) else [result]:
+            for name, variable in dataset.data_vars.items():
+                if variable.dtype == object and _is_numeric_or_null(variable.values):
+                    dataset[name] = variable.astype(float)
+        return result
+
+    return wrapper
 
 
 class Decoder(ABC):
@@ -90,6 +123,70 @@ class Decoder(ABC):
             for coverage in self.coverage.coverages:
                 mars_metadata.append(coverage["mars:metadata"])
         return mars_metadata
+
+    def _point_groups(self, domain_key, slot_key):
+        """Group coverages into one group per requested point, in first-seen order.
+
+        Coverages with the same ``domain_key`` (spatial/time domain) and ``label``
+        belong to the same point. When several requested points snapped to the same
+        grid point, their coverages repeat for each ``slot_key`` (e.g. number and
+        forecast date), so the n-th coverage for a given domain, label and slot
+        belongs to the n-th such point.
+        """
+        groups = {}
+        order = []
+        seen = {}
+        for coverage in self.covjson["coverages"]:
+            label = coverage.get("mars:metadata", {}).get("label")
+            domain = domain_key(coverage)
+            slot = (domain, label, slot_key(coverage))
+            occurrence = seen.get(slot, 0)
+            seen[slot] = occurrence + 1
+            key = (domain, label, occurrence)
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append(coverage)
+        return [groups[key] for key in order]
+
+    def _area_groups(self):
+        """Group MultiPoint coverages into one group per requested area (e.g. polygon), in request order.
+
+        Each area has one coverage per (number, forecast date, step, time), so the n-th coverage for a
+        given label and slot belongs to the n-th area with that label. Output without labels or
+        repeated slots is a single group.
+        """
+
+        def slot_key(coverage):
+            meta = coverage.get("mars:metadata", {})
+            return (
+                meta.get("number"),
+                meta.get("Forecast date"),
+                str(meta.get("step")),
+                tuple(coverage["domain"]["axes"]["t"]["values"]),
+            )
+
+        return self._point_groups(lambda coverage: None, slot_key)
+
+    def _to_xarray_per_area(self):
+        """``to_xarray`` for MultiPoint decoders: one dataset per requested area, or a single dataset as before."""
+        groups = self._area_groups()
+        if len(groups) <= 1:
+            return self._to_xarray_single()
+        datasets = []
+        for group in groups:
+            covjson = dict(self.covjson)
+            covjson["coverages"] = group
+            datasets.append(type(self)(covjson)._to_xarray_single())
+        return datasets
+
+    def _point_dataset_attrs(self, group):
+        """Dataset attributes for one point: shared MARS metadata plus the point's own label."""
+        attrs = {key: val for key, val in self.mars_metadata[0].items() if key not in ("date", "step", "label")}
+        label = group[0].get("mars:metadata", {}).get("label")
+        if label is not None:
+            attrs["label"] = label
+        return attrs
 
     @staticmethod
     def forecast_reference(coverage):

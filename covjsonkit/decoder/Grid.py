@@ -8,7 +8,7 @@ except ImportError:
 import xarray as xr
 from scipy.spatial import cKDTree
 
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 
 
 class Grid(Decoder):
@@ -153,6 +153,7 @@ class Grid(Decoder):
         geojson = {"type": "FeatureCollection", "features": features}
         return geojson
 
+    @nulls_as_nan
     def to_xarray(self):
         """
         Convert a Grid domainType CoverageJSON CoverageCollection into an xarray.Dataset.

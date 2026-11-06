@@ -3,7 +3,9 @@ import time
 
 from .encoder import (
     Encoder,
+    add_label,
     anoffset_timedelta,
+    expand_points_by_tags,
     is_reanalysis,
     normalize_step_value,
     range_shape,
@@ -130,7 +132,12 @@ class VerticalProfile(Encoder):
         return self.covjson
 
     def from_polytope(self, result, date_key: str = "date") -> dict:
-        """Encode a polytope ``TensorIndexTree`` result into a VerticalProfile CoverageJSON collection."""
+        """Encode a polytope ``TensorIndexTree`` result into a VerticalProfile CoverageJSON collection.
+
+        A requested point whose values are all ``None`` is not dropped: it is emitted, in request
+        order, with its label and ``null`` range values. Only a date with no data for any point is
+        omitted (``ValueError`` if there is none left). See ``docs/TIMESERIES_LABELS.md``.
+        """
         coords = {}
         mars_metadata = {}
         range_dict = {}
@@ -193,7 +200,9 @@ class VerticalProfile(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i, point in enumerate(range(points)):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for date in fields["dates"]:
                 for num in fields["number"]:
                     val_dict = {}
@@ -224,6 +233,7 @@ class VerticalProfile(Encoder):
                         else:
                             mm["Forecast date"] = date
                             mm["step"] = normalize_step_value(step)
+                        add_label(mm, label)
                         self.add_coverage(mm, coordinates[date][i][s], val_dict[step])
 
         end = time.time()
@@ -248,7 +258,7 @@ class VerticalProfile(Encoder):
 
         self._set_references()
 
-        coverages, param_order = self._reforecast_coverages(result, by_step=True)
+        coverages, param_order = self._reforecast_coverages(result, by_step=True, by_tag=True)
         for para in param_order:
             self.add_parameter(para)
 
@@ -327,7 +337,9 @@ class VerticalProfile(Encoder):
         logging.debug("The fields retrieved were: %s", fields)  # noqa: E501
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
-        for i in range(points):
+        entries = expand_points_by_tags(coords[fields["dates"][0]].get("tags"), points)
+
+        for i, label in entries:
             for date in fields["dates"]:
                 for num in fields["number"]:
                     val_dict = {}
@@ -348,6 +360,7 @@ class VerticalProfile(Encoder):
                     mm = mars_metadata.copy()
                     mm["number"] = num
                     mm["Forecast date"] = date
+                    add_label(mm, label)
                     self.add_coverage(mm, coordinates[date][i], val_dict)
 
         end = time.time()

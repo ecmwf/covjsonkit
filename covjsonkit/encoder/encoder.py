@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -31,6 +32,115 @@ def is_merged_node(node) -> bool:
     if MergedTensorIndexNode is not None:
         return isinstance(node, MergedTensorIndexNode)
     return hasattr(node, "axes") and getattr(node, "axes", None) is not None
+
+
+def parse_tag(tag) -> tuple:
+    """Split a polytope shape tag into ``(index, label)``.
+
+    polytope-mars tags each requested point (or polygon) as ``(index, label)``, where
+    ``index`` is its position in the request and ``label`` the user's label or ``None``.
+    Any other tag is treated as a bare label with no index.
+    """
+    if isinstance(tag, tuple) and len(tag) == 2 and isinstance(tag[0], int) and not isinstance(tag[0], bool):
+        return tag
+    return (None, tag)
+
+
+def node_tags(node) -> list:
+    """The ``(index, label)`` tags of a leaf node, sorted by index; empty if untagged."""
+    tags = getattr(node, "tags", None) or ()
+    parsed = [parse_tag(tag) for tag in tags]
+    return sorted(parsed, key=lambda t: (t[0] is None, t[0] if t[0] is not None else 0, str(t[1])))
+
+
+def check_tag_count(tags_per_point, n_points) -> None:
+    """Raise ``ValueError`` if tags were given but their count differs from the number of points.
+
+    Labels must be 1:1 with points: a mismatch means tags cannot be matched to points, and
+    silently dropping them would return unlabelled or mislabelled output.
+    """
+    if tags_per_point and len(tags_per_point) != n_points:
+        raise ValueError(
+            f"Found {len(tags_per_point)} tag entries for {n_points} points; "
+            "labels must be 1:1 with points, so the tag count must equal the point count"
+        )
+
+
+def expand_points_by_tags(tags_per_point, n_points) -> list:
+    """Return the ``(point_index, label)`` pairs to emit, in request order.
+
+    ``tags_per_point`` holds the leaf tags of each spatial point, parallel to the
+    composite coordinates. Each tag gives one entry, so a grid point carrying two tags
+    (two requested points snapped to it) is emitted twice. Tagged entries come first,
+    ordered by request index; untagged points follow once each, without a label, in
+    tree order. A tree without tags therefore gives the same output as before.
+    """
+    check_tag_count(tags_per_point, n_points)
+    if not tags_per_point:
+        return [(i, None) for i in range(n_points)]
+
+    tagged = []
+    untagged = []
+    for i, tags in enumerate(tags_per_point):
+        if not tags:
+            untagged.append((i, None))
+            continue
+        for index, label in tags:
+            if index is None:
+                untagged.append((i, label))
+            else:
+                tagged.append((index, i, label))
+    if tagged and untagged:
+        logging.warning("%s of %s points carry no tag and are returned without a label", len(untagged), n_points)
+    tagged.sort(key=lambda t: (t[0], t[1]))
+    return [(i, label) for _, i, label in tagged] + untagged
+
+
+def expand_tags(tags) -> list:
+    """``(index, label)`` pairs for one leaf value: one per tag, or a single untagged entry."""
+    return list(tags) if tags else [(None, None)]
+
+
+def tag_sort_key(index):
+    """Sort key placing tagged entries in request order before untagged ones."""
+    return (index is None, index if index is not None else 0)
+
+
+def add_label(metadata, label):
+    """Set ``label`` in coverage metadata when one was requested."""
+    if label is not None:
+        metadata["label"] = label
+    return metadata
+
+
+def group_points_by_tags(tags_per_point, n_points) -> list:
+    """Group composite points by tag index: ``[(index, label, [point indices]), ...]`` in request order.
+
+    Used by the MultiPoint encoders, where each tag is a requested area (e.g. a polygon). A point
+    carrying several tags (inside several requested areas) belongs to each group. Without tags all
+    points form a single group ``(None, None, all points)``, so the output is unchanged; points left
+    untagged while others are tagged are returned as a final group without a label.
+    """
+    check_tag_count(tags_per_point, n_points)
+    if not tags_per_point:
+        return [(None, None, list(range(n_points)))]
+
+    groups = {}
+    untagged = []
+    for i, tags in enumerate(tags_per_point):
+        indexed = [(index, label) for index, label in tags if index is not None]
+        if not indexed:
+            untagged.append(i)
+        for index, label in indexed:
+            groups.setdefault(index, (label, []))[1].append(i)
+    if not groups:
+        return [(None, None, list(range(n_points)))]
+    if untagged:
+        logging.warning("%s of %s points carry no tag and are returned without a label", len(untagged), n_points)
+    result = [(index, label, points) for index, (label, points) in sorted(groups.items())]
+    if untagged:
+        result.append((None, None, untagged))
+    return result
 
 
 def range_shape(values, axis_name):
@@ -497,6 +607,27 @@ class Encoder(ABC):
         # self.covjson = self.pydantic_coverage.model_dump_json(exclude_none=True, indent=4)
         return orjson.dumps(self.covjson)
 
+    @staticmethod
+    def _prune_dates_without_data(fields, coords, range_dict) -> None:
+        """Remove the dates for which no point has any data, after a tree walk.
+
+        The walkers keep every point, with null values where it has no data (so labels
+        and point positions are preserved). A date whose values are null for *all*
+        points carries no information and is removed from ``fields["dates"]``,
+        ``coords`` and ``range_dict``. Raises ``ValueError`` if no date has data.
+        """
+        with_data = fields.pop("_dates_with_data", set())
+        empty = [date for date in fields["dates"] if date not in with_data]
+        if not empty:
+            return
+        if len(empty) == len(fields["dates"]):
+            raise ValueError("No data was returned.")
+        fields["dates"] = [date for date in fields["dates"] if date in with_data]
+        for date in empty:
+            coords.pop(date, None)
+        for key in [key for key in range_dict if key[0] in empty]:
+            del range_dict[key]
+
     def walk_tree(
         self,
         tree,
@@ -508,13 +639,29 @@ class Encoder(ABC):
     ) -> None:
         """Walk the polytope result tree, extracting data into fields, coords, and range_dict.
 
+        Every point is kept: a point whose values are all ``None`` is emitted with null
+        values rather than dropped. Only a date with no data for *any* point is removed.
+        The same holds for :meth:`walk_tree_reforecast`, :meth:`walk_tree_step` and
+        :meth:`walk_tree_month`.
+
         ``date_key`` controls which tree axis is treated as the time dimension
         (e.g. ``"date"`` for forecasts, ``"hdate"`` for hindcast/reforecast data).
         Any other axis with the default name falls through to ``mars_metadata``
         instead.  Regardless of ``date_key``, values are always stored under
         ``fields["dates"]``.
         """
+        self._walk_tree(tree, fields, coords, mars_metadata, range_dict, date_key=date_key)
+        self._prune_dates_without_data(fields, coords, range_dict)
 
+    def _walk_tree(
+        self,
+        tree,
+        fields: dict[str, Any],
+        coords: dict[str, dict[str, list]],
+        mars_metadata: dict[str, Any],
+        range_dict: dict[tuple, list],
+        date_key: str = "date",
+    ) -> None:
         def create_composite_key(date, level, num, para, s):
             return (date, level, num, para, s)
 
@@ -587,12 +734,13 @@ class Encoder(ABC):
             end_index = start_index + int(step_len)
             return start_index, end_index
 
-        def append_composite_coords(dates, tree_values, lat, coords):
+        def append_composite_coords(dates, tree_values, lat, coords, tags):
             # for date in dates:
             for value in tree_values:
                 coords[dates]["composite"].append([lat, value])
+                coords[dates].setdefault("tags", []).append(tags)
 
-        def emit_leaf(lat, lon_values, result):
+        def emit_leaf(lat, lon_values, result, tags):
             """Emit one spatial leaf: append [lat, lon] composite coords and slice results.
 
             Shared by the legacy longitude-leaf path (``lat`` from the parent latitude
@@ -600,42 +748,36 @@ class Encoder(ABC):
             ``MergedTensorIndexNode`` path (single point: ``lon_values`` = [lon]).
             """
             lon_values = [float(val) for val in lon_values]
-            if all(val is None for val in result):
-                fields["dates"] = fields["dates"][:-1]
-                for date in fields["dates"]:
-                    for level in fields["levels"]:
-                        for num in fields["number"]:
-                            for para in fields["param"]:
-                                for s in fields["step"]:
-                                    key = create_composite_key(date, level, num, para, s)
-                                    if key in range_dict:
-                                        del range_dict[key]
-            else:
-                result = [float(val) if val is not None else val for val in result]
-                level_len = len(result) / len(fields["levels"])
-                num_len = level_len / len(fields["number"])
-                para_len = num_len / len(fields["param"])
-                step_len = para_len / len(fields["step"])
+            # A point without data is kept, with null values: dropping it would shift
+            # every later point and lose its label. Dates with no data for any point
+            # are removed once the whole tree is walked (``_prune_dates_without_data``).
+            if any(val is not None for val in result):
+                fields.setdefault("_dates_with_data", set()).add(fields["dates"][-1])
+            result = [float(val) if val is not None else val for val in result]
+            level_len = len(result) / len(fields["levels"])
+            num_len = level_len / len(fields["number"])
+            para_len = num_len / len(fields["param"])
+            step_len = para_len / len(fields["step"])
 
-                append_composite_coords(fields["dates"][-1], lon_values, lat, coords)
+            append_composite_coords(fields["dates"][-1], lon_values, lat, coords, tags)
 
-                for l, level in enumerate(fields["levels"]):  # noqa: E741
-                    for i, num in enumerate(fields["number"]):
-                        for j, para in enumerate(fields["param"]):
-                            for k, s in enumerate(fields["step"]):
-                                start_index, end_index = calculate_index_bounds(
-                                    level_len, num_len, para_len, step_len, l, i, j, k
-                                )
-                                key = create_composite_key(fields["dates"][-1], level, num, para, s)
-                                if key not in range_dict:
-                                    range_dict[key] = []
-                                range_dict[key].extend(result[start_index:end_index])
+            for l, level in enumerate(fields["levels"]):  # noqa: E741
+                for i, num in enumerate(fields["number"]):
+                    for j, para in enumerate(fields["param"]):
+                        for k, s in enumerate(fields["step"]):
+                            start_index, end_index = calculate_index_bounds(
+                                level_len, num_len, para_len, step_len, l, i, j, k
+                            )
+                            key = create_composite_key(fields["dates"][-1], level, num, para, s)
+                            if key not in range_dict:
+                                range_dict[key] = []
+                            range_dict[key].extend(result[start_index:end_index])
 
         if len(tree.children) != 0:
             for child in tree.children:
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
-                    emit_leaf(child.values[0], [child.values[1]], child.result)
+                    emit_leaf(child.values[0], [child.values[1]], child.result, node_tags(child))
                     continue
                 handle_non_leaf_node(child)
                 result = handle_specific_axes(child)
@@ -659,11 +801,16 @@ class Encoder(ABC):
                         if "s" in fields:
                             fields["s"].extend(result)
 
-                self.walk_tree(child, fields, coords, mars_metadata, range_dict, date_key=date_key)
+                self._walk_tree(child, fields, coords, mars_metadata, range_dict, date_key=date_key)
         else:
-            emit_leaf(fields["lat"], tree.values, tree.result)
+            emit_leaf(fields["lat"], tree.values, tree.result, node_tags(tree))
 
     def walk_tree_reforecast(self, tree, fields, coords, mars_metadata, range_dict):
+        """Walk a reforecast tree; see :meth:`_walk_tree_reforecast` for the layout and :meth:`walk_tree` for nulls."""
+        self._walk_tree_reforecast(tree, fields, coords, mars_metadata, range_dict)
+        self._prune_dates_without_data(fields, coords, range_dict)
+
+    def _walk_tree_reforecast(self, tree, fields, coords, mars_metadata, range_dict):
         """Walk the result tree for reforecast/reanalysis with an independent ``time`` axis.
 
         Unlike :meth:`walk_tree` (which, for the legacy merged representation,
@@ -730,48 +877,43 @@ class Encoder(ABC):
             end_index = start_index + int(step_len)
             return start_index, end_index
 
-        def append_composite_coords(dates, tree_values, lat, coords):
+        def append_composite_coords(dates, tree_values, lat, coords, tags):
             for value in tree_values:
                 coords[dates]["composite"].append([lat, value])
+                coords[dates].setdefault("tags", []).append(tags)
 
-        def emit_leaf(lat, lon_values, result):
+        def emit_leaf(lat, lon_values, result, tags):
             lon_values = [float(val) for val in lon_values]
-            if all(val is None for val in result):
-                fields["dates"] = fields["dates"][:-1]
-                for date in fields["dates"]:
-                    for level in fields["levels"]:
-                        for num in fields["number"]:
-                            for para in fields["param"]:
-                                for s in fields["step"]:
-                                    key = create_composite_key(date, level, num, para, s)
-                                    if key in range_dict:
-                                        del range_dict[key]
-            else:
-                result = [float(val) if val is not None else val for val in result]
-                level_len = len(result) / len(fields["levels"])
-                num_len = level_len / len(fields["number"])
-                para_len = num_len / len(fields["param"])
-                step_len = para_len / len(fields["step"])
+            # A point without data is kept, with null values: dropping it would shift
+            # every later point and lose its label. Dates with no data for any point
+            # are removed once the whole tree is walked (``_prune_dates_without_data``).
+            if any(val is not None for val in result):
+                fields.setdefault("_dates_with_data", set()).add(fields["dates"][-1])
+            result = [float(val) if val is not None else val for val in result]
+            level_len = len(result) / len(fields["levels"])
+            num_len = level_len / len(fields["number"])
+            para_len = num_len / len(fields["param"])
+            step_len = para_len / len(fields["step"])
 
-                append_composite_coords(fields["dates"][-1], lon_values, lat, coords)
+            append_composite_coords(fields["dates"][-1], lon_values, lat, coords, tags)
 
-                for l, level in enumerate(fields["levels"]):  # noqa: E741
-                    for i, num in enumerate(fields["number"]):
-                        for j, para in enumerate(fields["param"]):
-                            for k, s in enumerate(fields["step"]):
-                                start_index, end_index = calculate_index_bounds(
-                                    level_len, num_len, para_len, step_len, l, i, j, k
-                                )
-                                key = create_composite_key(fields["dates"][-1], level, num, para, s)
-                                if key not in range_dict:
-                                    range_dict[key] = []
-                                range_dict[key].extend(result[start_index:end_index])
+            for l, level in enumerate(fields["levels"]):  # noqa: E741
+                for i, num in enumerate(fields["number"]):
+                    for j, para in enumerate(fields["param"]):
+                        for k, s in enumerate(fields["step"]):
+                            start_index, end_index = calculate_index_bounds(
+                                level_len, num_len, para_len, step_len, l, i, j, k
+                            )
+                            key = create_composite_key(fields["dates"][-1], level, num, para, s)
+                            if key not in range_dict:
+                                range_dict[key] = []
+                            range_dict[key].extend(result[start_index:end_index])
 
         if len(tree.children) != 0:
             for child in tree.children:
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
-                    emit_leaf(child.values[0], [child.values[1]], child.result)
+                    emit_leaf(child.values[0], [child.values[1]], child.result, node_tags(child))
                     continue
                 handle_non_leaf_node(child)
                 result = handle_specific_axes(child)
@@ -795,11 +937,16 @@ class Encoder(ABC):
                         if "s" in fields:
                             fields["s"].extend(result)
 
-                self.walk_tree_reforecast(child, fields, coords, mars_metadata, range_dict)
+                self._walk_tree_reforecast(child, fields, coords, mars_metadata, range_dict)
         else:
-            emit_leaf(fields["lat"], tree.values, tree.result)
+            emit_leaf(fields["lat"], tree.values, tree.result, node_tags(tree))
 
     def walk_tree_step(self, tree, fields, coords, mars_metadata, range_dict):
+        """Walk a tree with independent ``date``/``time`` axes; see :meth:`walk_tree` for nulls."""
+        self._walk_tree_step(tree, fields, coords, mars_metadata, range_dict)
+        self._prune_dates_without_data(fields, coords, range_dict)
+
+    def _walk_tree_step(self, tree, fields, coords, mars_metadata, range_dict):
         def create_composite_key_step(date, level, num, para):
             return (date, level, num, para)
 
@@ -850,53 +997,46 @@ class Encoder(ABC):
             end_index = start_index + int(step_len)
             return start_index, end_index
 
-        def append_composite_coords_step(dates, tree_values, lat, coords):
+        def append_composite_coords_step(dates, tree_values, lat, coords, tags):
             # for date in dates:
             for value in tree_values:
                 coords[dates]["composite"].append([lat, value])
+                coords[dates].setdefault("tags", []).append(tags)
 
-        def emit_leaf_step(lat, lon_values, result):
+        def emit_leaf_step(lat, lon_values, result, tags):
             """Emit one spatial leaf for the step walker (shared by legacy and merged)."""
             lon_values = [float(val) for val in lon_values]
-            if all(val is None for val in result):
-                fields["dates"] = fields["dates"][:-1]
-                for date in fields["dates"]:
-                    for level in fields["levels"]:
-                        for num in fields["number"]:
-                            for para in fields["param"]:
-                                for s in fields["step"]:
-                                    key = create_composite_key_step(date, level, num, para)
-                                    if key in range_dict:
-                                        del range_dict[key]
-            else:
-                result = [float(val) if val is not None else val for val in result]
-                date_len = len(result) / len(fields["dates"])
-                level_len = date_len / len(fields["levels"])
-                para_len = level_len / len(fields["param"])
+            # A point without data is kept, with null values (see ``walk_tree``).
+            result = [float(val) if val is not None else val for val in result]
+            date_len = len(result) / len(fields["dates"])
+            level_len = date_len / len(fields["levels"])
+            para_len = level_len / len(fields["param"])
 
-                for date in fields["dates"]:
-                    append_composite_coords_step(date, lon_values, lat, coords)
+            for d, date in enumerate(fields["dates"]):
+                if any(val is not None for val in result[int(d * date_len) : int((d + 1) * date_len)]):
+                    fields.setdefault("_dates_with_data", set()).add(date)
+                append_composite_coords_step(date, lon_values, lat, coords, tags)
 
-                for d, date in enumerate(fields["dates"]):
-                    for l, level in enumerate(fields["levels"]):  # noqa: E741
-                        for i, num in enumerate(fields["number"]):
-                            for j, para in enumerate(fields["param"]):
-                                key = create_composite_key_step(date, level, num, para)
-                                if key not in range_dict:
-                                    range_dict[key] = []
-                                range_dict[key].append(
-                                    result[
-                                        int(d * date_len + l * level_len + j * para_len) : int(
-                                            d * date_len + l * level_len + j * para_len + len(fields["times"])
-                                        )
-                                    ]
-                                )
+            for d, date in enumerate(fields["dates"]):
+                for l, level in enumerate(fields["levels"]):  # noqa: E741
+                    for i, num in enumerate(fields["number"]):
+                        for j, para in enumerate(fields["param"]):
+                            key = create_composite_key_step(date, level, num, para)
+                            if key not in range_dict:
+                                range_dict[key] = []
+                            range_dict[key].append(
+                                result[
+                                    int(d * date_len + l * level_len + j * para_len) : int(
+                                        d * date_len + l * level_len + j * para_len + len(fields["times"])
+                                    )
+                                ]
+                            )
 
         if len(tree.children) != 0:
             for child in tree.children:
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
-                    emit_leaf_step(child.values[0], [child.values[1]], child.result)
+                    emit_leaf_step(child.values[0], [child.values[1]], child.result, node_tags(child))
                     continue
                 handle_non_leaf_node_step(child)
                 result = handle_specific_axes_step(child)
@@ -922,11 +1062,19 @@ class Encoder(ABC):
                     elif child.axis.name == "time":
                         fields["times"].extend(result)
 
-                self.walk_tree_step(child, fields, coords, mars_metadata, range_dict)
+                self._walk_tree_step(child, fields, coords, mars_metadata, range_dict)
         else:
-            emit_leaf_step(fields["lat"], tree.values, tree.result)
+            emit_leaf_step(fields["lat"], tree.values, tree.result, node_tags(tree))
 
     def walk_tree_month(self, tree, fields, coords, mars_metadata, range_dict, _ctx=None):
+        """Walk the result tree for monthly-mean streams (e.g. clmn); see :meth:`_walk_tree_month`.
+
+        Points without data are kept with null values (see :meth:`walk_tree`).
+        """
+        self._walk_tree_month(tree, fields, coords, mars_metadata, range_dict, _ctx=_ctx)
+        self._prune_dates_without_data(fields, coords, range_dict)
+
+    def _walk_tree_month(self, tree, fields, coords, mars_metadata, range_dict, _ctx=None):
         """Walk the result tree for monthly-mean streams (e.g. clmn).
 
         These streams use ``year`` and ``month`` axes instead of ``date``/``time``/``step``.
@@ -975,11 +1123,12 @@ class Encoder(ABC):
                 return child.values
             return None
 
-        def append_composite_coords_month(date_key, tree_values, lat):
+        def append_composite_coords_month(date_key, tree_values, lat, tags):
             for value in tree_values:
                 coords[date_key]["composite"].append([lat, value])
+                coords[date_key].setdefault("tags", []).append(tags)
 
-        def emit_leaf_month(lat, lon_values, result):
+        def emit_leaf_month(lat, lon_values, result, tags):
             """Emit one spatial leaf for the month walker (shared by legacy and merged).
 
             ``lat`` is the latitude for this leaf, ``lon_values`` the leaf's list of
@@ -1014,49 +1163,42 @@ class Encoder(ABC):
                 leaf_dates = fields["dates"]
 
             lon_values = [float(val) for val in lon_values]
-            if all(val is None for val in result):
-                # Remove date entries for this leaf that produced no data.
-                for key in leaf_dates:
-                    if key in fields["dates"]:
-                        fields["dates"].remove(key)
-                    for level in fields["levels"]:
-                        for num in fields["number"]:
-                            for para in fields["param"]:
-                                rkey = (key, level, num, para)
-                                if rkey in range_dict:
-                                    del range_dict[rkey]
-            else:
-                result = [float(val) if val is not None else val for val in result]
+            # A point without data is kept, with null values (see ``walk_tree``).
+            result = [float(val) if val is not None else val for val in result]
 
-                n_dates = len(leaf_dates)
-                n_levels = len(fields["levels"])
-                n_params = len(fields["param"])
+            n_dates = len(leaf_dates)
+            n_levels = len(fields["levels"])
+            n_params = len(fields["param"])
 
-                date_len = len(result) / n_dates if n_dates else len(result)
-                level_len = date_len / n_levels if n_levels else date_len
-                para_len = level_len / n_params if n_params else level_len
+            date_len = len(result) / n_dates if n_dates else len(result)
+            level_len = date_len / n_levels if n_levels else date_len
+            para_len = level_len / n_params if n_params else level_len
 
-                # Append this leaf's longitude values to composite coords for
-                # every date key in scope.
-                for date in leaf_dates:
-                    append_composite_coords_month(date, lon_values, lat)
+            for d, date in enumerate(leaf_dates):
+                if any(val is not None for val in result[int(d * date_len) : int((d + 1) * date_len)]):
+                    fields.setdefault("_dates_with_data", set()).add(date)
 
-                for d, date in enumerate(leaf_dates):
-                    for l, level in enumerate(fields["levels"]):  # noqa: E741
-                        for i, num in enumerate(fields["number"]):
-                            for j, para in enumerate(fields["param"]):
-                                key = (date, level, num, para)
-                                if key not in range_dict:
-                                    range_dict[key] = []
-                                start = int(d * date_len + l * level_len + j * para_len)
-                                end = int(start + len(lon_values))
-                                range_dict[key].append(result[start:end])
+            # Append this leaf's longitude values to composite coords for
+            # every date key in scope.
+            for date in leaf_dates:
+                append_composite_coords_month(date, lon_values, lat, tags)
+
+            for d, date in enumerate(leaf_dates):
+                for l, level in enumerate(fields["levels"]):  # noqa: E741
+                    for i, num in enumerate(fields["number"]):
+                        for j, para in enumerate(fields["param"]):
+                            key = (date, level, num, para)
+                            if key not in range_dict:
+                                range_dict[key] = []
+                            start = int(d * date_len + l * level_len + j * para_len)
+                            end = int(start + len(lon_values))
+                            range_dict[key].append(result[start:end])
 
         if len(tree.children) != 0:
             for child in tree.children:
                 # Compacted unstructured leaf: values=(lat, lon), own result. Emit directly.
                 if is_merged_node(child):
-                    emit_leaf_month(child.values[0], [child.values[1]], child.result)
+                    emit_leaf_month(child.values[0], [child.values[1]], child.result, node_tags(child))
                     continue
                 handle_non_leaf_node_month(child)
                 result = handle_specific_axes_month(child)
@@ -1097,12 +1239,60 @@ class Encoder(ABC):
                     elif child.axis.name == "number":
                         fields["number"] = result
 
-                self.walk_tree_month(child, fields, coords, mars_metadata, range_dict, _ctx=child_ctx)
+                self._walk_tree_month(child, fields, coords, mars_metadata, range_dict, _ctx=child_ctx)
         else:
-            emit_leaf_month(fields["lat"], tree.values, tree.result)
+            emit_leaf_month(fields["lat"], tree.values, tree.result, node_tags(tree))
+
+    def add_coverages_by_tag(self, mars_metadata, coords, values, tags, n_levels=1, include_z=False):
+        """Add one MultiPoint coverage per tag index, holding only that tag's points.
+
+        ``coords["composite"]`` and every list in ``values`` are ordered level-major over the spatial
+        points (``n_levels`` blocks of ``len(tags)`` points), as built by the MultiPoint encoders.
+        With no tags at all (``None`` or empty) a single unlabelled coverage is added unchanged. Otherwise
+        ``tags`` must have one entry per spatial point, i.e. ``len(composite) / n_levels`` entries, and
+        every values list must have the same length as the composite; any mismatch raises ``ValueError``,
+        also when every entry is untagged.
+        Call :meth:`sort_coverages_by_tag` before returning so the coverages come out in request order.
+        """
+        if not hasattr(self, "_coverage_tag_keys"):
+            self._coverage_tag_keys = []
+        if not tags:
+            self.add_coverage(mars_metadata, coords, values, include_z)
+            self._coverage_tag_keys.append(tag_sort_key(None))
+            return
+        n_points = len(tags)
+        n_composite = len(coords["composite"])
+        if n_composite != n_levels * n_points or any(len(vals) != n_composite for vals in values.values()):
+            raise ValueError(
+                f"Found {n_points} tag entries but {n_composite} composite points for "
+                f"{n_levels} level(s); labels must be 1:1 with points, so the tag count must equal "
+                "the point count"
+            )
+        groups = group_points_by_tags(tags, n_points)
+        if len(groups) == 1 and groups[0][0] is None:
+            self.add_coverage(mars_metadata, coords, values, include_z)
+            self._coverage_tag_keys.append(tag_sort_key(None))
+            return
+        for index, label, points in groups:
+            selection = [level * n_points + p for level in range(n_levels) for p in points]
+            group_coords = dict(coords)
+            group_coords.pop("tags", None)
+            group_coords["composite"] = [coords["composite"][k] for k in selection]
+            group_values = {para: [vals[k] for k in selection] for para, vals in values.items()}
+            self.add_coverage(add_label(dict(mars_metadata), label), group_coords, group_values, include_z)
+            self._coverage_tag_keys.append(tag_sort_key(index))
+
+    def sort_coverages_by_tag(self):
+        """Order coverages added by :meth:`add_coverages_by_tag` by request index (stable)."""
+        keys = getattr(self, "_coverage_tag_keys", [])
+        coverages = self.covjson["coverages"]
+        if len(keys) == len(coverages) and any(key != tag_sort_key(None) for key in keys):
+            order = sorted(range(len(coverages)), key=lambda i: keys[i])
+            self.covjson["coverages"] = [coverages[i] for i in order]
+            self._coverage_tag_keys = [keys[i] for i in order]
 
     @abstractmethod
-    def add_coverage(self, mars_metadata, coords, values):
+    def add_coverage(self, mars_metadata, coords, values, include_z=False):
         pass
 
     @abstractmethod
@@ -1176,26 +1366,27 @@ class Encoder(ABC):
         the full root-to-leaf path (latitude/longitude included), using the same
         ``itertools.product`` layout the compressed leaf ``result`` array follows.
         Handles both the compacted ``MergedTensorIndexNode`` lat/lon leaves and
-        the classic nested latitude/longitude branches.
+        the classic nested latitude/longitude branches. Each record also carries the
+        leaf's ``(index, label)`` tags under ``"__tags__"``. Records without data are kept,
+        with ``"__value__"`` set to ``None``.
         """
         import itertools
 
         records = []
 
-        def emit(full_path, flat_result):
+        def emit(full_path, flat_result, tags):
             axis_names = [name for name, _ in full_path]
             axis_values = [values for _, values in full_path]
             for idx, combo in enumerate(itertools.product(*axis_values)):
                 value = flat_result[idx]
-                if value is None:
-                    continue
                 records.append(dict(zip(axis_names, combo)))
                 records[-1]["__value__"] = value
+                records[-1]["__tags__"] = tags
 
         def recurse(node, path):
             children = node.children
             if len(children) == 0:
-                emit(path, node.result)
+                emit(path, node.result, node_tags(node))
                 return
             for child in children:
                 if is_merged_node(child):
@@ -1203,6 +1394,7 @@ class Encoder(ABC):
                     emit(
                         path + [("latitude", (lat,)), ("longitude", (lon,))],
                         child.result,
+                        node_tags(child),
                     )
                     continue
                 recurse(child, path + [(child.axis.name, tuple(child.values))])
@@ -1210,7 +1402,7 @@ class Encoder(ABC):
         recurse(result, [])
         return records
 
-    def _reforecast_coverages(self, result, by_step=True):
+    def _reforecast_coverages(self, result, by_step=True, by_tag=False):
         """Group separate-datetime (``class=ce``) records into coverages.
 
         Coverages are keyed by ``(reference, number)`` -- plus ``step`` when
@@ -1221,6 +1413,15 @@ class Encoder(ABC):
         :func:`set_forecast_date`. For the :data:`ANOFFSET_CLASSES` the valid time is shifted
         back by the request's single ``anoffset`` (:func:`anoffset_timedelta`).
 
+        With ``by_tag`` (point-like encoders), each ``(index, label)`` tag carried by
+        a leaf gets its own coverage so that requested points snapping to the same
+        grid point stay apart; the label is added to the metadata when given and
+        tagged coverages come first, in request order. Untagged records form a single
+        group and the order is unchanged.
+
+        A point without data is kept, with ``None`` values. Only a reference datetime
+        for which *no* point has any data is dropped (as in :meth:`walk_tree`).
+
         Returns ``(coverages, param_order)``.
         """
         exclude_meta = {"latitude", "longitude", "hdate", "time", "step", "param", "number", "levelist"}
@@ -1228,6 +1429,10 @@ class Encoder(ABC):
         coverages = {}
         param_order = []
         anoffsets = {}
+        # ``ref`` is the unshifted reference (hdate + time): ``anoffset`` is one constant per request,
+        # so grouping and pruning by it is equivalent to using the shifted valid time.
+        refs_with_data = set()
+        coverage_ref = {}
 
         for rec in self._reforecast_records(result):
             level = rec.get("levelist", 0)
@@ -1247,29 +1452,37 @@ class Encoder(ABC):
                 anoffsets["anoffset"] = self._single_anoffset(anoffsets, rec["anoffset"])
             valid = iso_utc(ref + step_to_timedelta(step) - anoffset_timedelta(rec))
 
-            key = (ref, step_to_timedelta(step), number) if by_step else (ref, number)
-            if key not in coverages:
-                meta = {}
-                for name in rec:
-                    if name == "__value__" or name in exclude_meta:
-                        continue
-                    meta[name] = self._reforecast_stringify(rec[name])
-                if "anoffset" in meta:
-                    meta["anoffset"] = anoffset_value(rec["anoffset"])
-                meta["number"] = number
-                if by_step:
-                    meta["step"] = step
-                set_forecast_date(meta, ref)
-                if "Forecast date" not in meta:
-                    # Reanalysis (efcl): the valid time on ``t`` replaces date and step.
-                    meta.pop("step", None)
-                coverages[key] = {"meta": meta, "entries": {}}
+            for tag_index, label in expand_tags(rec["__tags__"]) if by_tag else [(None, None)]:
+                tag_key = (tag_sort_key(tag_index), "" if label is None else str(label))
+                key = (tag_key, ref, step_to_timedelta(step), number) if by_step else (tag_key, ref, number)
+                if key not in coverages:
+                    meta = {}
+                    for name in rec:
+                        if name in ("__value__", "__tags__") or name in exclude_meta:
+                            continue
+                        meta[name] = self._reforecast_stringify(rec[name])
+                    if "anoffset" in meta:
+                        meta["anoffset"] = anoffset_value(rec["anoffset"])
+                    meta["number"] = number
+                    if by_step:
+                        meta["step"] = step
+                    set_forecast_date(meta, ref)
+                    if "Forecast date" not in meta:
+                        # Reanalysis (efcl): the valid time on ``t`` replaces date and step.
+                        meta.pop("step", None)
+                    add_label(meta, label)
+                    coverages[key] = {"meta": meta, "entries": {}}
+                    coverage_ref[key] = ref
 
-            if para not in param_order:
-                param_order.append(para)
-            entry = (valid, float(rec["latitude"]), float(rec["longitude"]), level)
-            coverages[key]["entries"].setdefault(entry, {})[para] = float(rec["__value__"])
+                if para not in param_order:
+                    param_order.append(para)
+                entry = (valid, float(rec["latitude"]), float(rec["longitude"]), level)
+                value = rec["__value__"]
+                if value is not None:
+                    refs_with_data.add(ref)
+                coverages[key]["entries"].setdefault(entry, {})[para] = None if value is None else float(value)
 
+        coverages = {key: cov for key, cov in coverages.items() if coverage_ref[key] in refs_with_data}
         if not coverages:
             raise ValueError("No data was returned.")
 
@@ -1299,7 +1512,7 @@ class Encoder(ABC):
         include_z = self._tree_has_axis(result, "levelist")
         self._set_references(include_z)
 
-        coverages, param_order = self._reforecast_coverages(result, by_step=True)
+        coverages, param_order = self._reforecast_coverages(result, by_step=True, by_tag=True)
         for para in param_order:
             self.add_parameter(para)
 

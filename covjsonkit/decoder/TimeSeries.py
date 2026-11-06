@@ -1,7 +1,7 @@
 import pandas as pd
 import xarray as xr
 
-from .decoder import Decoder
+from .decoder import Decoder, nulls_as_nan
 
 
 class TimeSeries(Decoder):
@@ -108,6 +108,7 @@ class TimeSeries(Decoder):
         return geojson
 
     # function to convert covjson to xarray dataset
+    @nulls_as_nan
     def to_xarray(self):
         # Monthly-means fast path: coverages produced by from_polytope_month() pack all
         # time steps into a single coverage's t-axis and do NOT write "Forecast date"
@@ -123,27 +124,29 @@ class TimeSeries(Decoder):
             dims = ["latitude", "longitude", "number", "datetime", "t"]
         ds = []
 
-        all_coords = self.get_domains()
+        # One dataset per requested point: coverages are grouped by domain and label,
+        # and points that snapped to the same grid point are kept apart.
+        def point_key(coverage):
+            axes = coverage["domain"]["axes"]
+            return (
+                axes[self.x_name]["values"][0],
+                axes[self.y_name]["values"][0],
+                axes[self.z_name]["values"][0] if self.z_name else None,
+            )
 
-        unique_coords = set()
-        unique_domains = []
+        def slot_key(coverage):
+            return (coverage["mars:metadata"]["number"], coverage["mars:metadata"]["Forecast date"])
 
-        for domain in self.domains:
-            longitude = domain["axes"][self.x_name]["values"][0]
-            latitude = domain["axes"][self.y_name]["values"][0]
-            t = tuple(domain["axes"]["t"]["values"])
-
-            if self.z_name:
-                z = domain["axes"][self.z_name]["values"][0]
-                coord_tuple = (longitude, latitude, z, t)
-            else:
-                coord_tuple = (longitude, latitude, t)
-
-            if coord_tuple not in unique_coords:
-                unique_coords.add(coord_tuple)
-                unique_domains.append(domain)
-
-        all_coords = unique_domains
+        # Within each point, one dataset per distinct time axis (as before), filled from
+        # that point's coverages only.
+        datasets = []
+        for group in self._point_groups(point_key, slot_key):
+            seen_t = set()
+            for coverage in group:
+                t = tuple(coverage["domain"]["axes"]["t"]["values"])
+                if t not in seen_t:
+                    seen_t.add(t)
+                    datasets.append((group, coverage["domain"]))
 
         num = []
         datetime = []
@@ -153,8 +156,8 @@ class TimeSeries(Decoder):
         nums = list(set(num))
         datetime = list(set(datetime))
 
-        # Process each coordinate domain
-        for coords in all_coords:
+        # Process each requested point and time axis
+        for group, coords in datasets:
             dataarraydict = {}
             longitude = coords["axes"][self.x_name]["values"]
             latitude = coords["axes"][self.y_name]["values"]
@@ -164,7 +167,7 @@ class TimeSeries(Decoder):
 
             if self.z_name:
                 z = coords["axes"][self.z_name]["values"]
-                cov_idx_list = self._find_coverages(nums, datetime, longitude, latitude, z)
+                cov_idx_list = self._find_coverages(nums, datetime, longitude, latitude, z, group)
                 coord_dict = {
                     "latitude": latitude,
                     "longitude": longitude,
@@ -174,7 +177,7 @@ class TimeSeries(Decoder):
                     "t": steps,
                 }
             else:
-                cov_idx_list = self._find_coverages(nums, datetime, longitude, latitude, None)
+                cov_idx_list = self._find_coverages(nums, datetime, longitude, latitude, None, group)
                 coord_dict = {
                     "latitude": latitude,
                     "longitude": longitude,
@@ -204,23 +207,22 @@ class TimeSeries(Decoder):
                 else:
                     dataarraydict[long_name] = (dims, [[param_values]], attrs)
 
-            ds.append(xr.Dataset(data_vars=dataarraydict, coords=coord_dict))
-
-        for mars_metadata in self.mars_metadata[0]:
-            if mars_metadata != "date" and mars_metadata != "step":
-                for dss in ds:
-                    dss.attrs[mars_metadata] = self.mars_metadata[0][mars_metadata]
+            dss = xr.Dataset(data_vars=dataarraydict, coords=coord_dict)
+            dss.attrs.update(self._point_dataset_attrs(group))
+            ds.append(dss)
 
         if len(ds) == 1:
             return ds[0]
 
         return ds
 
-    def _find_coverages(self, nums, datetime, longitude, latitude, z):
+    def _find_coverages(self, nums, datetime, longitude, latitude, z, coverages=None):
+        """Find coverages that match the given domain parameters (num, date, lon, lat, z)
+        and return them along with domain parameter indices."""
         result = []
         for i, num in enumerate(nums):
             for j, date in enumerate(datetime):
-                for coverage in self.covjson["coverages"]:
+                for coverage in coverages if coverages is not None else self.covjson["coverages"]:
                     if self._covers_domain(coverage, num, date, longitude, latitude, z):
                         result.append((i, j, coverage))
         return result
@@ -237,6 +239,7 @@ class TimeSeries(Decoder):
             match = axes[self.z_name]["values"] == z
         return match
 
+    @nulls_as_nan
     def _to_xarray_no_forecast_date(self):
         """Monthly-means path: all time steps are packed into a single coverage's
         t-axis and there is no "Forecast date" in mars:metadata.

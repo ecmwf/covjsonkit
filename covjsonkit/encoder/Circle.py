@@ -207,8 +207,11 @@ class Circle(Encoder):
                         mm.pop("step", None)
                     else:
                         mm["Forecast date"] = date
-                    self.add_coverage(mm, cov_coords, val_dict[step], include_z)
+                    self.add_coverages_by_tag(
+                        mm, cov_coords, val_dict[step], coords[date].get("tags"), len(levels), include_z
+                    )
 
+        self.sort_coverages_by_tag()
         return self.covjson
 
     def from_polytope_month(self, result):
@@ -273,6 +276,9 @@ class Circle(Encoder):
                 mm = mars_metadata.copy()
                 mm["number"] = num
                 mm["Forecast date"] = f"{date}-01T00:00:00Z"
-                self.add_coverage(mm, coordinates[date], val_dict, include_z)
+                self.add_coverages_by_tag(
+                    mm, coordinates[date], val_dict, coords.get(date, {}).get("tags"), len(levels), include_z
+                )
 
+        self.sort_coverages_by_tag()
         return self.covjson
