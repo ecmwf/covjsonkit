@@ -15,6 +15,22 @@ from .encoder import (
     valid_time,
 )
 
+_MISSING = object()
+
+
+def _resolve_missing(flat, include_z, first_error):
+    """Finish a flat ``[t, point, level]`` value list that may contain ``_MISSING`` cells.
+
+    Without levels (surface) a missing cell is an error, exactly as before. With
+    levels a missing (point, level) cell becomes ``None`` (``null``) as long as some
+    cell of the list is present; a list with no data at all still raises.
+    """
+    if first_error is None:
+        return flat
+    if not include_z or all(v is _MISSING for v in flat):
+        raise first_error
+    return [None if v is _MISSING else v for v in flat]
+
 
 class TimeSeries(Encoder):
     def __init__(self, type, domaintype):
@@ -67,18 +83,26 @@ class TimeSeries(Encoder):
     def add_mars_metadata(self, coverage, metadata):
         coverage["mars:metadata"] = metadata
 
-    def add_multipoint_coverage(self, mars_metadata, t_values, points, values, include_z=False, level=None):
-        """Add a single MultiPointSeries coverage aggregating many points.
+    def add_multipoint_coverage(self, mars_metadata, t_values, points, values, include_z=False, levels=None):
+        """Add a single MultiPointSeries coverage aggregating many points (and levels).
+
+        Composite order (deterministic): **point-major, then level**. Entry
+        ``k = p * n_levels + l`` is ``[lon_p, lat_p, level_l]`` (just ``[lon, lat]``
+        without levels). The range values are row-major ``[t, composite]`` (``t``
+        outer, then point, then level innermost) so they stay aligned with it.
 
         Args:
             mars_metadata: dict of MARS metadata for the coverage.
             t_values: list of ISO-8601 valid-time strings (the shared ``t`` axis).
             points: list of ``[lon, lat]`` tuples (already x/y ordered per spec).
             values: mapping ``param_id -> flat list`` of values in row-major
-                ``[t, composite]`` order (t outer, point inner), length
-                ``len(t_values) * len(points)``.
-            include_z: whether a vertical (``z``) axis should be emitted.
-            level: the scalar level value for the ``z`` axis (when ``include_z``).
+                ``[t, composite]`` order, length
+                ``len(t_values) * len(points) * n_levels`` (``n_levels`` is 1
+                without ``include_z``). ``None`` entries are emitted as ``null``.
+            include_z: whether the composite tuples carry a vertical (``z``)
+                component (``coordinates`` ``["x", "y", "z"]``).
+            levels: the level values (``include_z`` only) crossed with every point;
+                all levels live in this one coverage.
         """
         new_coverage = {
             "mars:metadata": {},
@@ -87,30 +111,39 @@ class TimeSeries(Encoder):
             "ranges": {},
         }
         self.add_mars_metadata(new_coverage, mars_metadata)
-        self.add_multipoint_domain(new_coverage, t_values, points, include_z, level)
-        self.add_multipoint_range(new_coverage, t_values, points, values)
+        composite = self.add_multipoint_domain(new_coverage, t_values, points, include_z, levels)
+        self.add_multipoint_range(new_coverage, t_values, composite, values)
         self.covjson["coverages"].append(new_coverage)
 
-    def add_multipoint_domain(self, coverage, t_values, points, include_z=False, level=None):
+    def add_multipoint_domain(self, coverage, t_values, points, include_z=False, levels=None):
+        """Build the domain; returns the composite value list (see ``add_multipoint_coverage``)."""
         coverage["domain"]["type"] = "Domain"
         axes = {}
         axes["t"] = {"values": t_values}
+        # OGC CoverageJSON 21-069r2 §9.10.5: a MultiPointSeries domain has only the
+        # ``composite`` and ``t`` axes. The vertical coordinate is therefore a third
+        # component of each composite tuple, never a separate ``z`` axis.
         if include_z:
-            axes["z"] = {"values": [level]}
+            coordinates = ["x", "y", "z"]
+            values = [[*pt, level] for pt in points for level in levels]
+        else:
+            coordinates = ["x", "y"]
+            values = points
         axes["composite"] = {
             "dataType": "tuple",
-            "coordinates": ["x", "y"],
-            "values": points,
+            "coordinates": coordinates,
+            "values": values,
         }
         coverage["domain"]["axes"] = axes
+        return values
 
-    def add_multipoint_range(self, coverage, t_values, points, values):
+    def add_multipoint_range(self, coverage, t_values, composite, values):
         for parameter in values.keys():
             param = self.convert_param_id_to_param(parameter)
             coverage["ranges"][param] = {
                 "type": "NdArray",
                 "dataType": "float",
-                "shape": [len(t_values), len(points)],
+                "shape": [len(t_values), len(composite)],
                 "axisNames": ["t", "composite"],
                 "values": values[parameter],
             }
@@ -189,29 +222,37 @@ class TimeSeries(Encoder):
         if use_multi:
             include_z = fields["has_level_axis"]
             pts = self._emit_composite_points(coords, first_date, points)
-            for level in fields["levels"]:
-                for num in fields["number"]:
-                    val_dict = {}
-                    for para in fields["param"]:
-                        # Row-major [t, composite]: t (valid-time) outer, point inner.
-                        flat = []
-                        for _stamp, date, step in stamp_order:
-                            key = (date, level, num, para, step)
-                            for i in range(points):
+            # All levels share one coverage per number (composite = point x level).
+            levels = fields["levels"] if include_z else fields["levels"][:1]
+            for num in fields["number"]:
+                val_dict = {}
+                for para in fields["param"]:
+                    # Row-major [t, composite]: t (valid-time) outer, then point, level innermost.
+                    flat = []
+                    first_error = None
+                    for _stamp, date, step in stamp_order:
+                        for i in range(points):
+                            for level in levels:
+                                key = (date, level, num, para, step)
                                 try:
                                     flat.append(range_dict[key][i])
                                 except (KeyError, IndexError):
-                                    raise IndexError(
-                                        f"Key {key} not found in range_dict. "
-                                        f"Please ensure all axes are compressed in config"
-                                    )
-                        val_dict[para] = flat
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["levelist"] = level
-                    mm.pop("step", None)
-                    mm.pop("Forecast date", None)
-                    self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, level=level)
+                                    flat.append(_MISSING)
+                                    if first_error is None:
+                                        first_error = IndexError(
+                                            f"Key {key} not found in range_dict. "
+                                            f"Please ensure all axes are compressed in config"
+                                        )
+                    val_dict[para] = _resolve_missing(flat, include_z, first_error)
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                if include_z:
+                    mm.pop("levelist", None)  # levels live in the composite z component
+                else:
+                    mm["levelist"] = levels[0]
+                mm.pop("step", None)
+                mm.pop("Forecast date", None)
+                self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, levels=levels)
             return self.covjson
 
         for i in range(points):
@@ -401,37 +442,44 @@ class TimeSeries(Encoder):
         logging.debug("The range_dict created was: %s", range_dict)  # noqa: E501
 
         if use_multi:
-            # MultiPointSeries: one coverage per (date, level, number) aggregating
-            # every spatial point onto a shared t-axis + composite (x/y) axis.
+            # MultiPointSeries: one coverage per (date, number) aggregating every
+            # spatial point and every level onto a shared t-axis + composite axis.
+            levels = fields["levels"] if include_z else fields["levels"][:1]
             for date in fields["dates"]:
                 # t-axis is identical for all points on a given date.
                 t_values = coordinates[date][0]["t"]
                 # composite values are [x, y] = [lon, lat] per spec (swap from the
                 # internal [lat, lon] storage).
                 pts = [[coords[date]["composite"][i][1], coords[date]["composite"][i][0]] for i in range(points)]
-                for level in fields["levels"]:
-                    for num in fields["number"]:
-                        val_dict = {}
-                        for para in fields["param"]:
-                            # Row-major [t, composite]: t outer, point inner.
-                            flat = []
-                            for step in fields["step"]:
-                                key = (date, level, num, para, step)
-                                for i in range(points):
+                for num in fields["number"]:
+                    val_dict = {}
+                    for para in fields["param"]:
+                        # Row-major [t, composite]: t outer, then point, level innermost.
+                        flat = []
+                        first_error = None
+                        for step in fields["step"]:
+                            for i in range(points):
+                                for level in levels:
+                                    key = (date, level, num, para, step)
                                     try:
                                         flat.append(range_dict[key][i])
-                                    except IndexError:
-                                        raise IndexError(
-                                            f"Key {key} not found in range_dict. "
-                                            f"Please ensure all axes are compressed in config"
-                                        )
-                            val_dict[para] = flat
-                        mm = mars_metadata.copy()
-                        mm["number"] = num
-                        mm["Forecast date"] = date
-                        mm["levelist"] = level
-                        mm.pop("step", None)
-                        self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, level=level)
+                                    except (KeyError, IndexError):
+                                        flat.append(_MISSING)
+                                        if first_error is None:
+                                            first_error = IndexError(
+                                                f"Key {key} not found in range_dict. "
+                                                f"Please ensure all axes are compressed in config"
+                                            )
+                        val_dict[para] = _resolve_missing(flat, include_z, first_error)
+                    mm = mars_metadata.copy()
+                    mm["number"] = num
+                    mm["Forecast date"] = date
+                    if include_z:
+                        mm.pop("levelist", None)  # levels live in the composite z component
+                    else:
+                        mm["levelist"] = levels[0]
+                    mm.pop("step", None)
+                    self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, levels=levels)
         else:
             for i, point in enumerate(range(points)):
                 for date in fields["dates"]:
@@ -514,6 +562,11 @@ class TimeSeries(Encoder):
         # Set True as soon as a forecast (efas) coverage is created, so the final
         # emission can be reordered date -> time -> point (see below).
         forecast_result = False
+        # Requested spatial points / levels in first-seen tree order, recorded
+        # independently of the values so a point or level that is null everywhere
+        # still appears (as nulls) in a MultiPointSeries composite.
+        requested_points = []
+        requested_levels = []
 
         def stringify(value):
             if isinstance(value, (np.datetime64, np.timedelta64)):
@@ -535,8 +588,6 @@ class TimeSeries(Encoder):
             axis_values = [values for _, values in full_path]
             for idx, combo in enumerate(itertools.product(*axis_values)):
                 value = flat_result[idx]
-                if value is None:
-                    continue
                 d = dict(zip(axis_names, combo))
                 lat = float(d["latitude"])
                 lon = float(d["longitude"])
@@ -545,6 +596,12 @@ class TimeSeries(Encoder):
                     level = int(level)
                 except (TypeError, ValueError):
                     pass
+                if (lat, lon) not in requested_points:
+                    requested_points.append((lat, lon))
+                if level not in requested_levels:
+                    requested_levels.append(level)
+                if value is None:
+                    continue
                 number = d.get("number", 0)
                 try:
                     number = int(number)
@@ -662,47 +719,77 @@ class TimeSeries(Encoder):
             point = (coverages[key]["lat"], coverages[key]["lon"])
             if point not in point_order:
                 point_order.append(point)
+        if include_z:
+            # With levels, composite entries are the full requested points x levels
+            # cross product, so a point that is null everywhere keeps its (null) entries.
+            # Without levels the long-standing behaviour (points without data are
+            # dropped) is unchanged.
+            requested = list(requested_points)
+            if forecast_result:
+                # efas coverages are emitted ascending by (lat, lon[, level]).
+                requested.sort()
+            point_order = requested
         use_multi = self.force_multi or len(point_order) > 1
         self.covjson["domainType"] = "MultiPointSeries" if use_multi else "PointSeries"
 
         if use_multi:
-            # One coverage per (level, number[, run/hdate]) group; every spatial
-            # point of the group shares the t-axis and becomes a composite entry.
+            # One coverage per (number[, run/hdate]) group; every spatial point and
+            # every level of the group shares the t-axis and becomes composite
+            # entries (point-major, then level; both in first-seen order).
+            level_order = []
+            for key in coverage_order:
+                if coverages[key]["level"] not in level_order:
+                    level_order.append(coverages[key]["level"])
+            if include_z:
+                # Every requested level, including levels that are null everywhere.
+                level_order = list(requested_levels)
+                if forecast_result:
+                    try:
+                        level_order.sort()
+                    except TypeError:
+                        pass
+            levels = level_order if include_z else level_order[:1]
             groups = {}
             group_order = []
             for key in coverage_order:
-                gkey = key[2:]
+                gkey = key[3:]
                 if gkey not in groups:
                     groups[gkey] = {}
                     group_order.append(gkey)
-                groups[gkey][(coverages[key]["lat"], coverages[key]["lon"])] = key
+                groups[gkey][(coverages[key]["lat"], coverages[key]["lon"], coverages[key]["level"])] = key
 
             for gkey in group_order:
                 members = groups[gkey]
-                member_points = [p for p in point_order if p in members]
-                if len(member_points) != len(point_order):
+                cells = [(lat, lon, level) for lat, lon in point_order for level in levels]
+                present = [c for c in cells if c in members]
+                if not include_z and len(present) != len(cells):
                     raise ValueError(
                         "MultiPointSeries requires every point to have data for each coverage; "
-                        f"group {gkey} is missing {len(point_order) - len(member_points)} point(s)."
+                        f"group {gkey} is missing {len(cells) - len(present)} point(s)."
                     )
-                first_cov = coverages[members[member_points[0]]]
+                first_cov = coverages[members[present[0]]]
                 t_values, first_vals = series_of(first_cov)
-                per_point = []
-                for p in member_points:
-                    t_p, vals_p = series_of(coverages[members[p]])
+                per_cell = []
+                for cell in cells:
+                    if cell not in members:
+                        # Missing (point, level) cell: null series on the shared t-axis.
+                        per_cell.append({para: [None] * len(t_values) for para in first_vals})
+                        continue
+                    t_p, vals_p = series_of(coverages[members[cell]])
                     if t_p != t_values or set(vals_p) != set(first_vals):
                         raise ValueError(
                             "MultiPointSeries requires every point to share the same valid-times and parameters."
                         )
-                    per_point.append(vals_p)
+                    per_cell.append(vals_p)
                 val_dict = {}
-                for para in per_point[0]:
-                    # Row-major [t, composite]: t outer, point inner.
-                    val_dict[para] = [vals[para][ti] for ti in range(len(t_values)) for vals in per_point]
-                pts = [[lon, lat] for lat, lon in member_points]
-                self.add_multipoint_coverage(
-                    first_cov["meta"], t_values, pts, val_dict, include_z=include_z, level=first_cov["level"]
-                )
+                for para in first_vals:
+                    # Row-major [t, composite]: t outer, composite (point-major, level) inner.
+                    val_dict[para] = [vals[para][ti] for ti in range(len(t_values)) for vals in per_cell]
+                pts = [[lon, lat] for lat, lon in point_order]
+                meta = dict(first_cov["meta"])
+                if include_z:
+                    meta.pop("levelist", None)  # levels live in the composite z component
+                self.add_multipoint_coverage(meta, t_values, pts, val_dict, include_z=include_z, levels=levels)
             return self.covjson
 
         for key in coverage_order:
@@ -794,19 +881,21 @@ class TimeSeries(Encoder):
         self.covjson["domainType"] = "MultiPointSeries" if use_multi else "PointSeries"
 
         if use_multi:
-            # MultiPointSeries: one coverage per (level, number) aggregating every
-            # spatial point onto a shared t-axis (one entry per "YYYY-MM") + composite.
+            # MultiPointSeries: one coverage per number aggregating every spatial
+            # point and level onto a shared t-axis (one entry per "YYYY-MM") + composite.
             t_values = [f"{date}-01T00:00:00Z" for date in fields["dates"]]
             pts = self._emit_composite_points(coords, first_date, points)
-            for level in fields["levels"]:
-                for num in fields["number"]:
-                    val_dict = {}
-                    for para in fields["param"]:
-                        # Row-major [t, composite]: date (t) outer, point inner.
-                        flat = []
-                        for date in fields["dates"]:
-                            key = (date, level, num, para)
-                            for i in range(points):
+            levels = fields["levels"] if include_z else fields["levels"][:1]
+            for num in fields["number"]:
+                val_dict = {}
+                for para in fields["param"]:
+                    # Row-major [t, composite]: date (t) outer, then point, level innermost.
+                    flat = []
+                    first_error = None
+                    for date in fields["dates"]:
+                        for i in range(points):
+                            for level in levels:
+                                key = (date, level, num, para)
                                 try:
                                     flat.extend(range_dict[key][i])
                                 except (KeyError, IndexError) as exc:
@@ -816,12 +905,17 @@ class TimeSeries(Encoder):
                                         i,
                                         exc,
                                     )
-                                    raise
-                        val_dict[para] = flat
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["levelist"] = level
-                    self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, level=level)
+                                    flat.append(_MISSING)
+                                    if first_error is None:
+                                        first_error = exc
+                    val_dict[para] = _resolve_missing(flat, include_z, first_error)
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                if include_z:
+                    mm.pop("levelist", None)  # levels live in the composite z component
+                else:
+                    mm["levelist"] = levels[0]
+                self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, levels=levels)
             end = time.time()
             logging.debug("Coverage creation ends: %s", end)
             logging.debug("Coverage creation takes: %s", end - start)
@@ -859,6 +953,19 @@ class TimeSeries(Encoder):
         logging.debug("Coverage creation takes: %s", end - start)
 
         return self.covjson
+
+    @staticmethod
+    def _set_step_forecast_date(mm, dates):
+        """Set the scalar ``"Forecast date"`` for a ``from_polytope_step`` coverage.
+
+        The coverage ``t`` axis spans every date in ``dates``. A scalar forecast
+        date is only meaningful when there is exactly one; with several dates it is
+        omitted (identically for PointSeries and MultiPointSeries coverages).
+        """
+        if len(dates) == 1:
+            mm["Forecast date"] = dates[0]
+        else:
+            mm.pop("Forecast date", None)
 
     def from_polytope_step(self, result):
         coords = {}
@@ -933,30 +1040,48 @@ class TimeSeries(Encoder):
         self.covjson["domainType"] = "MultiPointSeries" if use_multi else "PointSeries"
 
         if use_multi:
-            # MultiPointSeries: one coverage per (level, number) aggregating every
-            # spatial point onto a shared t-axis (date outer, time inner) + composite.
+            # MultiPointSeries: one coverage per number aggregating every spatial
+            # point and level onto a shared t-axis (date outer, time inner) + composite.
             first_date = fields["dates"][0]
             pts = self._emit_composite_points(coords, first_date, points)
-            for j, level in enumerate(fields["levels"]):
-                # t-axis is identical for every point at this level.
-                t_values = coordinates[first_date][j]["t"]
-                for num in fields["number"]:
-                    val_dict = {}
-                    for para in fields["param"]:
-                        # Row-major [t, composite]: (date, time) outer, point inner.
-                        flat = []
-                        for date in fields["dates"]:
-                            key = (date, level, num, para)
-                            per_date_len = len(range_dict[key][0])
-                            for t_idx in range(per_date_len):
-                                for i in range(points):
-                                    flat.append(range_dict[key][i][t_idx])
-                        val_dict[para] = flat
-                    mm = mars_metadata.copy()
-                    mm["number"] = num
-                    mm["Forecast date"] = first_date
-                    mm["levelist"] = level
-                    self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, level=level)
+            levels = fields["levels"] if include_z else fields["levels"][:1]
+            # t-axis is identical for every point and level.
+            t_values = coordinates[first_date][0]["t"]
+            for num in fields["number"]:
+                val_dict = {}
+                for para in fields["param"]:
+                    # Row-major [t, composite]: (date, time) outer, then point, level innermost.
+                    flat = []
+                    first_error = None
+                    for date in fields["dates"]:
+                        per_date_len = None
+                        for level in levels:
+                            try:
+                                per_date_len = len(range_dict[(date, level, num, para)][0])
+                                break
+                            except (KeyError, IndexError):
+                                continue
+                        if per_date_len is None:
+                            raise KeyError((date, levels[0], num, para))
+                        for t_idx in range(per_date_len):
+                            for i in range(points):
+                                for level in levels:
+                                    key = (date, level, num, para)
+                                    try:
+                                        flat.append(range_dict[key][i][t_idx])
+                                    except (KeyError, IndexError) as exc:
+                                        flat.append(_MISSING)
+                                        if first_error is None:
+                                            first_error = exc
+                    val_dict[para] = _resolve_missing(flat, include_z, first_error)
+                mm = mars_metadata.copy()
+                mm["number"] = num
+                self._set_step_forecast_date(mm, fields["dates"])
+                if include_z:
+                    mm.pop("levelist", None)  # levels live in the composite z component
+                else:
+                    mm["levelist"] = levels[0]
+                self.add_multipoint_coverage(mm, t_values, pts, val_dict, include_z=include_z, levels=levels)
             end = time.time()
             delta = end - start
             logging.debug("Coverage creation: %s", end)  # noqa: E501
@@ -977,7 +1102,7 @@ class TimeSeries(Encoder):
                             val_dict[para].extend(range_dict[key][i])
                     mm = mars_metadata.copy()
                     mm["number"] = num
-                    mm["Forecast date"] = date
+                    self._set_step_forecast_date(mm, fields["dates"])
                     self.add_coverage(
                         mm,
                         coordinates[fields["dates"][0]][(i * len(fields["levels"]) + j)],
