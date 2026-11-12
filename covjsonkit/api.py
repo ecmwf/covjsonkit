@@ -27,6 +27,7 @@ from .config import CovjsonKitConfig
 
 features_encoder = {
     "pointseries": covjsonkit.encoder.TimeSeries.TimeSeries,
+    "multipointseries": covjsonkit.encoder.TimeSeries.TimeSeries,
     "verticalprofile": covjsonkit.encoder.VerticalProfile.VerticalProfile,
     "boundingbox": covjsonkit.encoder.BoundingBox.BoundingBox,
     "shapefile": covjsonkit.encoder.Shapefile.Shapefile,
@@ -39,6 +40,7 @@ features_encoder = {
 }
 features_decoder = {
     "pointseries": covjsonkit.decoder.TimeSeries.TimeSeries,
+    "multipointseries": covjsonkit.decoder.TimeSeries.TimeSeries,
     "verticalprofile": covjsonkit.decoder.VerticalProfile.VerticalProfile,
     "boundingbox": covjsonkit.decoder.BoundingBox.BoundingBox,
     "shapefile": covjsonkit.decoder.Shapefile.Shapefile,
