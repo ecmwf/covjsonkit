@@ -1,0 +1,405 @@
+"""CovjsonStreamEncoder on synthetic blocks (no polytope needed).
+
+The blocks are local stand-ins with the attributes polytope-mars' block IR exposes; the encoder only
+reads attributes.  Expected bytes are ``json.dumps`` of the document the legacy encoders built.
+"""
+
+import json
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
+import pytest
+
+from covjsonkit.stream import (
+    DEFAULT_MAX_FRAGMENT_BYTES,
+    CovjsonStreamEncoder,
+    composite_tuples,
+    float_list_bytes,
+    format_floats,
+)
+
+
+@dataclass(frozen=True)
+class Param:
+    id: str
+    shortname: str
+    name: str
+    unit: str
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class Header:
+    feature_type: str
+    domain_type: str
+    time_axis: str
+    parameters: tuple
+    #: polytope-mars decides these (``legacy_format.referencing_coordinates``); the encoder writes them
+    referencing_coordinates: tuple = ("latitude", "longitude", "levelist")
+    mars_metadata: dict = field(default_factory=dict)
+    extra: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Group:
+    index: int
+    path: dict
+    t: tuple
+    params: tuple
+    levels: tuple
+    n_points: int
+    mars_metadata: dict
+
+
+@dataclass(frozen=True)
+class Coords:
+    group: Any
+    lat: np.ndarray
+    lon: np.ndarray
+
+
+@dataclass(frozen=True)
+class Values:
+    group: Any
+    param: str
+    level: Any
+    values: np.ndarray
+
+
+@dataclass(frozen=True)
+class End:
+    group: Any
+
+
+T2 = Param("167", "2t", "2 metre temperature", "K", "Température à 2 m")
+U10 = Param("165", "10u", "10 metre U wind component", "m s**-1")
+CRS = {"type": "GeographicCRS", "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}
+
+
+def _parameters(params):
+    return {
+        p.shortname: {
+            "type": "Parameter",
+            "description": {"en": p.description},
+            "unit": {"symbol": p.unit},
+            "observedProperty": {"id": p.shortname, "label": {"en": p.name}},
+        }
+        for p in params
+    }
+
+
+def _nan_to_none(values):
+    return [None if v != v else v for v in np.asarray(values, dtype=np.float64).tolist()]
+
+
+def multipoint_blocks(fields, lat, lon, levels=(), meta=None, t=("2024-01-01T00:00:00Z",), n_blocks=1, index=0):
+    """Blocks of one MultiPoint group; ``fields`` = {(param, level): values}.
+
+    ``n_blocks`` splits the group's points over that many consecutive blocks, which a producer that
+    cannot fetch a field whole would do and which must not change the bytes.
+    """
+    params = tuple(dict.fromkeys(p for p, _ in fields))
+    bounds = np.array_split(np.arange(len(lat)), n_blocks)
+    g = Group(index, {}, t, params, tuple(levels), len(lat), meta or {"class": "od", "number": 0})
+    blocks: list[Any] = [Coords(g, lat[idx], lon[idx]) for idx in bounds]
+    for p in params:
+        for lev in levels or (None,):
+            for idx in bounds:
+                blocks.append(Values(g, p, lev, fields[(p, lev)][idx]))
+    blocks.append(End(g))
+    return blocks
+
+
+def encode(header, blocks) -> bytes:
+    enc = CovjsonStreamEncoder({"param_db": "ecmwf"})
+    out = [enc.begin(header)]
+    out += [enc.encode(b) for b in blocks]
+    out.append(enc.end())
+    return b"".join(out)
+
+
+def fragments(header, blocks, max_fragment_bytes) -> list:
+    """Every fragment of the document, block by block, with ``encode_iter``."""
+    enc = CovjsonStreamEncoder({"param_db": "ecmwf"}, max_fragment_bytes=max_fragment_bytes)
+    out = [enc.begin(header)]
+    for block in blocks:
+        out += list(enc.encode_iter(block))
+    out.append(enc.end())
+    return out
+
+
+def legacy_multipoint(header, groups):
+    """What BoundingBox.from_polytope + json.dumps produced for the same data.
+
+    The collection's ``parameters`` lists the parameters some coverage has a range for, in header order.
+    """
+    coords = list(header.referencing_coordinates)
+    covs = []
+    present = set()
+    for fields, lat, lon, levels, meta, t in groups:
+        composite = [[float(a), float(o), lev] for lev in (levels or (0,)) for a, o in zip(lat, lon)]
+        ranges = {}
+        params = tuple(dict.fromkeys(p for p, _ in fields))
+        present.update(params)
+        short = {p.id: p.shortname for p in header.parameters}
+        for p in params:
+            vals = [v for lev in (levels or (None,)) for v in _nan_to_none(fields[(p, lev)])]
+            ranges[short[p]] = {
+                "type": "NdArray",
+                "dataType": "float",
+                "shape": [len(vals)],
+                "axisNames": [short[p]],
+                "values": vals,
+            }
+        covs.append(
+            {
+                "mars:metadata": meta,
+                "type": "Coverage",
+                "domain": {
+                    "type": "Domain",
+                    "axes": {
+                        "t": {"values": list(t)},
+                        "composite": {"dataType": "tuple", "coordinates": coords, "values": composite},
+                    },
+                },
+                "ranges": ranges,
+            }
+        )
+    doc = {
+        "type": "CoverageCollection",
+        "domainType": "MultiPoint",
+        "coverages": covs,
+        "referencing": [{"coordinates": coords, "system": CRS}],
+        "parameters": _parameters([p for p in header.parameters if p.id in present]),
+    }
+    return json.dumps(doc).encode()
+
+
+def _data(n, seed=0):
+    rng = np.random.default_rng(seed)
+    lat = np.round(rng.uniform(-90, 90, n), 12)
+    lon = np.round(rng.uniform(0, 360, n), 12)
+    return lat, lon
+
+
+BBOX = Header("boundingbox", "MultiPoint", "date", (U10, T2))
+
+
+def test_multipoint_matches_legacy_json_dumps():
+    lat, lon = _data(7)
+    fields = {("165", None): np.linspace(1, 7, 7) * 1.1e10 + 0.123, ("167", None): np.arange(7) * 0.5}
+    meta = {"class": "od", "Forecast date": "2024-01-01T00:00:00Z", "number": 0, "step": 0}
+    out = encode(BBOX, multipoint_blocks(fields, lat, lon, meta=meta))
+    expected = legacy_multipoint(BBOX, [(fields, lat, lon, (), meta, ("2024-01-01T00:00:00Z",))])
+    assert out == expected
+    json.loads(out)
+
+
+def test_several_blocks_per_group_give_the_same_bytes():
+    """Blocks are placed by arrival order, so a group split over several blocks encodes identically."""
+    lat, lon = _data(13, 1)
+    levels = ("500", "850")
+    fields = {(p, lev): np.random.default_rng(2).normal(size=13) * 1e3 for p in ("165", "167") for lev in levels}
+    ref = encode(BBOX, multipoint_blocks(fields, lat, lon, levels=levels))
+    assert encode(BBOX, multipoint_blocks(fields, lat, lon, levels=levels, n_blocks=3)) == ref
+    group = (fields, lat, lon, levels, {"class": "od", "number": 0}, ("2024-01-01T00:00:00Z",))
+    expected = legacy_multipoint(BBOX, [group])
+    assert ref == expected
+
+
+def _mixed_fields(n, levels, seed=11):
+    """Values covering both float paths: a NaN, a ``1e-5``-style number, ``-0.0`` and plain floats."""
+    rng = np.random.default_rng(seed)
+    fields = {(p, lev): np.round(rng.normal(size=n) * 1e3, 9) for p in ("165", "167") for lev in levels or (None,)}
+    first = fields[("165", levels[0] if levels else None)]
+    first[0], first[1], first[2] = np.nan, 1.5e-5, -0.0
+    return fields
+
+
+@pytest.mark.parametrize("max_fragment_bytes", [64, 1024, DEFAULT_MAX_FRAGMENT_BYTES], ids=["64B", "1KiB", "8MiB"])
+def test_fragments_join_to_the_single_fragment_bytes(max_fragment_bytes):
+    levels = ("500", "850")
+    lat, lon = _data(500, 8)
+    lon[4] = 3e-5  # forces the per-value path for the composite tuples as well
+    fields = _mixed_fields(500, levels)
+    blocks = multipoint_blocks(fields, lat, lon, levels=levels, n_blocks=3)
+    joined = b"".join(fragments(BBOX, blocks, max_fragment_bytes))
+    assert joined == encode(BBOX, blocks)
+    group = (fields, lat, lon, levels, {"class": "od", "number": 0}, ("2024-01-01T00:00:00Z",))
+    assert joined == legacy_multipoint(BBOX, [group])
+
+
+@pytest.mark.parametrize("max_fragment_bytes", [1024, DEFAULT_MAX_FRAGMENT_BYTES], ids=["1KiB", "8MiB"])
+def test_no_fragment_exceeds_the_limit(max_fragment_bytes):
+    lat, lon = _data(5000, 9)
+    fields = {("167", None): np.linspace(200.0, 320.0, 5000)}
+    frags = fragments(BBOX, multipoint_blocks(fields, lat, lon, n_blocks=2), max_fragment_bytes)
+    assert max(len(f) for f in frags) <= max_fragment_bytes
+    assert all(f for f in frags)  # no empty fragment is handed out
+    assert len(frags) > 5  # the arrays really were sliced
+
+
+def test_small_magnitude_values_are_formatted_per_value_in_every_slice():
+    vals = np.array([1e-5, 2e-5, 0.00002, 9.99e-5, 3.0, np.nan])
+    lat, lon = _data(6, 10)
+    blocks = multipoint_blocks({("167", None): vals}, lat, lon, n_blocks=2)
+    out = b"".join(fragments(BBOX, blocks, 64))
+    assert out == encode(BBOX, blocks)
+    assert b"1e-05" in out and b"2e-05" in out and b"1e-5" not in out
+    assert json.loads(out)["coverages"][0]["ranges"]["2t"]["values"] == [1e-5, 2e-5, 2e-5, 9.99e-5, 3.0, None]
+
+
+def test_fragment_limit_is_configurable_and_validated():
+    assert CovjsonStreamEncoder().max_fragment_bytes == DEFAULT_MAX_FRAGMENT_BYTES
+    assert CovjsonStreamEncoder({"max_fragment_bytes": 4096}).max_fragment_bytes == 4096
+    assert CovjsonStreamEncoder(max_fragment_bytes=4096).max_fragment_bytes == 4096
+    with pytest.raises(ValueError):
+        CovjsonStreamEncoder(max_fragment_bytes=-1)
+    with pytest.raises(ValueError):
+        CovjsonStreamEncoder({"max_fragment_bytes": "many"})
+
+
+def test_nan_is_null_and_missing_param_is_omitted():
+    lat, lon = _data(4, 3)
+    vals = np.array([1.0, np.nan, 3.0, np.nan])
+    out = encode(BBOX, multipoint_blocks({("167", None): vals}, lat, lon))
+    doc = json.loads(out)
+    assert b"NaN" not in out
+    ranges = doc["coverages"][0]["ranges"]
+    assert list(ranges) == ["2t"]  # 10u not in group.params -> no range
+    assert ranges["2t"]["values"] == [1.0, None, 3.0, None]
+    assert list(doc["parameters"]) == ["2t"]  # a parameter with no range in any coverage is not listed
+
+
+def test_several_groups_and_empty_collection():
+    lat, lon = _data(3, 4)
+    blocks = multipoint_blocks({("167", None): np.ones(3)}, lat, lon, index=0)
+    blocks += multipoint_blocks({("167", None): np.zeros(3)}, lat, lon, index=1, t=("2024-01-02T00:00:00Z",))
+    doc = json.loads(encode(BBOX, blocks))
+    assert [c["domain"]["axes"]["t"]["values"] for c in doc["coverages"]] == [
+        ["2024-01-01T00:00:00Z"],
+        ["2024-01-02T00:00:00Z"],
+    ]
+    empty = json.loads(encode(BBOX, []))
+    assert empty["coverages"] == [] and list(empty) == ["type", "domainType", "coverages", "referencing", "parameters"]
+    assert empty["parameters"] == {}
+
+
+def test_parameters_lists_what_the_coverages_hold_in_header_order():
+    lat, lon = _data(3, 4)
+    blocks = multipoint_blocks({("167", None): np.ones(3)}, lat, lon, index=0)
+    blocks += multipoint_blocks({("165", None): np.zeros(3)}, lat, lon, index=1, t=("2024-01-02T00:00:00Z",))
+    doc = json.loads(encode(BBOX, blocks))
+    assert [list(c["ranges"]) for c in doc["coverages"]] == [["2t"], ["10u"]]
+    assert list(doc["parameters"]) == ["10u", "2t"]
+
+
+def test_float_formatting_matches_json_dumps():
+    rng = np.random.default_rng(5)
+    vals = np.concatenate(
+        [
+            rng.normal(size=5000) * 10.0 ** rng.integers(-12, 20, 5000),
+            [0.0, -0.0, 1.0, 1e16, 1e-4, 9.99e-5, 2e-5, 1e-7, -3e-9, 123456789.123, 5e-324, 1.7976931348623157e308],
+        ]
+    )
+    assert b", ".join(format_floats(vals)) == json.dumps(vals.tolist()).encode()[1:-1]
+    assert format_floats(np.array([np.nan, np.inf])) == [b"null", b"null"]
+
+
+@pytest.mark.parametrize("small", [False, True], ids=["fast-path", "repr-fallback"])
+@pytest.mark.parametrize("level", [0, "500", 850])
+def test_composite_and_value_bytes_match_json_dumps(small, level):
+    lat, lon = _data(2000, 6)
+    lon[3] = -0.0
+    if small:
+        lon[7] = 3e-5  # forces the per-value path
+    pairs = [[a, o, level] for a, o in zip(lat.tolist(), lon.tolist())]
+    assert composite_tuples(lat, lon, level) == json.dumps(pairs).encode()[1:-1]
+    values = np.concatenate([lat * 1e9, [np.nan, 2e-7 if small else 2.0]])
+    expected = json.dumps([None if v != v else v for v in values.tolist()]).encode()[1:-1]
+    assert float_list_bytes(values) == expected
+    assert composite_tuples(np.empty(0), np.empty(0), level) == b""
+
+
+@pytest.mark.parametrize("coords", [("latitude", "longitude", "levelist"), ("x", "y", "z")])
+def test_the_header_decides_the_referencing_coordinates(coords):
+    """Which names a collection declares is polytope-mars' rule; the encoder writes what it is given."""
+    header = Header("boundingbox", "MultiPoint", "date", (T2,), referencing_coordinates=coords)
+    lat, lon = _data(3, 7)
+    doc = json.loads(encode(header, multipoint_blocks({("167", None): np.ones(3)}, lat, lon)))
+    assert doc["referencing"][0]["coordinates"] == list(coords)
+    assert doc["coverages"][0]["domain"]["axes"]["composite"]["coordinates"] == list(coords)
+
+
+def _point_group(index, t, meta, values, levels=(), lat=(51.5, -33.9), lon=(0.1, 18.4)):
+    params = tuple(dict.fromkeys(p for p, _ in values))
+    g = Group(index, {}, t, params, tuple(levels), len(lat), meta)
+    blocks: list[Any] = [Coords(g, np.array(lat), np.array(lon))]
+    for (p, lev), v in values.items():
+        blocks.append(Values(g, p, lev, np.asarray(v, dtype=float)))
+    return blocks + [End(g)]
+
+
+def test_pointseries_layout_is_point_major_over_consecutive_groups():
+    header = Header("timeseries", "PointSeries", "date", (T2,))
+    meta = {"class": "od", "number": 0, "levelist": 0}
+    blocks = []
+    for i, t in enumerate(["2024-01-01T00:00:00Z", "2024-01-01T01:00:00Z", "2024-01-01T02:00:00Z"]):
+        blocks += _point_group(i, (t,), meta, {("167", None): [i, 10 + i]})
+    doc = json.loads(encode(header, blocks))
+    assert len(doc["coverages"]) == 2
+    first, second = doc["coverages"]
+    assert first["domain"]["axes"]["t"]["values"] == [
+        "2024-01-01T00:00:00Z",
+        "2024-01-01T01:00:00Z",
+        "2024-01-01T02:00:00Z",
+    ]
+    assert first["ranges"]["2t"]["values"] == [0.0, 1.0, 2.0]
+    assert second["ranges"]["2t"]["values"] == [10.0, 11.0, 12.0]
+    assert second["domain"]["axes"]["latitude"]["values"] == [-33.9]
+    assert doc["referencing"][0]["coordinates"] == ["latitude", "longitude", "levelist"]
+
+
+def test_buffered_domains_produce_their_coverages_from_end():
+    """Point features are buffered: their blocks yield no fragment, ``end()`` writes the coverages."""
+    header = Header("timeseries", "PointSeries", "date", (T2,))
+    meta = {"class": "od", "number": 0, "levelist": 0}
+    blocks = _point_group(0, ("2024-01-01T00:00:00Z",), meta, {("167", None): [1, 2]})
+    enc = CovjsonStreamEncoder(max_fragment_bytes=64)
+    begin = enc.begin(header)
+    assert [f for block in blocks for f in enc.encode_iter(block)] == []
+    assert begin + enc.end() == encode(header, blocks)
+
+
+def test_verticalprofile_layout():
+    header = Header("verticalprofile", "VerticalProfile", "date", (T2,))
+    blocks = _point_group(
+        0, ("2024-01-01T00:00:00Z",), {"number": 0}, {("167", 500): [1, 2], ("167", 850): [3, 4]}, levels=(500, 850)
+    )
+    doc = json.loads(encode(header, blocks))
+    assert [c["ranges"]["2t"]["values"] for c in doc["coverages"]] == [[1.0, 3.0], [2.0, 4.0]]
+    assert doc["coverages"][0]["domain"]["axes"]["levelist"]["values"] == [500, 850]
+    assert doc["coverages"][0]["ranges"]["2t"]["axisNames"] == ["levelist"]
+
+
+def test_trajectory_layout():
+    header = Header("trajectory", "Trajectory", "date", (T2,), referencing_coordinates=("t", "x", "y", "z"))
+    blocks = _point_group(0, (0,), {"number": 0}, {("167", None): [1, 2]})
+    doc = json.loads(encode(header, blocks))
+    (cov,) = doc["coverages"]
+    assert cov["domain"]["axes"]["composite"]["values"] == [[0, 51.5, 0.1, 0], [0, -33.9, 18.4, 0]]
+    assert cov["domain"]["axes"]["composite"]["coordinates"] == ["t", "x", "y", "z"]
+
+
+def test_no_polytope_imports():
+    code = (
+        "import sys, covjsonkit.stream; "
+        "roots = ('polytope_feature', 'polytope_mars', 'covjson_pydantic'); "
+        "bad = [m for m in sys.modules if m.split('.')[0] in roots]; "
+        "print(bad); sys.exit(1 if bad else 0)"
+    )
+    proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
