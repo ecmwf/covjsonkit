@@ -1,0 +1,26 @@
+[package]
+name = "covjsonkit"
+repo = "ecmwf/covjsonkit"
+visibility = "public"
+fork-pull-requests = false
+compiler-inputs = []
+ci-schedule = "28 3 * * *"
+full-history = true
+
+[matrix.test]
+triggers = ["upstream-change", "rebuild-request"]
+
+[matrix.test.defaults]
+job-script = "./.ci/test.sh.j2"
+runs-on = "ubuntu-26.04"
+platform = "gh-ubuntu-26.04"
+extras = "tests"
+
+[[matrix.test.include]]
+python-version = "3.11"
+
+[[matrix.test.include]]
+python-version = "3.12"
+
+[[matrix.test.include]]
+python-version = "3.13"

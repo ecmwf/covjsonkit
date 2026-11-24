@@ -1,4 +1,4 @@
-name: ci
+name: release
 
 on:
   # Trigger the workflow on push to master or develop, except tag creation
@@ -19,23 +19,6 @@ on:
     types: [created]
 
 jobs:
-  # Run CI including downstream packages on self-hosted runners
-  downstream-ci:
-    name: downstream-ci
-    uses: ecmwf/downstream-ci/.github/workflows/downstream-ci.yml@main
-    with:
-      covjsonkit: ecmwf/covjsonkit@${{ github.event.pull_request.head.sha || github.sha }}
-      python_qa: true
-    secrets: inherit
-
-  # Build downstream packages on HPC
-  downstream-ci-hpc:
-    name: downstream-ci-hpc
-    uses: ecmwf/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
-    with:
-      covjsonkit: ecmwf/covjsonkit@${{ github.event.pull_request.head.sha || github.sha }}
-    secrets: inherit
-
   deploy:
     if: ${{ github.event_name == 'release' }}
     name: Upload to Pypi
